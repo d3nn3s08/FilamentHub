@@ -1,0 +1,20 @@
+# FilamentHub Konfiguration
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+database:
+  path: "data/filamenthub.db"
+
+logging:
+  level: "INFO"
+
+bambu:
+  enabled: false
+  mqtt_host: "192.168.0.10"
+  mqtt_port: 1883
+
+klipper:
+  enabled: false
+  moonraker_url: "http://localhost:7125"
