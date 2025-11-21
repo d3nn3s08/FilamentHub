@@ -177,7 +177,7 @@ Diese Roadmap ist auf **meine persönliche Zeitplanung abgestimmt**:
 
 ---
 
-# 🏁 Finale Fertigstellung: **Mai 2026**  
+# 🏁 Finale Fertigstellung: **2026**  
 Ein modernes, automatisches, plattformübergreifendes Filament-Verwaltungssystem.
 
 ---
@@ -190,7 +190,6 @@ Ein modernes, automatisches, plattformübergreifendes Filament-Verwaltungssystem
 ---
 
 # 🤝 MIT License (optional)
-Wird später ergänzt.
 
 ---
 
