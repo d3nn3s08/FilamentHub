@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" width="280" />
+  <img src="data/logo.png" width="280" />
 </p>
 
 <h1 align="center">FilamentHub</h1>
@@ -201,4 +201,5 @@ Wird später ergänzt.
 
 # 📌 Kontakt
 Entwickelt von **d3nn3s08** (GitHub)
+
 
