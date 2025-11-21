@@ -68,10 +68,8 @@
 # 🧭 Projekt-Roadmap (World Map)
 
 Diese Roadmap ist auf **meine persönliche Zeitplanung abgestimmt**:
-- bis 22.12 → 4-Schicht, wenig Zeit  
-- 22.12–01.01 → Urlaub, Hauptentwicklungszeit  
-- ab Januar → 3-Schicht, Wochenenden frei  
-
+ 
+- ab Januar → Geplanter der Start mit Phase 1
 ---
 
 ## 🧱 PHASE 1 – Grundgerüst   
@@ -201,5 +199,6 @@ Wird später ergänzt.
 
 # 📌 Kontakt
 Entwickelt von **d3nn3s08** (GitHub)
+
 
 
