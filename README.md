@@ -83,7 +83,6 @@ Diese Roadmap ist auf **meine persönliche Zeitplanung abgestimmt**:
 - Leeres UI im Browser anzeigen  
 
 **Status:** 🔄 geplant  
-**Zeit:** ca. 3–7 Tage mit geringer Belastung
 
 ---
 
@@ -96,8 +95,7 @@ Diese Roadmap ist auf **meine persönliche Zeitplanung abgestimmt**:
 - Tabellen, Icons  
 
 **Status:** 🔄 geplant  
-**Zeit:** 5–10 Tage  
-**Hinweis:** Größter UI-Schub im Urlaub.
+
 
 ---
 
@@ -109,7 +107,7 @@ Diese Roadmap ist auf **meine persönliche Zeitplanung abgestimmt**:
 - Restgewicht (manuell)  
 - Materialsignatur  
 
-**Zeit:** 5–7 Tage
+
 
 ---
 
@@ -122,8 +120,7 @@ Diese Roadmap ist auf **meine persönliche Zeitplanung abgestimmt**:
 - „Alte Spule wieder eingesetzt“ Logik  
 - Jobs speichern  
 
-**Zeit:** 7–14 Tage  
-**Schwerste Phase des Projektes**
+
 
 ---
 
@@ -133,7 +130,7 @@ Diese Roadmap ist auf **meine persönliche Zeitplanung abgestimmt**:
 - Spulenwahl manuell  
 - Job-Ende Erkennung  
 
-**Zeit:** 3–5 Tage
+
 
 ---
 
@@ -143,7 +140,7 @@ Diese Roadmap ist auf **meine persönliche Zeitplanung abgestimmt**:
 - Jobs speichern  
 - Verbrauch mm → g  
 
-**Zeit:** 5–10 Tage
+
 
 ---
 
@@ -154,7 +151,7 @@ Diese Roadmap ist auf **meine persönliche Zeitplanung abgestimmt**:
 - Toleranzsystem  
 - Verbrauchshistorie  
 
-**Zeit:** 3–7 Tage
+
 
 ---
 
@@ -165,7 +162,7 @@ Diese Roadmap ist auf **meine persönliche Zeitplanung abgestimmt**:
 - angebrochene Spulen  
 - Lagerauswertung  
 
-**Zeit:** 7–14 Tage
+
 
 ---
 
@@ -176,7 +173,7 @@ Diese Roadmap ist auf **meine persönliche Zeitplanung abgestimmt**:
 - Unraid Template  
 - Pi Guide  
 
-**Zeit:** 3–7 Tage
+
 
 ---
 
@@ -199,6 +196,7 @@ Wird später ergänzt.
 
 # 📌 Kontakt
 Entwickelt von **d3nn3s08** (GitHub)
+
 
 
 
