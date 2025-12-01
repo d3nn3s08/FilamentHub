@@ -2,3 +2,4 @@ fastapi
 uvicorn[standard]
 sqlmodel
 jinja2
+pytest
