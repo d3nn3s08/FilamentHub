@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="data/logo.png" width="280" />
+  <img src="data/A_German-language_presentation_graphic_depicts_a_p.png" width="300" />
 </p>
 
 <h1 align="center">FilamentHub</h1>
