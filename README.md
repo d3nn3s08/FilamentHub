@@ -18,6 +18,9 @@
 > 🇺🇸 **English version:** [README.en.md](README.en.md)
 
 ---
+![Status](https://img.shields.io/badge/Status-Nicht%20lauff%C3%A4hig%20aktuell-red)
+
+
 
 ## Funktionen
 
