@@ -5,6 +5,24 @@ on:
     branches:
       - main
       - master
+    paths:
+      # ⭐ CODE-ÄNDERUNGEN, die den Build starten
+      - "app/**"
+      - "services/**"
+      - "backend/**"
+      - "scripts/**"
+      - "data/**"
+      - "frontend/**"
+      - "alembic.ini"
+      - "requirements.txt"
+      - "docker-compose.yml"
+      - "Dockerfile"
+      - "entrypoint.sh"
+      - "run.py"
+
+      # ⭐ Versionsänderung soll Build starten
+      - "config.yaml"
+
   workflow_dispatch:
 
 jobs:
@@ -12,16 +30,55 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # ------------------------------------------------------------
+    # 1. Repository auschecken (mit vollständiger Commit-Historie)
+    # ------------------------------------------------------------
     - name: Checkout repo
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
+    # ------------------------------------------------------------
+    # 2. Version extrahieren
+    # ------------------------------------------------------------
     - name: Extract version from config.yaml
       id: version
       run: |
         ver=$(grep 'version:' config.yaml | awk '{print $2}')
         echo "version=$ver" >> $GITHUB_OUTPUT
 
-    - name: Generate Changelog
+    # ------------------------------------------------------------
+    # 3. Prüfen, ob Version sich geändert hat
+    # ------------------------------------------------------------
+    - name: Check if version changed
+      id: version_changed
+      run: |
+        git fetch origin main --depth=1
+        old_ver=$(git show origin/main:config.yaml | grep 'version:' | awk '{print $2}')
+        new_ver=$(grep 'version:' config.yaml | awk '{print $2}')
+
+        echo "Alte Version: $old_ver"
+        echo "Neue Version: $new_ver"
+
+        if [ "$old_ver" = "$new_ver" ]; then
+          echo "changed=false" >> $GITHUB_OUTPUT
+        else
+          echo "changed=true" >> $GITHUB_OUTPUT
+        fi
+
+    # ------------------------------------------------------------
+    # 4. Skip-Logik: Falls NUR config.yaml geändert wurde OHNE Versionssprung
+    # ------------------------------------------------------------
+    - name: Skip build if NOT a version bump
+      if: ${{ steps.version_changed.outputs.changed == 'false' && github.event.head_commit.message == '' }}
+      run: |
+        echo "Keine Version geändert, nur Doku/README → Build übersprungen."
+        exit 0
+
+    # ------------------------------------------------------------
+    # 5. Changelog generieren (Deutsch)
+    # ------------------------------------------------------------
+    - name: Generate Changelog (Deutsch)
       id: changelog
       uses: mikepenz/release-changelog-builder-action@v4
       with:
@@ -29,18 +86,46 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+    # ------------------------------------------------------------
+    # 6. CHANGELOG.md aktualisieren
+    # ------------------------------------------------------------
+    - name: Schreibe CHANGELOG.md
+      run: |
+        echo "${{ steps.changelog.outputs.changelog }}" > CHANGELOG.md
+
+    - name: Commit CHANGELOG.md
+      run: |
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git add CHANGELOG.md
+        git commit -m "Aktualisiere CHANGELOG für Version ${{ steps.version.outputs.version }}" || echo "Keine Änderungen zum Commit."
+
+    - name: Push CHANGELOG.md
+      uses: ad-m/github-push-action@v0.8.0
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+    # ------------------------------------------------------------
+    # 7. Docker vorbereiten
+    # ------------------------------------------------------------
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
 
     - name: Set up Buildx
       uses: docker/setup-buildx-action@v3
 
+    # ------------------------------------------------------------
+    # 8. Login zu DockerHub
+    # ------------------------------------------------------------
     - name: Login to DockerHub
       uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+    # ------------------------------------------------------------
+    # 9. Multi-Arch Image bauen und pushen
+    # ------------------------------------------------------------
     - name: Build and push multi-platform image
       uses: docker/build-push-action@v5
       with:
@@ -52,6 +137,9 @@ jobs:
           d3nn3s/filamenthub:${{ steps.version.outputs.version }}
           d3nn3s/filamenthub:sha-${{ github.sha }}
 
+    # ------------------------------------------------------------
+    # 10. GitHub Release erstellen
+    # ------------------------------------------------------------
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
