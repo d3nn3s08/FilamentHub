@@ -10,6 +10,8 @@
 ![Docker](https://img.shields.io/badge/Docker-Ready-0db7ed?logo=docker)
 ![License](https://img.shields.io/badge/Lizenz-MIT-green)
 ![Platform](https://img.shields.io/badge/Plattformen-Win%20%7C%20Linux%20%7C%20Unraid-blue)
+![Docker Build](https://img.shields.io/github/actions/workflow/status/d3nn3s08/FilamentHub/docker-publish.yml?branch=main&label=Docker%20Build)
+
 ![Status](https://img.shields.io/badge/Status-Aktive_Entwicklung-orange)
 
 ![Bambu](https://img.shields.io/badge/Bambu-LAN%20%26%20Cloud-green)
