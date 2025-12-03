@@ -8,7 +8,7 @@ logging:
   keep_days: 14
   level: DEBUG
   max_size_mb: 10  # Maximale LogdateigrÃ¶ÃŸe in MB
-  backup_count: 3  # Anzahl Backup-Dateien
+  backup_count: 3  # Anzahl Backups
   modules:
     app:
       enabled: true
