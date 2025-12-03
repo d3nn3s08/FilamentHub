@@ -2,7 +2,7 @@ FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 
-# Build-Tools fÃ¼r ARM installieren
+# Build-Tools für ARM installieren
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -23,6 +23,7 @@ ENV FILAMENTHUB_DB_PATH=/app/data/filamenthub.db
 ENV PYTHONPATH=/app
 
 RUN mkdir -p /app/data /app/logs && \
+    dos2unix /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]
