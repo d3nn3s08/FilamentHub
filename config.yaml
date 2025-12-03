@@ -1,20 +1,30 @@
-# FilamentHub Konfiguration
-
-server:
-  host: "0.0.0.0"
-  port: 8080
-
-database:
-  path: "data/filamenthub.db"
-
+app:
+  developer: Denis (d3nn3s08)
+  environment: development
+  name: FilamentHub
+  version: 0.1.0
 logging:
-  level: "INFO"
-
-bambu:
-  enabled: false
-  mqtt_host: "192.168.0.10"
-  mqtt_port: 1883
-
-klipper:
-  enabled: false
-  moonraker_url: "http://localhost:7125"
+  enabled: true
+  keep_days: 14
+  level: DEBUG
+  max_size_mb: 10  # Maximale LogdateigrÃ¶ÃŸe in MB
+  backup_count: 3  # Anzahl Backup-Dateien
+  modules:
+    app:
+      enabled: true
+    bambu:
+      enabled: true
+    errors:
+      enabled: true
+    klipper:
+      enabled: false
+    mqtt:
+      enabled: false  # MQTT-Logging standardmÃ¤ÃŸig aus
+paths:
+  logs: ./logs
+integrations:
+  mode: bambu  # bambu | klipper | dual | standalone
+server:
+  host: 0.0.0.0
+  port: 8080
+  reload: true
