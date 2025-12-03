@@ -23,7 +23,6 @@ ENV FILAMENTHUB_DB_PATH=/app/data/filamenthub.db
 ENV PYTHONPATH=/app
 
 RUN mkdir -p /app/data /app/logs && \
-    dos2unix /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["./entrypoint.sh"]
