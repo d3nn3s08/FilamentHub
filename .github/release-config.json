@@ -2,27 +2,41 @@
   "categories": [
     {
       "title": "✨ Neu",
-      "labels": ["feat", "feature", "neu"]
+      "labels": ["feat"],
+      "commits": ["feat"]
     },
     {
       "title": "🐛 Behoben",
-      "labels": ["fix", "bug", "bugfix", "behoben"]
+      "labels": ["fix"],
+      "commits": ["fix"]
     },
     {
       "title": "⚙️ Verbesserungen",
-      "labels": ["improve", "enhancement", "verbessert"]
+      "labels": ["improve", "enhancement"],
+      "commits": ["improve", "enhancement"]
     },
     {
       "title": "🔧 Wartung",
-      "labels": ["chore", "maintenance", "wartung"]
+      "labels": ["chore", "maintenance"],
+      "commits": ["chore", "maintenance"]
+    },
+    {
+      "title": "🎨 Style",
+      "labels": ["style"],
+      "commits": ["style"]
+    },
+    {
+      "title": "🧪 Tests",
+      "labels": ["test"],
+      "commits": ["test"]
     },
     {
       "title": "📚 Dokumentation",
-      "labels": ["docs", "documentation"]
+      "labels": ["docs"],
+      "commits": ["docs"]
     }
   ],
   "template": "# Änderungsprotokoll\n\n{{CHANGELOG}}\n",
-  "pr_template": "- {{TITLE}} (#{{NUMBER}})",
   "empty_template": "Keine Änderungen seit dem letzten Release.",
   "max_pull_requests": 200,
   "tag_resolver": {
