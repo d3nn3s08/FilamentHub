@@ -1,0 +1,48 @@
+{
+  "categories": [
+    {
+      "title": "✨ Added",
+      "labels": ["feat"],
+      "commits": ["feat"]
+    },
+    {
+      "title": "🐛 Fixed",
+      "labels": ["fix"],
+      "commits": ["fix"]
+    },
+    {
+      "title": "⚙️ Improvements",
+      "labels": ["improve", "enhancement"],
+      "commits": ["improve", "enhancement"]
+    },
+    {
+      "title": "🔧 Maintenance",
+      "labels": ["chore", "maintenance"],
+      "commits": ["chore", "maintenance"]
+    },
+    {
+      "title": "🎨 Style",
+      "labels": ["style"],
+      "commits": ["style"]
+    },
+    {
+      "title": "🧪 Tests",
+      "labels": ["test"],
+      "commits": ["test"]
+    },
+    {
+      "title": "📚 Documentation",
+      "labels": ["docs"],
+      "commits": ["docs"]
+    }
+  ],
+
+  "template": "# Changelog\n\n{{CHANGELOG}}",
+  "empty_template": "No changes since the last release.",
+  "pr_template": "- {{TITLE}} (PR #{{NUMBER}})",
+
+  "max_pull_requests": 300,
+  "tag_resolver": {
+    "method": "latest"
+  }
+}
