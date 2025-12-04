@@ -4,9 +4,8 @@ on:
   push:
     branches:
       - main
-      - master
     paths:
-      # ⭐ CODE-ÄNDERUNGEN, die den Build starten
+      # CODE der einen Build auslöst
       - "app/**"
       - "services/**"
       - "backend/**"
@@ -20,7 +19,7 @@ on:
       - "entrypoint.sh"
       - "run.py"
 
-      # ⭐ Versionsänderung soll Build starten
+      # Version bump soll Build + Release auslösen
       - "config.yaml"
 
   workflow_dispatch:
@@ -31,7 +30,7 @@ jobs:
 
     steps:
     # ------------------------------------------------------------
-    # 1. Repository auschecken (mit vollständiger Commit-Historie)
+    # 1. Checkout mit kompletter Historie
     # ------------------------------------------------------------
     - name: Checkout repo
       uses: actions/checkout@v4
@@ -39,46 +38,65 @@ jobs:
         fetch-depth: 0
 
     # ------------------------------------------------------------
-    # 2. Version extrahieren
+    # 2. Version aus config.yaml lesen
     # ------------------------------------------------------------
-    - name: Extract version from config.yaml
+    - name: Extract version
       id: version
       run: |
         ver=$(grep 'version:' config.yaml | awk '{print $2}')
         echo "version=$ver" >> $GITHUB_OUTPUT
 
     # ------------------------------------------------------------
-    # 3. Prüfen, ob Version sich geändert hat
+    # 3. Alte Version holen für Vergleich
     # ------------------------------------------------------------
-    - name: Check if version changed
-      id: version_changed
+    - name: Fetch old version
+      id: oldversion
       run: |
         git fetch origin main --depth=1
         old_ver=$(git show origin/main:config.yaml | grep 'version:' | awk '{print $2}')
-        new_ver=$(grep 'version:' config.yaml | awk '{print $2}')
+        echo "old=$old_ver" >> $GITHUB_OUTPUT
+        echo "new=${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
 
-        echo "Alte Version: $old_ver"
-        echo "Neue Version: $new_ver"
-
-        if [ "$old_ver" = "$new_ver" ]; then
+    # ------------------------------------------------------------
+    # 4. Prüfen ob Version sich geändert hat
+    # ------------------------------------------------------------
+    - name: Version changed?
+      id: version_changed
+      run: |
+        if [ "${{ steps.oldversion.outputs.old }}" = "${{ steps.version.outputs.version }}" ]; then
           echo "changed=false" >> $GITHUB_OUTPUT
         else
           echo "changed=true" >> $GITHUB_OUTPUT
         fi
 
     # ------------------------------------------------------------
-    # 4. Skip-Logik: Falls NUR config.yaml geändert wurde OHNE Versionssprung
+    # 5. Skip, wenn kein Versions-Bump
     # ------------------------------------------------------------
-    - name: Skip build if NOT a version bump
-      if: ${{ steps.version_changed.outputs.changed == 'false' && github.event.head_commit.message == '' }}
+    - name: Skip build if not version bump
+      if: ${{ steps.version_changed.outputs.changed == 'false' }}
       run: |
-        echo "Keine Version geändert, nur Doku/README → Build übersprungen."
+        echo "Kein Versionssprung → kein Release und kein Docker Build."
         exit 0
 
     # ------------------------------------------------------------
-    # 5. Changelog generieren (Deutsch)
+    # 6. Git-Tag setzen
     # ------------------------------------------------------------
-    - name: Generate Changelog (Deutsch)
+    - name: Create tag
+      id: create_tag
+      run: |
+        git tag v${{ steps.version.outputs.version }}
+        git push origin v${{ steps.version.outputs.version }}
+
+    # ------------------------------------------------------------
+    # 7. Warten, bis Tag auf GitHub verfügbar ist
+    # ------------------------------------------------------------
+    - name: Wait for GitHub tag propagation
+      run: sleep 4
+
+    # ------------------------------------------------------------
+    # 8. Changelog generieren
+    # ------------------------------------------------------------
+    - name: Generate Changelog
       id: changelog
       uses: mikepenz/release-changelog-builder-action@v4
       with:
@@ -87,9 +105,9 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     # ------------------------------------------------------------
-    # 6. CHANGELOG.md aktualisieren
+    # 9. CHANGELOG.md aktualisieren
     # ------------------------------------------------------------
-    - name: Schreibe CHANGELOG.md
+    - name: Write CHANGELOG.md
       run: |
         echo "${{ steps.changelog.outputs.changelog }}" > CHANGELOG.md
 
@@ -106,7 +124,7 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
 
     # ------------------------------------------------------------
-    # 7. Docker vorbereiten
+    # 10. Docker vorbereiten
     # ------------------------------------------------------------
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
@@ -115,7 +133,7 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     # ------------------------------------------------------------
-    # 8. Login zu DockerHub
+    # 11. DockerHub Login
     # ------------------------------------------------------------
     - name: Login to DockerHub
       uses: docker/login-action@v3
@@ -124,7 +142,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     # ------------------------------------------------------------
-    # 9. Multi-Arch Image bauen und pushen
+    # 12. Docker Image bauen & pushen
     # ------------------------------------------------------------
     - name: Build and push multi-platform image
       uses: docker/build-push-action@v5
@@ -138,7 +156,7 @@ jobs:
           d3nn3s/filamenthub:sha-${{ github.sha }}
 
     # ------------------------------------------------------------
-    # 10. GitHub Release erstellen
+    # 13. GitHub Release erstellen
     # ------------------------------------------------------------
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
