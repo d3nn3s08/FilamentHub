@@ -36,9 +36,12 @@
       "commits": ["docs"]
     }
   ],
-  "template": "# Änderungsprotokoll\n\n{{CHANGELOG}}\n",
+
+  "template": "# Änderungsprotokoll\n\n{{CHANGELOG}}",
   "empty_template": "Keine Änderungen seit dem letzten Release.",
-  "max_pull_requests": 200,
+  "pr_template": "- {{TITLE}} (PR #{{NUMBER}})",
+
+  "max_pull_requests": 300,
   "tag_resolver": {
     "method": "latest"
   }
