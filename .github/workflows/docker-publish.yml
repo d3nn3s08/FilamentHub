@@ -18,7 +18,6 @@ on:
       - "Dockerfile"
       - "entrypoint.sh"
       - "run.py"
-
       # Version bump soll Build + Release auslösen
       - "config.yaml"
 
@@ -36,7 +35,6 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-
     # ------------------------------------------------------------
     # 2. Version aus config.yaml lesen
     # ------------------------------------------------------------
@@ -45,7 +43,6 @@ jobs:
       run: |
         ver=$(grep 'version:' config.yaml | awk '{print $2}')
         echo "version=$ver" >> $GITHUB_OUTPUT
-
     # ------------------------------------------------------------
     # 3. Alte Version holen für Vergleich
     # ------------------------------------------------------------
@@ -56,7 +53,6 @@ jobs:
         old_ver=$(git show origin/main:config.yaml | grep 'version:' | awk '{print $2}')
         echo "old=$old_ver" >> $GITHUB_OUTPUT
         echo "new=${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
-
     # ------------------------------------------------------------
     # 4. Prüfen ob Version sich geändert hat
     # ------------------------------------------------------------
@@ -68,16 +64,14 @@ jobs:
         else
           echo "changed=true" >> $GITHUB_OUTPUT
         fi
-
     # ------------------------------------------------------------
     # 5. Skip, wenn kein Versions-Bump
     # ------------------------------------------------------------
     - name: Skip build if not version bump
       if: ${{ steps.version_changed.outputs.changed == 'false' }}
       run: |
-        echo "Kein Versionssprung → kein Release und kein Docker Build."
+        echo "Kein Versionssprung → Build & Release übersprungen."
         exit 0
-
     # ------------------------------------------------------------
     # 6. Git-Tag setzen
     # ------------------------------------------------------------
@@ -86,7 +80,6 @@ jobs:
       run: |
         git tag v${{ steps.version.outputs.version }}
         git push origin v${{ steps.version.outputs.version }}
-
     # ------------------------------------------------------------
     # 7. Warten, bis Tag auf GitHub verfügbar ist
     # ------------------------------------------------------------
@@ -94,9 +87,9 @@ jobs:
       run: sleep 4
 
     # ------------------------------------------------------------
-    # 8. Changelog generieren
+    # Deutscher Changelog generieren
     # ------------------------------------------------------------
-    - name: Generate Changelog
+    - name: Generate Changelog (DE)
       id: changelog
       uses: mikepenz/release-changelog-builder-action@v4
       with:
@@ -104,9 +97,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # ------------------------------------------------------------
-    # 9. CHANGELOG.md aktualisieren
-    # ------------------------------------------------------------
     - name: Write CHANGELOG.md
       run: |
         echo "${{ steps.changelog.outputs.changelog }}" > CHANGELOG.md
@@ -116,9 +106,36 @@ jobs:
         git config user.name "github-actions"
         git config user.email "github-actions@github.com"
         git add CHANGELOG.md
-        git commit -m "Aktualisiere CHANGELOG für Version ${{ steps.version.outputs.version }}" || echo "Keine Änderungen zum Commit."
+        git commit -m "Aktualisiere CHANGELOG für Version ${{ steps.version.outputs.version }}" || echo "Keine Änderungen."
 
     - name: Push CHANGELOG.md
+      uses: ad-m/github-push-action@v0.8.0
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+    # ------------------------------------------------------------
+    # Englischer Changelog generieren
+    # ------------------------------------------------------------
+    - name: Generate Changelog (EN)
+      id: changelog_en
+      uses: mikepenz/release-changelog-builder-action@v4
+      with:
+        configuration: ".github/release-config-en.json"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Write CHANGELOG_EN.md
+      run: |
+        echo "${{ steps.changelog_en.outputs.changelog }}" > CHANGELOG_EN.md
+
+    - name: Commit CHANGELOG_EN.md
+      run: |
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git add CHANGELOG_EN.md
+        git commit -m "Update CHANGELOG_EN for version ${{ steps.version.outputs.version }}" || echo "Keine Änderungen."
+
+    - name: Push CHANGELOG_EN.md
       uses: ad-m/github-push-action@v0.8.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -131,7 +148,6 @@ jobs:
 
     - name: Set up Buildx
       uses: docker/setup-buildx-action@v3
-
     # ------------------------------------------------------------
     # 11. DockerHub Login
     # ------------------------------------------------------------
@@ -140,7 +156,6 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-
     # ------------------------------------------------------------
     # 12. Docker Image bauen & pushen
     # ------------------------------------------------------------
@@ -156,13 +171,20 @@ jobs:
           d3nn3s/filamenthub:sha-${{ github.sha }}
 
     # ------------------------------------------------------------
-    # 13. GitHub Release erstellen
+    # GitHub Release DE+EN
     # ------------------------------------------------------------
-    - name: Create GitHub Release
+    - name: Create GitHub Release (DE + EN)
       uses: softprops/action-gh-release@v1
       with:
         tag_name: v${{ steps.version.outputs.version }}
         name: FilamentHub v${{ steps.version.outputs.version }}
-        body: ${{ steps.changelog.outputs.changelog }}
+        body: |
+          ## 🇩🇪 Deutsch
+          ${{ steps.changelog.outputs.changelog }}
+
+          ---
+
+          ## 🇬🇧 English
+          ${{ steps.changelog_en.outputs.changelog }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
