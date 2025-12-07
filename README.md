@@ -44,10 +44,11 @@
 </p>
 
 <p align="center">
-  <a href="https://ko-fi.com/d3nn3s" target="_blank">
-    <img src="https://img.shields.io/badge/Ko%E2%80%91fi-Unterstützen-ff5f5f?logo=kofi&logoColor=white" />
+  <a href="https://ko-fi.com/BOB51PV6CH">
+    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" />
   </a>
 </p>
+
 
 > 🇺🇸 **English version:** [README.en.md](README.en.md)
 
