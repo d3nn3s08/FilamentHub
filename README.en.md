@@ -5,8 +5,10 @@
 <h1 align="center">FilamentHub</h1>
 <p align="center">Open-source dashboard for filament, printer and system management. Local, independent, and inspired by the modern Unraid UI.</p>
 
+
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Active%20Development-orange" />
+  <img src="https://img.shields.io/badge/Development-Alpha-orange" />
   <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python" />
   <img src="https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi" />
   <img src="https://img.shields.io/badge/Docker-Ready-0db7ed?logo=docker" />
