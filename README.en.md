@@ -101,3 +101,20 @@ python -m venv .venv
 source .venv/bin/activate && pip install -r requirements.txt  # Linux/Mac
 
 python run.py  # Starts API + UI (Port 8080)
+```
+
+
+# Quickstart (Docker)
+```
+docker build -t filamenthub .
+docker run -d -p 8080:8080 -v $(pwd)/data:/app/data filamenthub
+```
+Unter Unraid nutzbar über Docker-Compose oder direkt im Docker-Template.
+
+📄 Lizenz
+
+MIT License
+
+👤 Kontakt
+
+Entwickelt von d3nn3s08
