@@ -6,26 +6,41 @@
 <p align="center">Open-Source Dashboard für Filament-, Drucker- und Systemverwaltung – lokal, unabhängig und im modernen Unraid-Stil.</p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Status-Aktive%20Entwicklung-orange" />
-  <img src="https://img.shields.io/badge/Development-Alpha-orange" />
 
+  <!-- Status -->
+  <img src="https://img.shields.io/badge/Status-Aktive%20Entwicklung-orange" />
+  <img src="https://img.shields.io/badge/Phase-Alpha-orange" />
+
+  <!-- Technologie -->
   <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python" />
   <img src="https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi" />
   <img src="https://img.shields.io/badge/Docker-Ready-0db7ed?logo=docker" />
-  <img src="https://img.shields.io/badge/Plattform-Windows%20%7C%20Linux%20%7C%20Unraid-blue" />
-  <img src="https://img.shields.io/badge/Lizenz-MIT-green" />
-</p>
 
-<p align="center">
+  <!-- Plattform -->
+  <img src="https://img.shields.io/badge/Plattform-Windows%20%7C%20Linux%20%7C%20Unraid-blue" />
+
+  <!-- Lizenz -->
+  <img src="https://img.shields.io/badge/Lizenz-MIT-green" />
+
+  <!-- Build -->
   <img src="https://img.shields.io/github/actions/workflow/status/d3nn3s08/FilamentHub/docker-publish.yml?branch=main&label=Docker%20Build" />
   <img src="https://img.shields.io/github/v/release/d3nn3s08/FilamentHub" />
+
+  <!-- Docker -->
   <img src="https://img.shields.io/docker/image-size/d3nn3s/filamenthub/latest" />
   <img src="https://img.shields.io/docker/pulls/d3nn3s/filamenthub" />
-</p>
 
-<p align="center">
+  <!-- Integration -->
   <img src="https://img.shields.io/badge/Bambu-LAN%20%26%20Cloud-green" />
   <img src="https://img.shields.io/badge/Klipper-Unterstützt-purple" />
+</p>
+<p align="center">
+----------------------------------------------------
+  </p>
+<p align="center">
+  <a href="https://www.paypal.me/Denis10" target="_blank">
+    <img src="https://img.shields.io/badge/Spenden%20via%20PayPal-0070ba?logo=paypal&logoColor=white" />
+  </a>
 </p>
 
 > 🇺🇸 **English version:** [README.en.md](README.en.md)
