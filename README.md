@@ -7,6 +7,8 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Aktive%20Entwicklung-orange" />
+  <img src="https://img.shields.io/badge/Development-Alpha-orange" />
+
   <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python" />
   <img src="https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi" />
   <img src="https://img.shields.io/badge/Docker-Ready-0db7ed?logo=docker" />
@@ -92,7 +94,42 @@ Der Name ist geblieben – das Projekt ist weitergewachsen.
   - Log-Viewer  
   - MQTT-Monitor mit Sperrzeiten, Ping, Last-Message, Sparkline  
   - Test-Runner (DB-Tests, Smoke-Tests)  
-- Logrotation & Säuberung  
+  - Logrotation & Säuberung
+# 🖼️ Screenshots
+
+## 📊 Dashboard / Alpa
+<p align="center">
+  <img src="data/screenshots/dashboard.png" width="800" />
+</p>
+
+---
+
+## 🖨️ Druckerübersicht
+<p align="center">
+  <img src="data/screenshots/printers.png" width="800" />
+</p>
+
+---
+
+## 🧵 Filamentverwaltung
+<p align="center">
+  <img src="data/screenshots/filament.png" width="800" />
+</p>
+
+---
+
+## 🧰 System / Debug-Center
+<p align="center">
+  <img src="data/screenshots/debug.png" width="800" />
+</p>
+  ---
+
+# 🧱 Systemarchitektur
+
+<p align="center">
+  <img src="docs/images/system_architecture.png" width="720" alt="Systemarchitektur von FilamentHub">
+</p>
+
 
 ---
 
