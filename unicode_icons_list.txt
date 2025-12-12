@@ -1,0 +1,27 @@
+# Unicode-Symbole für UI/Status
+
+✅  Erfolg / OK / Aktiv (U+2705)
+❌  Fehler / Abbruch / Inaktiv (U+274C)
+ℹ️  Info / Hinweis (U+2139)
+⚠️  Warnung / Achtung (U+26A0)
+🔴  Offline / Disconnected / Fehler (U+1F534)
+🟢  Online / Connected / Aktiv (U+1F7E2)
+🟡  Warnung / Mittelwert (U+1F7E1)
+🔵  Neutral / Info (U+1F535)
+⏳  Warten / Ladebalken (U+23F3)
+🔄  Aktualisieren / Refresh (U+1F504)
+📝  Bearbeiten / Edit (U+1F4DD)
+💾  Speichern / Save (U+1F4BE)
+🗑️  Löschen / Delete (U+1F5D1)
+🔍  Suchen / Search (U+1F50D)
+➕  Hinzufügen / Add (U+2795)
+➖  Entfernen / Remove (U+2796)
+➡️  Weiter / Next (U+27A1)
+⬅️  Zurück / Back (U+2B05)
+🔔  Benachrichtigung / Notification (U+1F514)
+🚫  Verboten / Blockiert (U+1F6AB)
+🔒  Gesperrt / Locked (U+1F512)
+🔓  Entsperrt / Unlocked (U+1F513)
+
+Jedes Symbol kann direkt als Text in HTML/JS verwendet werden, z.B.:
+`document.getElementById('status').textContent = '🟢 Online';`

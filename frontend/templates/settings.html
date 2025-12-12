@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% set page_title = "Settings" %}
+{% set page_subtitle = "Theme, Sprache und weitere Optionen" %}
+
+{% block content %}
+<section class="card-grid">
+    <div class="panel">
+        <p class="eyebrow">AMS Settings</p>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            <label class="user-menu__option">
+                <input type="radio" name="settings_ams_mode" value="single" data-setting="ams_mode">
+                <span>Single AMS</span>
+            </label>
+            <label class="user-menu__option">
+                <input type="radio" name="settings_ams_mode" value="multi" data-setting="ams_mode">
+                <span>Multi AMS (Experimental)</span>
+            </label>
+        </div>
+    </div>
+    <div class="panel">
+        <p class="eyebrow">Debug</p>
+        <label class="user-menu__option">
+            <input type="checkbox" data-setting="debug_ws_logging">
+            <span>WS JSON Logging aktivieren</span>
+            <span class="tooltip-container">
+                <span class="tooltip-icon" tabindex="0">i</span>
+                <span class="tooltip-box">Loggt alle eingehenden WebSocket-Events als JSON zur Fehlersuche. Empfohlen nur für Debug-Zwecke.</span>
+            </span>
+        </label>
+        <p class="subtitle" id="debugStatus">Status: unbekannt</p>
+        <a class="user-menu__link" href="/debug">Zum Debug Center</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='js/settings.js') }}"></script>
+{% endblock %}

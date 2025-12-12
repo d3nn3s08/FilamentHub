@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="/frontend/admin_panel.css">
+</head>
+<body>
+<script>
+// Automatischer Logout bei Reload (serverseitig, da HttpOnly-Cookie)
+try {
+    const nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    if (nav && nav.type === 'reload') {
+        fetch('/api/admin/logout', { method: 'POST' }).finally(() => {
+            window.location.href = '/admin';
+        });
+    }
+} catch {}
+</script>
+<div class="admin-wrapper">
+    <aside class="admin-sidebar">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:2rem;">
+            <img src="/frontend/static/logo.svg" alt="FilamentHub" style="height:38px;width:38px;border-radius:8px;background:#ff6f3c;">
+            <span style="font-size:1.5rem;font-weight:600;color:#fff;letter-spacing:1px;">FilamentHub</span>
+        </div>
+        <div class="sidebar-group">
+            <div class="sidebar-label">ADMIN</div>
+            <button class="nav-btn active" onclick="document.getElementById('admin-migrations').scrollIntoView({behavior:'smooth'})">
+                <svg width="22" height="22" fill="none" stroke="#ffb300" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg>
+                Migration
+            </button>
+            <button class="nav-btn" onclick="document.getElementById('admin-delete').scrollIntoView({behavior:'smooth'})">
+                <svg width="22" height="22" fill="none" stroke="#e53935" stroke-width="2" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="8" rx="2"/><path d="M9 11V7a3 3 0 0 1 6 0v4"/></svg>
+                Eintrag löschen
+            </button>
+            <button class="nav-btn" onclick="document.getElementById('admin-welcome').scrollIntoView({behavior:'smooth'})">
+                <svg width="22" height="22" fill="none" stroke="#4fc3f7" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19V5"/><path d="M5 12h14"/></svg>
+                Begrüßungstext
+            </button>
+            <button class="nav-btn" onclick="document.getElementById('admin-db').scrollIntoView({behavior:'smooth'})">
+                <svg width="22" height="22" fill="none" stroke="#8ecaff" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+                DB-Editor
+            </button>
+            <button class="nav-btn" onclick="window.location.href='/admin/notifications'">
+                <svg width="22" height="22" fill="none" stroke="#ffc107" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                Benachrichtigungen
+            </button>
+        </div>
+        <div class="sidebar-group" style="margin-top:2rem;">
+            <div class="sidebar-label">SYSTEM</div>
+            <button class="nav-btn" onclick="logout()">
+                <svg width="22" height="22" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                Logout
+            </button>
+        </div>
+    </aside>
+    <main class="admin-content">
+        <div class="admin-grid">
+            <section class="admin-card" id="admin-migrations">
+                <h2>Migrations</h2>
+                <div class="note">Alembic upgrade head ausführen</div>
+                <button id="migrateBtn">Migration starten</button>
+                <div id="migrateStatus" class="status"></div>
+                <div style="color:#8ecaff;font-size:1em;margin-bottom:2px;">ℹ️ Noch keine Migration durchgeführt</div>
+                <div style="color:#8ecaff;font-size:1em;">⏩ Übersprungen (da vorhanden)</div>
+            </section>
+            <section class="admin-card" id="admin-delete">
+                <h2>Eintrag löschen</h2>
+                <div class="note">Datensatz per ID entfernen</div>
+                <label for="deleteTable">Tabelle</label>
+                <select id="deleteTable">
+                    <option value="material">material</option>
+                    <option value="spool">spool</option>
+                    <option value="printer">printer</option>
+                    <option value="job">job</option>
+                    <option value="userflag">userflag</option>
+                    <option value="setting">setting</option>
+                </select>
+                <label for="deleteId">ID</label>
+                <input id="deleteId" type="text" placeholder="UUID oder PK" />
+                <button id="deleteBtn" class="danger">Eintrag löschen</button>
+                <div id="deleteStatus" class="status"></div>
+            </section>
+            <section class="admin-card" id="admin-welcome">
+                <h2>Begrüßungstext bearbeiten</h2>
+                <textarea id="welcomeText" placeholder="Text für das Willkommens-Popup..."></textarea>
+                <div id="welcomeStatus" class="status"></div>
+                <button onclick="saveWelcomeText()">Speichern</button>
+                <button onclick="triggerWelcomePopup()">Popup auslösen</button>
+            </section>
+            <section class="admin-card" id="admin-db">
+                <h2>Datenbank-Editor</h2>
+                <p class="note">Führe beliebige SQL-Befehle aus (INSERT, UPDATE, DELETE, CREATE, ALTER, DROP). <b>Vorsicht:</b> Änderungen sind direkt wirksam!</p>
+                <textarea id="dbEditorQuery" style="min-height:120px;"></textarea>
+                <div style="display:flex;gap:10px;margin-bottom:10px;">
+                    <button id="dbEditorExecute" class="btn btn-primary">Ausführen</button>
+                    <button id="dbEditorClear" class="btn btn-secondary">Clear</button>
+                </div>
+                <div style="margin: 18px 0 8px 0;">
+                    <span style="color:#aaa;font-size:1.05em;font-weight:500;display:block;margin-bottom:0.7em;">Beispiele:</span>
+                    <div style="display:flex;gap:0.7em;justify-content:left;">
+                        <button type="button" class="btn btn-primary" style="min-width:90px;padding:0.5em 1.2em;font-size:1em;">UPDATE</button>
+                        <button type="button" class="btn btn-primary" style="min-width:90px;padding:0.5em 1.2em;font-size:1em;">INSERT</button>
+                        <button type="button" class="btn btn-primary" style="min-width:90px;padding:0.5em 1.2em;font-size:1em;">DELETE</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+            <!-- Weiße Beispiel-Buttons entfernt -->
+        </div>
+        <div id="dbEditorOutput" class="output-box" style="background:#232323;padding:10px;border-radius:6px;min-height:32px;margin-bottom:10px;"></div>
+        <h3 style="margin-top:2rem;">Tables Overview</h3>
+        <div class="admin-table-wrapper">
+            <div id="dbTables" style="padding:6px; color:var(--text-dim);">Lädt...</div>
+        </div>
+    </div>
+    <script src="/frontend/admin_db_editor.js"></script>
+    <script>
+    // Migration starten
+    document.getElementById('migrateBtn').onclick = async function() {
+        document.getElementById('migrateStatus').innerText = 'Migration wird ausgeführt...';
+        try {
+            const res = await fetch('/api/admin/migrate', { method: 'POST' });
+            const data = await res.json();
+            if(data.success) {
+                document.getElementById('migrateStatus').innerText = 'Migration abgeschlossen!';
+            } else {
+                document.getElementById('migrateStatus').innerText = 'Fehler: ' + (data.error || 'Unbekannt');
+            }
+        } catch(e) {
+            document.getElementById('migrateStatus').innerText = 'Fehler beim Ausführen!';
+        }
+    };
+    // Eintrag löschen
+    document.getElementById('deleteBtn').onclick = async function() {
+        const table = document.getElementById('deleteTable').value;
+        const id = document.getElementById('deleteId').value.trim();
+        if (!id) {
+            document.getElementById('deleteStatus').innerText = 'Bitte eine ID angeben!';
+            return;
+        }
+        document.getElementById('deleteStatus').innerText = 'Lösche...';
+        try {
+            const res = await fetch('/api/admin/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ table, id })
+            });
+            const data = await res.json();
+            if(data.success) {
+                document.getElementById('deleteStatus').innerText = `Eintrag aus ${table} mit ID ${id} gelöscht!`;
+            } else {
+                document.getElementById('deleteStatus').innerText = 'Fehler: ' + (data.error || 'Unbekannt');
+            }
+        } catch(e) {
+            document.getElementById('deleteStatus').innerText = 'Fehler beim Löschen!';
+        }
+    };
+    </script>
+    <script>
+    async function loadWelcomeText() {
+        try {
+            const res = await fetch('/api/admin/greeting');
+            const data = await res.json();
+            document.getElementById('welcomeText').value = data.greeting_text || '';
+        } catch (e) {
+            document.getElementById('welcomeStatus').innerText = 'Fehler beim Laden.';
+        }
+    }
+    async function saveWelcomeText() {
+        const text = document.getElementById('welcomeText').value;
+        try {
+            const res = await fetch('/api/admin/greeting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ greeting_text: text })
+            });
+            const data = await res.json();
+            if(data.success) {
+                document.getElementById('welcomeStatus').innerText = 'Gespeichert!';
+            } else {
+                document.getElementById('welcomeStatus').innerText = 'Fehler beim Speichern!';
+            }
+        } catch (e) {
+            document.getElementById('welcomeStatus').innerText = 'Fehler beim Speichern!';
+        }
+    }
+    async function triggerWelcomePopup() {
+        // Setze das User-Flag für den aktuellen User zurück (Popup wird beim nächsten Dashboard-Start angezeigt)
+        const userId = localStorage.getItem('fh_userid');
+        if (!userId) {
+            document.getElementById('welcomeStatus').innerText = 'Kein User gefunden!';
+            return;
+        }
+        try {
+            await fetch(`/api/user/flag/${userId}/welcome_popup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ value: false })
+            });
+            document.getElementById('welcomeStatus').innerText = 'Popup wird beim nächsten Dashboard-Start angezeigt!';
+        } catch(e) {
+            document.getElementById('welcomeStatus').innerText = 'Fehler beim Zurücksetzen!';
+        }
+    }
+    function logout() {
+        fetch('/api/admin/logout', { method: 'POST' })
+            .finally(() => {
+                window.location.href = '/admin';
+            });
+    }
+    window.addEventListener('DOMContentLoaded', loadWelcomeText);
+    </script>
+</body>
+</html>

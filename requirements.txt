@@ -1,4 +1,9 @@
 fastapi
-uvicorn[standard]
+uvicorn
 sqlmodel
 jinja2
+psutil>=5.9.0
+paho-mqtt>=2.0.0
+httpx
+alembic
+python-multipart

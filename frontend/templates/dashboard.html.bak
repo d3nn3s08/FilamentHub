@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/frontend/dashboard.css">
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>🧵 FilamentHub</h1>
+            <div class="header-actions">
+                <a href="/debug" class="btn btn-secondary">🛠️ Debug</a>
+                <a href="/docs" class="btn btn-secondary">📑 API</a>
+            </div>
+        </div>
+
+        <!-- NAVIGATION -->
+        <div class="nav">
+            <a href="/" class="nav-btn active">🏠 Dashboard</a>
+            <a href="/materials" class="nav-btn">📦 Materialien</a>
+            <a href="/spools" class="nav-btn">🧵 Spulen</a>
+            <a href="/printers" class="nav-btn">🖨️ Drucker</a>
+            <a href="/jobs" class="nav-btn">📋 Jobs</a>
+        </div>
+
+        <!-- STATS -->
+        <div class="grid grid-4col">
+            <div class="card stat-card">
+                <div class="stat-icon">📦</div>
+                <div class="stat-value" id="statMaterials">0</div>
+                <div class="stat-label">Materialien</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-icon">🧵</div>
+                <div class="stat-value" id="statSpools">0</div>
+                <div class="stat-label">Spulen gesamt</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-icon">▶️</div>
+                <div class="stat-value" id="statActiveSpools">0</div>
+                <div class="stat-label">Aktive Spulen</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-icon">⚖️</div>
+                <div class="stat-value" id="statTotalWeight">0</div>
+                <div class="stat-label">Gesamt (g)</div>
+            </div>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="grid grid-2col">
+            <!-- MATERIALS -->
+            <div class="card">
+                <h3>📦 Materialien</h3>
+                <div id="materialsList">
+                    <div class="loader">Lädt Materialien</div>
+                </div>
+            </div>
+
+            <!-- LOW SPOOLS -->
+            <div class="card">
+                <h3>⚠️ Spulen mit wenig Filament</h3>
+                <div id="lowSpoolsList">
+                    <div class="loader">Lädt Spulen</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PRINTERS -->
+        <div class="card">
+            <h3>🖨️ Drucker Status</h3>
+            <div id="printersList">
+                <div class="loader">Lädt Drucker</div>
+            </div>
+        </div>
+
+        <!-- QUICK ACTIONS -->
+        <div class="grid grid-3col row-equal">
+            <div class="card equal-height quick-actions" style="text-align: center;">
+                <h3>➕ Schnellaktionen</h3>
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                    <button class="btn btn-primary" onclick="window.location.href='/materials'">
+                        📦 Material hinzufügen
+                    </button>
+                    <button class="btn btn-primary" onclick="window.location.href='/spools'">
+                        🧵 Spule hinzufügen
+                    </button>
+                    <button class="btn btn-primary" onclick="window.location.href='/printers'">
+                        🖨️ Drucker hinzufügen
+                    </button>
+                </div>
+            </div>
+
+            <div class="card equal-height">
+                <h3>ℹ️ System Info</h3>
+                <div class="info-group">
+                    <div class="info-item">
+                        <span class="info-label">Version</span>
+                        <span class="info-value">0.1.0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Environment</span>
+                        <span class="info-value">Development</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Database</span>
+                        <span class="info-value status-badge status-online">✔️ Online</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card equal-height">
+                <h3>🔗 Nützliche Links</h3>
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                    <a href="/debug" class="btn btn-secondary">🛠️ Debug Center</a>
+                    <a href="/logs" class="btn btn-secondary">📜 Live Logs</a>
+                    <a href="/docs" class="btn btn-secondary">📑 API Docs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Begrüßungspopup -->
+    <div id="welcomePopup" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000a;z-index:10000;align-items:center;justify-content:center;">
+        <div style="background:#232323;padding:2.5rem 2rem 2rem 2rem;border-radius:16px;max-width:420px;width:90vw;box-shadow:0 4px 32px #000b;position:relative;">
+            <button onclick="closeWelcomePopup()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:1.5rem;color:#aaa;cursor:pointer;">&times;</button>
+            <h2 style="color:#4fc3f7;margin-bottom:1rem;">Willkommen bei FilamentHub!</h2>
+            <div id="welcomePopupText" style="margin-bottom:1.5rem;white-space:pre-line;"></div>
+            <button onclick="closeWelcomePopup()" style="padding:0.7rem 2.5rem;border-radius:6px;border:none;background:#4fc3f7;color:#fff;font-weight:bold;font-size:1.1rem;">Gelesen</button>
+        </div>
+    </div>
+    <script src="/frontend/dashboard.js"></script>
+    <script>
+    // --- Begrüßungspopup-Logik ---
+    function getOrCreateUserId() {
+        let id = localStorage.getItem('fh_userid');
+        if (!id) {
+            id = 'u_' + Math.random().toString(36).slice(2) + Date.now();
+            localStorage.setItem('fh_userid', id);
+        }
+        return id;
+    }
+    async function checkAndShowWelcomePopup() {
+        const userId = getOrCreateUserId();
+        // Prüfe Flag in DB
+        try {
+            const flagRes = await fetch(`/api/user/flag/${userId}/welcome_popup`);
+            const flagData = await flagRes.json();
+            if(flagData.value) return; // Popup schon gesehen
+        } catch(e) { /* Bei Fehler trotzdem anzeigen */ }
+        // Begrüßungstext laden
+        let text = 'Willkommen!';
+        try {
+            const res = await fetch('/api/admin/greeting');
+            const data = await res.json();
+            if(data.greeting_text) text = data.greeting_text;
+        } catch(e) {}
+        document.getElementById('welcomePopupText').innerText = text;
+        document.getElementById('welcomePopup').style.display = 'flex';
+    }
+    async function closeWelcomePopup() {
+        document.getElementById('welcomePopup').style.display = 'none';
+        // Setze Flag in DB
+        const userId = getOrCreateUserId();
+        try {
+            await fetch(`/api/user/flag/${userId}/welcome_popup`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ value: true })
+            });
+        } catch(e) {}
+    }
+    window.addEventListener('DOMContentLoaded', checkAndShowWelcomePopup);
+    </script>
+</body>
+</html>

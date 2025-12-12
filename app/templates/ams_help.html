@@ -1,0 +1,371 @@
+﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>AMS Helper</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #111827;
+            --text: #e5e7eb;
+            --muted: #9ca3af;
+            --accent: #22c55e;
+            --danger: #ef4444;
+            --card: #1f2937;
+            --border: #1f2937;
+        }
+        body {
+            margin: 0;
+            font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+            background: radial-gradient(circle at 20% 20%, rgba(34,197,94,0.08), transparent 35%), var(--bg);
+            color: var(--text);
+        }
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+        h1 { margin: 0 0 8px 0; }
+        p { color: var(--muted); margin: 0 0 16px 0; }
+        .controls {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            display: grid;
+            gap: 12px;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+        }
+        label { font-size: 14px; color: var(--muted); }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+        }
+        button {
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            background: linear-gradient(120deg, #22c55e, #16a34a);
+            color: #0b0f1a;
+            font-weight: 600;
+        }
+        .status {
+            margin-top: 8px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+        .ams-grid {
+            margin-top: 18px;
+            display: grid;
+            gap: 14px;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+        .ams-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+        }
+        .ams-card h3 { margin: 0 0 8px 0; }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            background: rgba(255,255,255,0.08);
+            color: var(--text);
+            margin-left: 6px;
+        }
+        .trays {
+            margin-top: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 8px;
+        }
+        .tray {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px;
+            background: #0b1220;
+        }
+        .tray-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .color-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 1px solid #111827;
+        }
+        .muted { color: var(--muted); }
+        .pill {
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid var(--border);
+        }
+        pre {
+            background: #0b1220;
+            padding: 12px;
+            border-radius: 12px;
+            overflow: auto;
+            border: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AMS Helper</h1>
+        <p>Zeigt die AMS-Slots aus der letzten MQTT-Report-Nachricht (<code>device/&lt;serial&gt;/report</code>), plus Job-Zusammenfassung.</p>
+
+        <div class="controls">
+            <div>
+                <label for="topicInput">MQTT-Topic (Report)</label>
+                <input id="topicInput" type="text" value="device/00M09A372601070/report" spellcheck="false">
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button id="loadBtn">Neu laden</button>
+            </div>
+        </div>
+        <div id="status" class="status">Warte auf Laden...</div>
+
+        <div class="grid" style="margin-top:16px;">
+            <div class="card" style="min-width:260px;">
+                <h3>Job</h3>
+                <div id="jobSummary" style="font-size:0.95rem; color:var(--text);">
+                    <div style="color:var(--muted);">Noch nichts geladen.</div>
+                </div>
+            </div>
+            <div class="card" style="min-width:260px;">
+                <h3>AMS Uebersicht</h3>
+                <div id="amsMeta" style="font-size:0.9rem; color:var(--muted); margin-bottom:6px;">-</div>
+                <div id="amsContainer" class="ams-grid"></div>
+            </div>
+        </div>
+
+        <details style="margin-top:18px;">
+            <summary style="cursor:pointer;">Rohdaten der letzten Nachricht</summary>
+            <pre id="rawPayload"></pre>
+        </details>
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const topicInput = document.getElementById('topicInput');
+        const amsContainer = document.getElementById('amsContainer');
+        const rawPayload = document.getElementById('rawPayload');
+        const loadBtn = document.getElementById('loadBtn');
+
+        loadBtn.addEventListener('click', () => loadLatest());
+
+        async function loadLatest() {
+            const topic = topicInput.value.trim();
+            if (!topic) return;
+            setStatus('Lade letzte Nachricht...');
+            amsContainer.innerHTML = '';
+            rawPayload.textContent = '';
+            try {
+                const resp = await fetch(`/api/mqtt/messages?limit=10&topic_filter=${encodeURIComponent(topic)}`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+                const msg = (data.messages || []).reverse().find(m => m.topic === topic) || (data.messages || [])[0];
+                if (!msg) {
+                    setStatus('Keine Nachrichten gefunden.');
+                    return;
+                }
+                const parsed = tryParseJson(msg.payload);
+                rawPayload.textContent = msg.payload;
+                if (!parsed) {
+                    setStatus('Payload ist kein JSON.');
+                    return;
+                }
+                const amsUnits = extractAms(parsed);
+                const job = extractJob(parsed);
+                if (job) renderJob(job);
+                if (!amsUnits.length) {
+                    setStatus('Kein AMS-Block in der Nachricht gefunden.');
+                    if (amsMeta) amsMeta.textContent = '-';
+                    return;
+                }
+                renderAms(amsUnits, parsed);
+                setStatus(`Gefunden: ${amsUnits.length} AMS-Modul(e). Aktive Slots angezeigt.`);
+                if (amsMeta) amsMeta.textContent = `${msg.topic} @ ${msg.timestamp || ''}`;
+            } catch (err) {
+                console.error(err);
+                setStatus(`Fehler beim Laden: ${err.message}`);
+            }
+        }
+
+        function tryParseJson(text) {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function extractAms(report) {
+            const amsRoot = report.ams || (report.print && report.print.ams) || {};
+            const list = amsRoot.ams || amsRoot.modules || [];
+            if (!Array.isArray(list)) return [];
+            return list.map((ams) => {
+                const trays = Array.isArray(ams.tray || ams.trays) ? (ams.tray || ams.trays) : [];
+                return {
+                    ams_id: toInt(ams.ams_id || ams.id || 0),
+                    active_tray: pickFirstInt(ams.active_tray, ams.active_slot, amsRoot.active_tray, amsRoot.active_slot, amsRoot.tray_now, amsRoot.tray_tar),
+                    trays: trays.map(t => ({
+                        id: toInt(t.tray_id || t.id || 0),
+                        name: t.tray_id_name || t.tray_name || t.name || '',
+                        type: t.tray_type || t.material || '',
+                        brand: t.tray_sub_brands || '',
+                        color: normalizeColor(t.tray_color || t.color),
+                        remain: toFloat(t.remain || t.remain_percent || t.remain_weight),
+                        total_len: toInt(t.total_len),
+                        raw: t,
+                        temp: toFloat(t.temp || t.temperature),
+                        humidity: toFloat(t.humidity),
+                        state: t.state || t.status,
+                    }))
+                };
+            });
+        }
+
+                function renderAms(units, report) {
+    amsContainer.innerHTML = '';
+    units.forEach(unit => {
+        const card = document.createElement('div');
+        card.className = 'ams-card';
+        const activeTxt = unit.active_tray != null ? `Aktiv: Slot ${unit.active_tray}` : 'Aktiv: unbekannt';
+        card.innerHTML = `
+            <h3>AMS ${unit.ams_id}<span class="badge">${activeTxt}</span></h3>
+            <div class="trays"></div>
+        `;
+        const trayWrap = card.querySelector('.trays');
+        unit.trays.forEach(tray => {
+            const totalLen = toInt(tray.raw?.total_len) ?? toInt(tray.total_len);
+            const remainPct = toFloat(tray.remain);
+            const usedPct = remainPct != null ? Math.max(0, 100 - remainPct) : null;
+            const usedMm = (usedPct != null && totalLen != null) ? (usedPct / 100) * totalLen : null;
+            const remainMm = (remainPct != null && totalLen != null) ? (remainPct / 100) * totalLen : null;
+            const isActive = unit.active_tray !== null && tray.id === unit.active_tray;
+            const div = document.createElement('div');
+            div.className = 'tray';
+            div.innerHTML = `
+                <div class="tray-header">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div class="color-dot" style="background:${tray.color || '#111827'}"></div>
+                        <strong>Slot ${tray.id}</strong>
+                    </div>
+                    <span class="pill" style="border-color:${isActive ? '#22c55e' : 'var(--border)'}; color:${isActive ? '#22c55e' : 'var(--muted)'}">
+                        ${isActive ? 'Aktiv' : 'Bereit'}
+                    </span>
+                </div>
+                <div class="muted">${tray.name || ''}</div>
+                <div style="margin:6px 0;">${tray.type || 'k.A.'} ${tray.brand ? '- ' + tray.brand : ''}</div>
+                <div class="muted">Fuellstand: ${remainPct != null ? remainPct + '%' : 'k.A.'}</div>
+                <div class="muted">Total: ${totalLen != null ? (totalLen/1000).toFixed(2) + ' m' : 'k.A.'}</div>
+                <div class="muted">Verbraucht: ${usedMm != null ? (usedMm/1000).toFixed(2) + ' m' : 'k.A.'}</div>
+                <div class="muted">Rest: ${remainMm != null ? (remainMm/1000).toFixed(2) + ' m' : 'k.A.'}</div>
+            `;
+            trayWrap.appendChild(div);
+        });
+        amsContainer.appendChild(card);
+    });
+}
+
+function extractJob(report) {
+        const root = report.print || report;
+        const amsRoot = root.ams || {};
+        const slot = toInt(root.tray_tar || root.tray_now || amsRoot.tray_tar || amsRoot.tray_now);
+        return {
+            gcode_state: root.gcode_state || root.state || '-',
+            gcode_file: root.gcode_file || root.file || '-',
+            progress: toInt(root.percent) ?? 0,
+            remain_time: toInt(root.remain_time) ?? 0,
+            tray_target: slot,
+            tray_current: toInt(root.tray_now || amsRoot.tray_now)
+        };
+    }
+
+    function renderJob(job) {
+        const el = jobSummary;
+        if (!el) return;
+        el.innerHTML = `
+            <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                <div>
+                    <div style="color:var(--muted);font-size:0.85rem;">Datei</div>
+                    <div style="font-weight:600;">${job.gcode_file}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="color:var(--muted);font-size:0.85rem;">Status</div>
+                    <div style="font-weight:600;">${job.gcode_state}</div>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px;margin-top:8px;font-size:0.9rem;">
+                <div><span class="muted">Progress:</span> ${job.progress ?? '-'}%</div>
+                <div><span class="muted">Restzeit:</span> ${formatSeconds(job.remain_time)}</div>
+                <div><span class="muted">Ziel-Slot:</span> ${job.tray_target ?? '-'}</div>
+                <div><span class="muted">Aktueller Slot:</span> ${job.tray_current ?? '-'}</div>
+            </div>
+        `;
+    }
+
+    function formatSeconds(sec) {
+        const n = parseInt(sec, 10);
+        if (!Number.isFinite(n) || n < 0) return '-';
+        const m = Math.floor(n / 60);
+        const s = n % 60;
+        if (m > 0) return `${m}m ${s.toString().padStart(2,'0')}s`;
+        return `${s}s`;
+    }
+
+        function setStatus(text) {
+            statusEl.textContent = text;
+        }
+
+        function normalizeColor(hex) {
+            if (!hex || typeof hex !== 'string') return '#111827';
+            if (hex.startsWith('#')) return hex;
+            if (hex.length === 8) return '#' + hex.slice(0, 6);
+            if (hex.length === 6) return '#' + hex;
+            return '#111827';
+        }
+        function toInt(v) {
+            const n = parseInt(v, 10);
+            return Number.isFinite(n) ? n : null;
+        }
+        function toFloat(v) {
+            const n = parseFloat(v);
+            return Number.isFinite(n) ? n : null;
+        }
+        function pickFirstInt(...vals) {
+            for (const v of vals) {
+                const n = toInt(v);
+                if (n !== null) return n;
+            }
+            return null;
+        }
+
+        // Auto-load initial topic
+        loadLatest();
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+

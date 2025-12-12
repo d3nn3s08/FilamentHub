@@ -1,0 +1,134 @@
+/* Printer grid styling */
+:root {
+    --printer-card-bg: #141414;
+    --printer-border: #23272f;
+    --printer-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+.printer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    align-items: stretch;
+    justify-items: start;
+}
+
+.printer-card {
+    background: var(--printer-card-bg);
+    border: 1px solid var(--printer-border);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: var(--printer-shadow);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 540px;
+    width: 100%;
+    margin: 0;
+}
+
+.printer-card .status-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+}
+
+.printer-head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.printer-icon {
+    font-size: 2.4rem;
+}
+
+.printer-title {
+    text-align: center;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.info-group.compact {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.info-group.compact .info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: #0e0e0e;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.info-group.compact .info-label {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+}
+
+.info-group.compact .info-value {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.card-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.card-actions .btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-actions .btn-icon {
+    width: auto;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border-color: var(--border);
+    color: var(--error);
+    white-space: nowrap;
+}
+
+.cta-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.cta-row .btn {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+/* Delete modal centering */
+.modal-content.confirm-delete {
+    text-align: center;
+}
+.modal-content.confirm-delete .modal-header,
+.modal-content.confirm-delete .modal-actions {
+    justify-content: center;
+}
+.modal-content.confirm-delete .modal-body p {
+    margin: 8px 0;
+}
+
+@media (max-width: 600px) {
+    .printer-card {
+        padding: 14px;
+    }
+}

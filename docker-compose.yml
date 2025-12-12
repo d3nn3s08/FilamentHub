@@ -1,0 +1,14 @@
+services:
+  fillamenthub:
+    container_name: fillamenthub
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      FILAMENTHUB_DB_PATH: /data/filamenthub.db
+      PYTHONPATH: /app
+    volumes:
+      - /mnt/user/appdata/fillamenthub/data:/data
+      - /mnt/user/appdata/fillamenthub/logs:/logs
+    entrypoint: ["./entrypoint.sh"]

@@ -1,0 +1,94 @@
+{% extends "layout.html" %}
+{% set page_title = "AMS Debug View" %}
+{% set page_subtitle = "Visualisierte AMS-Daten (parsed & mapped)" %}
+
+{% block extra_styles %}
+<style>
+.ams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+}
+.ams-card {
+    background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.03), transparent 40%), var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: var(--shadow);
+}
+.ams-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.badge {
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #1f2835;
+    color: var(--text);
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+.badge.active { background: rgba(46, 204, 113, 0.12); color: #2ecc71; border-color: rgba(46, 204, 113, 0.3); }
+.tray-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    gap: 10px;
+}
+.tray {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    background: var(--panel-2);
+}
+.tray.active { box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.35); }
+.tray.empty { opacity: 0.6; border-style: dashed; }
+.tray h4 { margin: 0 0 6px 0; font-size: 1rem; }
+.tray .meta { color: var(--text-dim); font-size: 0.9rem; }
+.raw-toggle {
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+}
+.raw-block {
+    margin-top: 8px;
+    display: none;
+}
+.raw-block.show { display: block; }
+.raw-block pre {
+    background: #0f141c;
+    color: #e8ecf2;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    max-height: 320px;
+    overflow: auto;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<section>
+    <div class="raw-toggle">
+        <button class="btn ghost" data-toggle="raw">Rohdaten anzeigen</button>
+        <button class="btn ghost" data-toggle="parsed">parse_ams Ergebnis</button>
+        <button class="btn ghost" data-toggle="mapped">Mapper Ergebnis</button>
+    </div>
+    <div id="rawBlock" class="raw-block"><pre id="rawJson"></pre></div>
+    <div id="parsedBlock" class="raw-block"><pre id="parsedJson"></pre></div>
+    <div id="mappedBlock" class="raw-block"><pre id="mappedJson"></pre></div>
+</section>
+
+<section style="margin-top:18px;">
+    <div id="amsRoot" class="ams-grid">
+        <div class="panel">AMS Daten werden geladen ...</div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='js/debug_ams.js') }}"></script>
+{% endblock %}

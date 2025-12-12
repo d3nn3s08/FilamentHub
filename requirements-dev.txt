@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+jinja2
+pytest
+psutil>=5.9.0
+paho-mqtt>=2.0.0
+httpx
+pytest-asyncio
+pytest-cov
+alembic

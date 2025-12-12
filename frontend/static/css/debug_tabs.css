@@ -1,0 +1,29 @@
+.debug-tabs {
+    display: flex;
+    gap: 12px;
+    margin: 20px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.debug-tab {
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.75);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.debug-tab:hover {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+}
+
+.debug-tab.active {
+    background: linear-gradient(135deg, #2d72d9, #4698f7);
+    color: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}

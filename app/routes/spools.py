@@ -1,57 +1,89 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from sqlmodel import select, Session
 from typing import List
 
 from app.database import get_session
-from app.models.spool import Spool, SpoolCreate, SpoolRead
+from app.models.spool import Spool, SpoolCreateSchema, SpoolUpdateSchema, SpoolReadSchema
 
 router = APIRouter(prefix="/api/spools", tags=["Spools"])
 
+def _normalize_spool_payload(data: SpoolCreateSchema | SpoolUpdateSchema, *, is_update: bool = False) -> dict:
+    payload = data.model_dump(exclude_unset=True)
+    payload.pop("color", None)  # aktuell nicht persistiert
+    # alias weight -> weight_current
+    if "weight" in payload:
+        payload["weight_current"] = payload.pop("weight")
+    # normalize printer_slot strings like "AMS-2"
+    slot = payload.get("printer_slot")
+    if isinstance(slot, str):
+        digits = "".join(filter(str.isdigit, slot))
+        payload["printer_slot"] = int(digits) if digits else None
+    ams_slot = payload.get("ams_slot")
+    if isinstance(ams_slot, str):
+        digits = "".join(filter(str.isdigit, ams_slot))
+        payload["ams_slot"] = int(digits) if digits else None
+    if not is_update:
+        payload.setdefault("weight_full", 1000)
+        payload.setdefault("weight_empty", 250)
+        # Falls kein aktuelles Gewicht explizit gesetzt wurde, auf weight_full setzen
+        if payload.get("weight_current") is None:
+            payload["weight_current"] = payload.get("weight_full")
+    return payload
 
-@router.get("/", response_model=List[SpoolRead])
+
+@router.get("/", response_model=List[SpoolReadSchema])
 def list_spools(session: Session = Depends(get_session)):
     result = session.exec(select(Spool)).all()
-    return result
+    return [SpoolReadSchema.model_validate(s) for s in result]
 
 
-@router.get("/{spool_id}", response_model=SpoolRead)
+@router.get("/{spool_id}", response_model=SpoolReadSchema)
 def get_spool(spool_id: str, session: Session = Depends(get_session)):
     spool = session.get(Spool, spool_id)
     if not spool:
         raise HTTPException(status_code=404, detail="Spule nicht gefunden")
-    return spool
+    return SpoolReadSchema.model_validate(spool)
 
 
-@router.post("/", response_model=SpoolRead)
-def create_spool(data: SpoolCreate, session: Session = Depends(get_session)):
-    spool = Spool.from_orm(data)
-    session.add(spool)
-    session.commit()
-    session.refresh(spool)
-    return spool
+@router.post("/", response_model=SpoolReadSchema, status_code=status.HTTP_201_CREATED)
+def create_spool(data: SpoolCreateSchema, session: Session = Depends(get_session)):
+    exists = session.exec(select(Spool).where(Spool.label == data.label, Spool.material_id == data.material_id)).first()
+    if exists:
+        raise HTTPException(status_code=409, detail="Spule existiert bereits")
+    try:
+        payload = _normalize_spool_payload(data)
+        spool = Spool(**payload)
+        session.add(spool)
+        session.commit()
+        session.refresh(spool)
+        return SpoolReadSchema.model_validate(spool)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Fehler bei Validierung: {e}")
 
 
-@router.put("/{spool_id}", response_model=SpoolRead)
-def update_spool(spool_id: str, data: SpoolCreate, session: Session = Depends(get_session)):
+@router.put("/{spool_id}", response_model=SpoolReadSchema)
+def update_spool(spool_id: str, data: SpoolUpdateSchema, session: Session = Depends(get_session)):
     spool = session.get(Spool, spool_id)
     if not spool:
         raise HTTPException(status_code=404, detail="Spule nicht gefunden")
-
-    update_data = data.dict(exclude_unset=True)
+    update_data = _normalize_spool_payload(data, is_update=True)
     for key, value in update_data.items():
         setattr(spool, key, value)
+    try:
+        session.add(spool)
+        session.commit()
+        session.refresh(spool)
+        return SpoolReadSchema.model_validate(spool)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Fehler bei Validierung: {e}")
 
-    session.add(spool)
-    session.commit()
-    session.refresh(spool)
-    return spool
 
-
-@router.delete("/{spool_id}")
+@router.delete("/{spool_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_spool(spool_id: str, session: Session = Depends(get_session)):
     spool = session.get(Spool, spool_id)
     if not spool:
         raise HTTPException(status_code=404, detail="Spule nicht gefunden")
     session.delete(spool)
     session.commit()
-    return {"status": "deleted"}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

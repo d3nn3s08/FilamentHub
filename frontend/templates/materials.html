@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% set page_title = "Materialien" %}
+{% set page_subtitle = "Verwalte Materialprofile und Eigenschaften" %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='css/printers.css') }}">
+{% endblock %}
+
+{% block header_actions %}
+<div class="actions">
+    <button class="btn primary">Neues Material</button>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="card-grid">
+    <div class="panel">
+        <p class="eyebrow">Hinweis</p>
+        <p class="subtitle">Hier werden später Materialkarten und Filter eingeblendet.</p>
+    </div>
+    <div class="panel">
+        <p class="eyebrow">API</p>
+        <p class="subtitle">Daten kommen aus /api/materials.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='js/materials.js') }}"></script>
+{% endblock %}

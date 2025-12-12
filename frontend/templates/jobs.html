@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% set page_title = "Jobs" %}
+{% set page_subtitle = "Verwalte laufende und vergangene Druckaufträge" %}
+
+{% block header_actions %}
+<div class="actions">
+    <button class="btn primary">Job importieren</button>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="card-grid">
+    <div class="panel">
+        <p class="eyebrow">Aktive Jobs</p>
+        <p class="subtitle">Hier erscheinen laufende Druckaufträge.</p>
+    </div>
+    <div class="panel">
+        <p class="eyebrow">Historie</p>
+        <p class="subtitle">Archivierte Jobs folgen.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='js/jobs.js') }}"></script>
+{% endblock %}

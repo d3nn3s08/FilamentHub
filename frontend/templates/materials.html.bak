@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Materialien - FilamentHub</title>
+    <link rel="stylesheet" href="/frontend/dashboard.css">
+    <link rel="stylesheet" href="/frontend/materials.css">
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>📦 Materialien</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="openAddModal()">
+                    ➕ Material hinzufügen
+                </button>
+                <a href="/" class="btn btn-secondary">← Dashboard</a>
+            </div>
+        </div>
+
+        <!-- NAVIGATION -->
+        <div class="nav">
+            <a href="/" class="nav-btn">📊 Dashboard</a>
+            <a href="/materials" class="nav-btn active">📦 Materialien</a>
+            <a href="/spools" class="nav-btn">🧵 Spulen</a>
+            <a href="/printers" class="nav-btn">🖨️ Drucker</a>
+            <a href="/jobs" class="nav-btn">📋 Jobs</a>
+        </div>
+
+        <!-- SEARCH & FILTER -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                <input type="text" id="searchInput" placeholder="🔍 Material suchen..." 
+                       style="flex: 1; min-width: 250px; padding: 10px; background: var(--bg-dark); 
+                              border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                <select id="filterBrand" style="padding: 10px; background: var(--bg-dark); 
+                        border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+                    <option value="">Alle Marken</option>
+                </select>
+                <button class="btn btn-secondary" onclick="clearFilters()">✕ Filter löschen</button>
+            </div>
+        </div>
+
+        <!-- MATERIALS TABLE -->
+        <div class="card">
+            <h3>📦 Alle Materialien (<span id="materialCount">0</span>)</h3>
+            <div id="materialsTable">
+                <div class="loader">Lädt Materialien</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD/EDIT MODAL -->
+    <div id="materialModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">➕ Material hinzufügen</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="materialForm" onsubmit="saveMaterial(event)">
+                <div class="form-group">
+                    <label for="materialName">Name *</label>
+                    <input type="text" id="materialName" required 
+                           placeholder="z.B. PLA Basic, PETG Premium">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="materialBrand">Marke</label>
+                        <input type="text" id="materialBrand" 
+                               placeholder="z.B. Bambu Lab, Polymaker">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="materialColor">Farbe (HEX)</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="color" id="materialColorPicker" 
+                                   style="width: 50px; height: 40px; cursor: pointer; border: none; background: none;">
+                            <input type="text" id="materialColor" 
+                                   placeholder="#FF5733" pattern="^#[0-9A-Fa-f]{6}$"
+                                   style="flex: 1;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="materialDensity">Dichte (g/cm³) *</label>
+                        <input type="number" id="materialDensity" step="0.01" 
+                               value="1.24" required min="0.5" max="5">
+                        <small style="color: var(--text-dim);">PLA: 1.24, PETG: 1.27, ABS: 1.05</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="materialDiameter">Durchmesser (mm) *</label>
+                        <select id="materialDiameter" required>
+                            <option value="1.75">1.75 mm</option>
+                            <option value="2.85">2.85 mm</option>
+                            <option value="3.00">3.00 mm</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="materialNotes">Notizen</label>
+                    <textarea id="materialNotes" rows="3" 
+                              placeholder="Zusätzliche Informationen..."></textarea>
+                </div>
+
+                <input type="hidden" id="materialId">
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">
+                        Abbrechen
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        💾 Speichern
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- DELETE CONFIRMATION MODAL -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>🗑️ Material löschen?</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <p style="margin: 20px 0; color: var(--text-dim);">
+                Möchten Sie dieses Material wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+            </p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">
+                    Abbrechen
+                </button>
+                <button class="btn" style="background: var(--error); color: white;" onclick="confirmDelete()">
+                    🗑️ Löschen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/frontend/dashboard.js"></script>
+    <script src="/frontend/materials.js"></script>
+</body>
+</html>

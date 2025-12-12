@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drucker - FilamentHub</title>
+    <link rel="stylesheet" href="/frontend/dashboard.css">
+    <link rel="stylesheet" href="/frontend/materials.css">
+    <link rel="stylesheet" href="/frontend/printers.css">
+</head>
+<body>
+    <div class="notification-box" id="notificationBox" style="position:fixed;top:20px;right:20px;z-index:9999;min-width:220px;max-width:350px;display:none;"></div>
+    <div class="container">
+
+        <!-- HEADER -->
+        <div class="header">
+            <h1>🖨️ Drucker</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="openAddModal()">
+                    ➕ Drucker hinzufügen
+                </button>
+                <button class="btn btn-secondary" onclick="scanForPrinters()" id="scanPrintersBtn">
+                    🔎 Netzwerk-Scan
+                </button>
+                <a href="/" class="btn btn-secondary">← Dashboard</a>
+            </div>
+        </div>
+
+        <!-- NAVIGATION -->
+        <div class="nav">
+            <a href="/" class="nav-btn">🏠 Dashboard</a>
+            <a href="/materials" class="nav-btn">📦 Materialien</a>
+            <a href="/spools" class="nav-btn">🧵 Spulen</a>
+            <a href="/printers" class="nav-btn active">🖨️ Drucker</a>
+            <a href="/jobs" class="nav-btn">📋 Jobs</a>
+        </div>
+
+        <!-- FOUND PRINTERS -->
+        <div id="foundPrintersGrid" style="margin-bottom: 30px;"></div>
+
+        <!-- PRINTERS GRID -->
+        <div id="printersGrid">
+            <div class="loader">Lädt Drucker ...</div>
+        </div>
+    </div>
+
+    <!-- ADD/EDIT MODAL -->
+    <div id="printerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">➕ Drucker hinzufügen</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="printerForm" onsubmit="savePrinter(event)">
+                <div class="form-group">
+                    <label for="printerName">Name *</label>
+                    <input type="text" id="printerName" required placeholder="z.B. Bambu X1C, Ender 3 V2">
+                </div>
+
+                <div class="form-group">
+                    <label for="printerType">Typ *</label>
+                    <select id="printerType" required onchange="updateFormFields()">
+                        <option value="">-- Typ wählen --</option>
+                        <option value="bambu">Bambu Lab (MQTT)</option>
+                        <option value="klipper">Klipper (Moonraker)</option>
+                        <option value="manual">Manuell (kein API)</option>
+                    </select>
+                </div>
+
+                <!-- Network Settings (Bambu + Klipper) -->
+                <div id="networkFields" style="display: none;">
+                    <div class="form-row">
+                    <div class="form-group">
+                        <label for="printerIp">IP-Adresse *</label>
+                        <input type="text" id="printerIp" placeholder="192.168.1.100" pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$">
+                    </div>
+
+                        <div class="form-group">
+                            <label for="printerPort">Port</label>
+                            <input type="number" id="printerPort" placeholder="Standard: 6000 (Bambu) / 7125 (Klipper)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bambu Specific -->
+                <div id="bambuFields" style="display: none;">
+                    <div class="form-group">
+                        <label for="printerSerial">Seriennummer</label>
+                        <input type="text" id="printerSerial" placeholder="z.B. 01S00C123456789">
+                        <small style="color: var(--text-dim);">Für Bambu Cloud (optional)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="printerApiKey">Access Code</label>
+                        <input type="text" id="printerApiKey" placeholder="12345678">
+                        <small style="color: var(--text-dim);">8-stelliger LAN Access Code</small>
+                    </div>
+                </div>
+
+                <!-- Klipper Specific -->
+                <div id="klipperFields" style="display: none;">
+                    <div class="form-group">
+                        <label for="printerApiKeyKlipper">API Key</label>
+                        <input type="text" id="printerApiKeyKlipper" placeholder="Moonraker API Key (optional)">
+                    </div>
+                </div>
+
+                <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+                    <input type="checkbox" id="printerAutoConnect" style="width:18px;height:18px;">
+                    <label for="printerAutoConnect" style="margin:0;">Automatisch verbinden (MQTT/API)</label>
+                </div>
+
+                <div class="form-group" id="printerImageSection" style="display:none;">
+                    <label>Bild (optional)</label>
+                    <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+                        <div style="width:160px;height:120px;border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;background:var(--bg-card);overflow:hidden;">
+                            <img id="printerImagePreview" src="" alt="Preview" style="max-width:100%;max-height:100%;display:none;">
+                            <span id="printerImagePlaceholder" style="color:var(--text-dim);font-size:0.85rem;">Kein Bild</span>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:8px;flex:1;min-width:200px;">
+                            <input type="file" id="printerImageFile" accept="image/png,image/jpeg,image/webp" style="padding:8px;">
+                            <button type="button" class="btn btn-secondary" onclick="uploadPrinterImage()">Bild hochladen</button>
+                            <small style="color:var(--text-dim);">PNG/JPG/WEBP, max 1 MB. Speichern wirkt sofort für diesen Drucker.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" id="printerId">
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- DELETE CONFIRMATION MODAL -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content confirm-delete" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2>🗑️ Drucker löschen?</h2>
+                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <p style="margin: 20px 0; color: var(--text-dim);">
+                Möchten Sie diesen Drucker wirklich löschen? Zugehörige Jobs bleiben erhalten.
+            </p>
+            <p style="margin: 10px 0; font-weight: 600; color: var(--text);">
+                <span id="deletePrinterName">Name unbekannt</span>
+            </p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Abbrechen</button>
+                <button class="btn" style="background: var(--error); color: white;" onclick="confirmDelete()">Löschen</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/frontend/dashboard.js"></script>
+    <script src="/frontend/printers.js"></script>
+</body>
+</html>

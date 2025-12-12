@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% set page_title = "Dashboard" %}
+{% set page_subtitle = "Zentrale Übersicht für FilamentHub" %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='css/printers.css') }}">
+{% endblock %}
+
+{% block header_actions %}{% endblock %}
+
+{% block content %}
+<section class="card-grid">
+    <div class="panel">
+        <p class="eyebrow">Status</p>
+        <h3 style="margin:6px 0 10px 0;">System online</h3>
+        <p class="subtitle">Stelle hier später KPIs und Charts dar.</p>
+    </div>
+    <div class="panel">
+        <p class="eyebrow">Materialien</p>
+        <h3 style="margin:6px 0 10px 0;" id="statMaterials">0</h3>
+        <p class="subtitle">Gesamtzahl Materialien</p>
+    </div>
+    <div class="panel">
+        <p class="eyebrow">Spulen</p>
+        <h3 style="margin:6px 0 10px 0;" id="statSpools">0</h3>
+        <p class="subtitle">Gesamtzahl Spulen</p>
+    </div>
+    <div class="panel">
+        <p class="eyebrow">Drucker</p>
+        <h3 style="margin:6px 0 10px 0;" id="statPrinters">0</h3>
+        <p class="subtitle">Online / Gesamt</p>
+    </div>
+</section>
+
+<section class="panel" style="margin-top:18px;">
+    <p class="eyebrow">Schnellzugriff</p>
+    <div class="actions">
+        <a class="btn primary" href="/materials">Material anlegen</a>
+        <a class="btn primary" href="/spools">Spule anlegen</a>
+        <a class="btn primary" href="/printers">Drucker anlegen</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='js/dashboard.js') }}"></script>
+{% endblock %}

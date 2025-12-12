@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% set page_title = "Spulen" %}
+{% set page_subtitle = "Spulen-Bestand und AMS-Zuordnung" %}
+
+{% block header_actions %}
+<div class="actions">
+    <button class="btn primary">Neue Spule</button>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="card-grid">
+    <div class="panel">
+        <p class="eyebrow">Bestand</p>
+        <p class="subtitle">Später: Liste der Spulen mit Restgewicht und AMS-Slot.</p>
+    </div>
+    <div class="panel">
+        <p class="eyebrow">Warnungen</p>
+        <p class="subtitle">Spulen mit niedrigem Bestand werden hier hervorgehoben.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='js/spools.js') }}"></script>
+{% endblock %}

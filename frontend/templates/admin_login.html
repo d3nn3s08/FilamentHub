@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Login</title>
+    <style>
+        body { background: #181818; color: #eee; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .login-box { background: #232323; padding: 2rem 2.5rem; border-radius: 10px; box-shadow: 0 2px 12px #0008; }
+        input[type=password] { width: 100%; padding: 0.7rem; border-radius: 6px; border: 1px solid #444; background: #181818; color: #eee; margin-bottom: 1rem; }
+        button { padding: 0.7rem 1.5rem; border-radius: 6px; border: none; background: #4fc3f7; color: #fff; font-weight: bold; cursor: pointer; }
+        .error { color: #ef5350; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+    <form class="login-box" id="adminLoginForm">
+        <h2>Admin Login</h2>
+        <div class="error" id="loginError" style="display:none;"></div>
+        <input type="password" name="password" placeholder="Passwort" required />
+        <button type="submit">Login</button>
+    </form>
+    <script>
+    document.getElementById('adminLoginForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const form = new FormData(this);
+        const res = await fetch('/api/admin/login', { method: 'POST', body: form });
+        const data = await res.json();
+        if(data.success) {
+            window.location.href = '/admin';
+        } else {
+            document.getElementById('loginError').innerText = data.error || 'Fehler beim Login';
+            document.getElementById('loginError').style.display = 'block';
+        }
+    };
+    </script>
+</body>
+</html>

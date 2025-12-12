@@ -1,0 +1,9 @@
+document.addEventListener("DOMContentLoaded", () => {
+    const active = document.body.dataset.activePage;
+    if (!active) return;
+    document.querySelectorAll(".sidebar__nav .nav__item").forEach(link => {
+        if (link.href && link.href.includes(`/${active}`) && !link.classList.contains("nav__item--active")) {
+            link.classList.add("nav__item--active");
+        }
+    });
+});
