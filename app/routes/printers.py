@@ -67,19 +67,22 @@ def get_printer(printer_id: str, session: Session = Depends(get_session)):
     return p_dict
 
 
-@router.post("/", response_model=PrinterRead)
+@router.post("/")
 def create_printer(printer: PrinterCreate, session: Session = Depends(get_session)):
     """Neuen Drucker anlegen"""
-    # Einfacher Duplicate-Check per IP/Port
-    if printer.ip_address:
+    # Duplicate-Check per IP + Typ (Lite)
+    if printer.ip_address and printer.printer_type:
         exists = session.exec(
             select(Printer).where(
                 Printer.ip_address == printer.ip_address,
-                Printer.port == (printer.port or 6000)
+                Printer.printer_type == printer.printer_type
             )
         ).first()
         if exists:
-            raise HTTPException(status_code=409, detail="Drucker mit dieser IP/Port existiert bereits")
+            existing = exists.dict()
+            existing["status"] = "exists"
+            existing["image_url"] = get_image_url(exists.id)
+            return existing
     # Für Bambu muss eine Seriennummer und Access Code vorhanden sein
     if printer.printer_type in ["bambu", "bambu_lab"]:
         if not printer.cloud_serial or not printer.api_key:
@@ -91,6 +94,7 @@ def create_printer(printer: PrinterCreate, session: Session = Depends(get_sessio
     session.refresh(db_printer)
     p_dict = db_printer.dict()
     p_dict["image_url"] = get_image_url(db_printer.id)
+    p_dict["status"] = "created"
     return p_dict
 
 
@@ -100,17 +104,17 @@ def update_printer(printer_id: str, printer: PrinterCreate, session: Session = D
     db_printer = session.get(Printer, printer_id)
     if not db_printer:
         raise HTTPException(status_code=404, detail="Drucker nicht gefunden")
-    # Duplicate-Check bei IP/Port-Änderung
-    if printer.ip_address:
+    # Duplicate-Check bei IP/Typ-Änderung
+    if printer.ip_address and printer.printer_type:
         exists = session.exec(
             select(Printer).where(
                 Printer.ip_address == printer.ip_address,
-                Printer.port == (printer.port or 6000),
+                Printer.printer_type == printer.printer_type,
                 Printer.id != printer_id
             )
         ).first()
         if exists:
-            raise HTTPException(status_code=409, detail="Drucker mit dieser IP/Port existiert bereits")
+            raise HTTPException(status_code=409, detail="Drucker mit dieser IP/Typ existiert bereits")
     if printer.printer_type in ["bambu", "bambu_lab"]:
         if not printer.cloud_serial or not printer.api_key:
             raise HTTPException(status_code=400, detail="Seriennummer und Access Code sind erforderlich")

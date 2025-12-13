@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title or "FilamentHub" }}</title>
     <link rel="stylesheet" href="{{ url_for('frontend_static', path='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='debug.css') }}">
     {% block extra_styles %}{% endblock %}
 </head>
 <body class="page" data-active-page="{{ active_page|default('dashboard') }}">

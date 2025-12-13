@@ -7,6 +7,7 @@
 {% endblock %}
 
 {% block content %}
+{% if debug_center_mode == 'pro' %}
 <section>
     <div class="raw-toggle">
         <button class="btn ghost" data-toggle="raw">Rohdaten anzeigen</button>
@@ -23,6 +24,13 @@
         <div class="panel">AMS Daten werden geladen ...</div>
     </div>
 </section>
+{% else %}
+<section>
+    <div class="panel" style="margin:32px auto;max-width:500px;text-align:center;">
+        AMS Debug ist nur im <b>Pro-Modus</b> verfügbar.
+    </div>
+</section>
+{% endif %}
 {% endblock %}
 
 {% block extra_scripts %}

@@ -1,0 +1,285 @@
+﻿import logging
+from logging.handlers import RotatingFileHandler
+import yaml
+import os
+
+# Logging-Konfiguration aus config.yaml
+def get_logging_config():
+    config_path = os.path.join(os.path.dirname(__file__), "..", "..", "config.yaml")
+    if not os.path.exists(config_path):
+        return {"max_size_mb": 10, "backup_count": 3, "level": "INFO"}
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    logging_cfg = config.get("logging", {})
+    return {
+        "max_size_mb": logging_cfg.get("max_size_mb", 10),
+        "backup_count": logging_cfg.get("backup_count", 3),
+        "level": logging_cfg.get("level", "INFO")
+    }
+
+log_settings = get_logging_config()
+log_path = "logs/app/app.log"
+os.makedirs(os.path.dirname(log_path), exist_ok=True)
+log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s - %(message)s")
+file_handler = RotatingFileHandler(
+    log_path,
+    maxBytes=log_settings["max_size_mb"] * 1024 * 1024,
+    backupCount=log_settings["backup_count"],
+    encoding="utf-8"
+)
+file_handler.setFormatter(log_formatter)
+file_handler.setLevel(getattr(logging, log_settings["level"].upper(), logging.INFO))
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(log_formatter)
+
+# Root-Logger
+logging.getLogger().setLevel(getattr(logging, log_settings["level"].upper(), logging.INFO))
+logging.getLogger().addHandler(file_handler)
+logging.getLogger().addHandler(console_handler)
+logging.getLogger("uvicorn.error").addHandler(file_handler)
+logging.getLogger("uvicorn").addHandler(file_handler)
+# WICHTIG: Access-Logs explizit NICHT in app.log
+for h in list(logging.getLogger("uvicorn.access").handlers):
+    logging.getLogger("uvicorn.access").removeHandler(h)
+from fastapi import FastAPI, Request, WebSocket
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from services.printer_service import PrinterService
+from app.monitoring.runtime_monitor import record_request
+import time
+
+# -----------------------------------------------------
+# ROUTER & MODULE IMPORTS
+# -----------------------------------------------------
+from app.database import init_db
+
+from app.routes.hello import router as hello_router
+from app.routes.materials import router as materials_router
+from app.routes.spools import router as spools_router
+from app.routes.log_routes import router as log_router
+from app.routes.system_routes import router as system_router
+from app.routes.debug_routes import router as debug_router
+from app.routes.service_routes import router as service_router
+from app.routes.database_routes import router as database_router
+from app.routes.scanner_routes import router as scanner_router
+from app.routes.mqtt_routes import router as mqtt_router
+from app.routes.performance_routes import router as performance_router
+from app.routes.printers import router as printers_router
+from app.routes.jobs import router as jobs_router
+
+from app.routes.bambu_routes import router as bambu_router
+from app.routes.admin_routes import router as admin_router
+from app.routes.settings_routes import router as settings_router
+from app.routes.debug_ams_routes import router as debug_ams_router
+from app.routes.debug_system_routes import router as debug_system_router
+from app.routes.debug_performance_routes import router as debug_performance_router
+from app.routes.debug_network_routes import router as debug_network_router
+from app.routes.notification_routes import router as notification_router
+
+from app.websocket.log_stream import stream_log
+
+
+# -----------------------------------------------------
+# FASTAPI APP
+# -----------------------------------------------------
+
+app = FastAPI(
+    title="FilamentHub",
+    description="Filament Management System fuer Bambu, Klipper & Standalone",
+    version="0.1.0"
+)
+
+# -----------------------------------------------------
+# MIDDLEWARE: RUNTIME / REQUEST MONITORING
+# -----------------------------------------------------
+@app.middleware("http")
+async def runtime_metrics_middleware(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000.0
+    try:
+        record_request(duration_ms)
+    except Exception:
+        pass
+    return response
+
+# -----------------------------------------------------
+# TESTENDPUNKT
+# -----------------------------------------------------
+@app.get('/ping')
+async def ping():
+    return {'status': 'ok'}
+
+# app.add_event_handler("startup", init_db)
+
+
+# -----------------------------------------------------
+# STATIC + TEMPLATES
+# -----------------------------------------------------
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/frontend", StaticFiles(directory="frontend/static"), name="frontend_static")
+templates = Jinja2Templates(directory="frontend/templates")
+
+
+
+# -----------------------------------------------------
+# ROUTES - API
+# -----------------------------------------------------
+app.include_router(hello_router)
+app.include_router(materials_router)
+app.include_router(spools_router)
+app.include_router(log_router)
+app.include_router(system_router)
+app.include_router(debug_router)
+app.include_router(service_router)
+app.include_router(database_router)
+app.include_router(scanner_router)
+app.include_router(mqtt_router)
+app.include_router(performance_router)
+app.include_router(printers_router)
+app.include_router(jobs_router)
+
+app.include_router(bambu_router)
+app.include_router(admin_router)
+app.include_router(settings_router)
+app.include_router(debug_ams_router)
+app.include_router(debug_system_router)
+app.include_router(debug_performance_router)
+app.include_router(debug_network_router)
+app.include_router(notification_router)
+
+
+# -----------------------------------------------------
+# ROUTES - FRONTEND
+# -----------------------------------------------------
+@app.get('/', response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse(
+        'dashboard.html',
+        {
+            'request': request,
+            'title': 'FilamentHub - Dashboard',
+            'active_page': 'dashboard'
+        },
+    )
+
+
+@app.get('/materials', response_class=HTMLResponse)
+async def materials_page(request: Request):
+    return templates.TemplateResponse(
+        'materials.html',
+        {
+            'request': request,
+            'title': 'Materialien - FilamentHub',
+            'active_page': 'materials'
+        },
+    )
+
+
+@app.get('/spools', response_class=HTMLResponse)
+async def spools_page(request: Request):
+    return templates.TemplateResponse(
+        'spools.html',
+        {
+            'request': request,
+            'title': 'Spulen - FilamentHub',
+            'active_page': 'spools'
+        },
+    )
+
+
+@app.get('/printers', response_class=HTMLResponse)
+async def printers_page(request: Request):
+    return templates.TemplateResponse(
+        'printers.html',
+        {
+            'request': request,
+            'title': 'Drucker - FilamentHub',
+            'active_page': 'printers'
+        },
+    )
+
+
+@app.get('/printers-modern', response_class=HTMLResponse)
+async def printers_modern_page(request: Request):
+    # Test-Layout, bleibt vom bestehenden Drucker-UI getrennt
+    return templates.TemplateResponse(
+        'printers_modern.html',
+        {
+            'request': request,
+            'title': 'Drucker (Preview) - FilamentHub',
+            'active_page': 'printers'
+        },
+    )
+
+@app.get('/jobs', response_class=HTMLResponse)
+async def jobs_page(request: Request):
+    return templates.TemplateResponse(
+        'jobs.html',
+        {
+            'request': request,
+            'title': 'Druckauftraege - FilamentHub',
+            'active_page': 'jobs'
+        },
+    )
+
+
+@app.get('/statistics', response_class=HTMLResponse)
+async def statistics_page(request: Request):
+    return templates.TemplateResponse(
+        'statistics.html',
+        {
+            'request': request,
+            'title': 'Statistiken - FilamentHub',
+            'active_page': 'statistics'
+        },
+    )
+
+
+@app.get('/settings', response_class=HTMLResponse)
+async def settings_page(request: Request):
+    return templates.TemplateResponse(
+        'settings.html',
+        {
+            'request': request,
+            'title': 'Settings - FilamentHub',
+            'active_page': 'settings'
+        },
+    )
+
+
+@app.get('/logs', response_class=HTMLResponse)
+async def logs_page(request: Request):
+    # logs.html bleibt in app/templates
+    logs_templates = Jinja2Templates(directory='app/templates')
+    return logs_templates.TemplateResponse(
+        'logs.html',
+        {'request': request},
+    )
+
+
+@app.get('/debug', response_class=HTMLResponse)
+async def debug_page(request: Request):
+    debug_templates = Jinja2Templates(directory='app/templates')
+    return debug_templates.TemplateResponse(
+        'debug.html',
+        {'request': request, 'title': 'FilamentHub Debug Center', 'active_page': 'debug'},
+    )
+
+
+@app.get('/ams-help', response_class=HTMLResponse)
+async def ams_help_page(request: Request):
+    """Simple helper page to visualize AMS slots from the latest report message."""
+    help_templates = Jinja2Templates(directory='app/templates')
+    return help_templates.TemplateResponse(
+        'ams_help.html',
+        {'request': request, 'title': 'AMS Helper'},
+    )
+
+
+
+
+# Zentraler PrinterService für MQTT → UniversalMapper → PrinterData Pipeline
+if not hasattr(app.state, "printer_service"):
+    app.state.printer_service = PrinterService()

@@ -1,3 +1,20 @@
+- [x] Port-Architektur finalisiert (Default 8085, ENV HOST/PORT Override).
+- [x] Uvicorn-Start unter Windows stabilisiert
+- [ ] Enhance performance metrics (optional), keep endpoint read-only
+- [ ] Add advanced scanner (Pro): active probing, vendor detection
+- [ ] Implementiere Persist-Flow 'Zum System hinzufuegen' fuer getestete Drucker
+- [ ] Optional: gleiche Card-Optik fuer Pro-Scanner uebernehmen
+- [ ] Frontend Save-Flow finalisieren (Status/Toast) nach Dup-Check
+- [ ] Pro Mode Panels mit Inhalt fuellen (Mode-Umschalt-UI vorhanden)
+
+## Debug Center Open Tasks
+- Pro: MQTT Charts
+- Pro: AMS Deep Inspect
+- Pro: JSON Inspector polish
+
+# Performance Lite Panel
+- [x] UX verbessert: Initial-Load sofort, Loading-State, Soft-Cache (Frontend, Debug Center)
+- [ ] Optional: Konfigurierbares Polling-Intervall für Performance Panel
 # FilamentHub TODO
 
 *Hinweis*: Neue Spulen-Override-Funktion (Job → Zuordnung überschreiben) eingebaut – **Testlauf erforderlich**.

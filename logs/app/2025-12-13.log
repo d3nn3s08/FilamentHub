@@ -1,0 +1,58 @@
+2025-12-13 00:38:15,020 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 00:38:15,021 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 00:38:16,220 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 00:38:16,221 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 00:56:07,350 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 00:56:07,351 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 01:11:18,785 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 01:11:18,785 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 01:11:18,785 [INFO] App - Starte FilamentHub API Server...
+2025-12-13 01:11:18,989 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 01:11:18,989 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:16:52,675 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 10:16:52,676 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:16:52,676 [INFO] App - Starte FilamentHub API Server...
+2025-12-13 10:16:52,868 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 10:16:52,868 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:17:17,585 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 10:17:17,585 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:17:17,585 [INFO] App - Starte FilamentHub API Server...
+2025-12-13 10:17:17,788 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 10:17:17,789 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:25:08,981 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 10:25:08,981 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:26:35,555 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 10:26:35,555 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:26:35,555 [INFO] App - Starte FilamentHub API Server...
+2025-12-13 10:26:35,750 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 10:26:35,751 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:27:59,914 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 10:27:59,915 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:27:59,915 [INFO] App - Starte FilamentHub API Server...
+2025-12-13 10:28:00,112 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 10:28:00,112 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:40:54,584 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 10:40:54,584 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:44:16,875 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 10:44:16,876 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:44:16,877 [INFO] App - Starting FilamentHub on 0.0.0.0:8085
+2025-12-13 10:44:17,085 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 10:44:17,085 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:55:29,166 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 10:55:29,167 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 10:55:29,167 [INFO] App - Starting FilamentHub on 0.0.0.0:8085 (reload disabled)
+2025-12-13 11:30:27,979 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 11:30:27,979 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 11:30:27,979 [INFO] App - Starting FilamentHub on 0.0.0.0:8085 (reload disabled)
+2025-12-13 12:01:32,297 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 12:01:32,297 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 12:01:32,297 [INFO] App - Starting FilamentHub on 0.0.0.0:8085 (reload disabled)
+2025-12-13 12:03:04,428 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 12:03:04,429 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 12:03:04,429 [INFO] App - Starting FilamentHub on 0.0.0.0:8085 (reload disabled)
+2025-12-13 12:58:53,177 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 12:58:53,177 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 12:58:53,177 [INFO] App - Starting FilamentHub on 0.0.0.0:8085 (reload disabled)
+2025-12-13 21:03:23,530 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-13 21:03:23,530 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-13 21:03:23,530 [INFO] App - Starting FilamentHub on 0.0.0.0:8085 (reload disabled)

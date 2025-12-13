@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="/static/css/debug_tabs.css">
+{% endblock %}
+
+{% block content %}
+<div class="page-wrapper">
+    <p class="eyebrow">INTERNE DIAGNOSE-, SYSTEM- UND LIVE-STATUS-ANSICHT</p>
+    <h1 class="title">Debug Center</h1>
+    <p class="subtitle">Zentrale Uebersicht fuer Monitoring, Analyse und Systemstatus.</p>
+
+    <style>
+        .debug-tabs { display:flex; gap:8px; margin-bottom:12px; }
+        .debug-tab { padding:8px 12px; border-radius:8px; cursor:pointer; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); color:#fff; }
+        .debug-tab.active { background:rgba(46,134,222,0.3); border-color:rgba(46,134,222,0.6); }
+        .panel { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px; }
+        .system-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+        .status-badge { padding:2px 8px; border-radius:6px; background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.85); font-weight:600; }
+        .status-ok { background:rgba(46,204,113,0.2); color:#8ef0b5; }
+        .status-warn { background:rgba(241,196,15,0.18); color:#ffd666; }
+        .status-error { background:rgba(231,76,60,0.2); color:#ff9a8a; }
+        .status-idle { background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.7); }
+    </style>
+
+    <div class="debug-tabs">
+        <div class="debug-tab active" data-tab="system">System Status</div>
+        <div class="debug-tab" data-tab="performance">Performance</div>
+    </div>
+
+    <div class="debug-panels">
+        <div id="panel-system" class="debug-panel">
+            <div class="panel" id="systemHealthBox" style="margin-bottom:12px;">
+                <p class="eyebrow">System Health</p>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span id="healthBadge" class="status-badge status-warn">Warning</span>
+                    <span id="healthText" class="health-text">Some services require attention</span>
+                </div>
+            </div>
+            <div class="system-grid">
+                <div class="panel">
+                    <p class="eyebrow">Application</p>
+                    <h3 id="sys_app_name" style="margin:4px 0;">FilamentHub</h3>
+                    <p class="subtitle" id="sys_app_version">0.0.0</p>
+                    <div class="subtitle" id="sys_app_env">development</div>
+                    <div class="subtitle" id="sys_app_uptime">0</div>
+                </div>
+
+                <div class="panel">
+                    <p class="eyebrow">Systemressourcen</p>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        <div><strong>CPU:</strong> <span id="sys_cpu_usage">-</span> <span id="sys_cpu_cores" style="color:var(--text-dim);margin-left:6px;">n/a</span></div>
+                        <div><strong>RAM:</strong> <span id="sys_ram_usage">-</span> <span id="sys_ram_detail" style="color:var(--text-dim);margin-left:6px;">-</span></div>
+                        <div><strong>Disk:</strong> <span id="sys_disk_usage">-</span> <span id="sys_disk_detail" style="color:var(--text-dim);margin-left:6px;">-</span></div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <p class="eyebrow">Backend & Services Status</p>
+                    <div style="display:flex;flex-direction:column;gap:4px;line-height:1.3;">
+                        <div><strong>API:</strong> <span id="apiStatus" class="status-badge" title="API reachable (HTTP responding)">offline</span></div>
+                        <div><strong>DB:</strong> <span id="dbStatus" class="status-badge" title="Database reachable (SELECT 1 OK)">offline</span></div>
+                        <div><strong>MQTT:</strong> <span id="mqttStatus" class="status-badge" title="MQTT client connected to broker">offline</span></div>
+                        <div><strong>WebSocket:</strong> <span id="wsStatus" class="status-badge" title="WebSocket has active client connection(s)">offline</span> <small id="wsClients" style="color:var(--text-dim); margin-left:6px;"></small></div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <p class="eyebrow">Runtime & Requests <span id="sys_runtime_state" class="status-badge status-idle" style="margin-left:6px;" title="No recent requests; showing idle state">Idle</span></p>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        <div><strong>Requests/min:</strong> <span id="sys_runtime_rpm">-</span></div>
+                        <div><strong>Avg Response:</strong> <span id="sys_runtime_avg">-</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="panel-performance" class="debug-panel" style="display:none;">
+            <div class="panel">
+                <p class="eyebrow">Performance (keine Daten im Basismod)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

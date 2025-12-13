@@ -62,7 +62,7 @@ from app.routes.system_routes import router as system_router
 from app.routes.debug_routes import router as debug_router
 from app.routes.service_routes import router as service_router
 from app.routes.database_routes import router as database_router
-from app.routes.scanner_routes import router as scanner_router
+from app.routes.scanner_routes import router as scanner_router, debug_printer_router
 from app.routes.mqtt_routes import router as mqtt_router
 from app.routes.performance_routes import router as performance_router
 from app.routes.printers import router as printers_router
@@ -73,6 +73,8 @@ from app.routes.admin_routes import router as admin_router
 from app.routes.settings_routes import router as settings_router
 from app.routes.debug_ams_routes import router as debug_ams_router
 from app.routes.debug_system_routes import router as debug_system_router
+from app.routes.debug_performance_routes import router as debug_performance_router
+from app.routes.debug_network_routes import router as debug_network_router
 from app.routes.notification_routes import router as notification_router
 
 from app.websocket.log_stream import stream_log
@@ -143,6 +145,9 @@ app.include_router(admin_router)
 app.include_router(settings_router)
 app.include_router(debug_ams_router)
 app.include_router(debug_system_router)
+app.include_router(debug_performance_router)
+app.include_router(debug_network_router)
+app.include_router(debug_printer_router)
 app.include_router(notification_router)
 
 
@@ -279,4 +284,3 @@ async def ams_help_page(request: Request):
 # Zentraler PrinterService für MQTT → UniversalMapper → PrinterData Pipeline
 if not hasattr(app.state, "printer_service"):
     app.state.printer_service = PrinterService()
-

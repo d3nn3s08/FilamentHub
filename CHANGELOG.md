@@ -1,3 +1,24 @@
+## 2025-12-13 (Server Start)
+- Fix: run.py gibt Hinweis bei belegtem Port und erlaubt PORT-Override, damit Uvicorn nicht still beendet.
+- Server-Port-Handling vereinheitlicht (Default 8085 aus config.yaml, ENV HOST/PORT Override).
+- Fix: Uvicorn reload unter Windows aus run.py entfernt (stabiler Serverstart)
+- Debug(Lite): Performance tab cards (CPU/RAM/Disk/Uptime) with defensive loading
+- Add: /api/debug/performance (minimal metrics for Lite Performance tab)
+- Debug(Lite): Printer Scanner restored (LAN quick scan, read-only)
+- Printer Scanner Lite: Port-6000 Test Button + Save-Enable Flow
+- UI polish: Printer Scanner Lite modernisiert (Cards, Badges, Buttons)
+- Lite Printer Save: Duplikat-Schutz (IP + Typ) und Status-Feedback beim Hinzufuegen
+- Debug Center: Lite/Pro Umschalt-Button mit persistiertem Modus
+
+## 2025-12-13 (Rebuild)
+### Changed
+- Performance Lite UX verbessert: Initial-Load sofort, Loading-State, Soft-Cache (Werte erscheinen sofort oder nach <1s, keine leeren Blöcke, defensive Fehlerbehandlung).
+- Debug Center neu aufgebaut (Lite/Pro Trennung, stabile Tabs, ASCII-Platzhalter).
+- Pro-Unlock persistent (Schloss im Toggle, Modal, Setting debug_center_pro_unlocked).
+- Runtime/Network/WebSocket Status defensiv, Runtime idle mit "-" in Lite.
+- Performance Lite: Sofort-Load, Loading-State, Soft-Cache, flat/nested current_* Fallbacks.
+- Netzwerk-Info via /api/debug/network, Printer-Scanner Lite Quick Scan mit Icons/Statusbadges.
+- Log Viewer Lite: Level-/Textfilter, manueller/periodischer Refresh.
 # Changelog
 
 ## 2025-12-10

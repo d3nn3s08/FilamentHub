@@ -4,12 +4,16 @@ Network Scanner für Bambu Lab und Klipper/Moonraker
 """
 import socket
 import asyncio
+import time
+import logging
 from typing import List, Dict, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import ipaddress
 
 router = APIRouter(prefix="/api/scanner", tags=["Printer Scanner"])
+debug_printer_router = APIRouter(prefix="/api/debug/printer", tags=["Debug Printer"])
+log = logging.getLogger(__name__)
 
 
 # -----------------------------
@@ -28,6 +32,22 @@ class PrinterInfo(BaseModel):
     port: int
     accessible: bool
     response_time: Optional[float] = None
+
+
+class PrinterTestRequest(BaseModel):
+    ip: str
+    port: int = 6000
+    timeout_ms: int = 1500
+
+
+def _validate_ipv4(ip: str) -> str:
+    try:
+        ip_obj = ipaddress.ip_address(ip)
+        if ip_obj.version != 4:
+            raise HTTPException(status_code=400, detail="ip must be ipv4")
+        return ip
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ip must be ipv4")
 
 
 # -----------------------------
@@ -191,15 +211,21 @@ async def quick_scan():
     results = asyncio.gather(*tasks, return_exceptions=True)
     results = await results
 
+    def to_lite(printer: PrinterInfo):
+        detected_type = printer.type or "generic"
+        if detected_type == "klipper":
+            detected_type = "klipper (Moonraker detected)"
+        return {
+            "ip": printer.ip,
+            "port": printer.port,
+            "type": detected_type,
+            "status": "idle"
+        }
+
     found_printers = []
     for result in results:
         if isinstance(result, PrinterInfo):
-            found_printers.append({
-                "ip": result.ip,
-                "port": result.port,
-                "type": result.type,
-                "hostname": result.hostname
-            })
+            found_printers.append(to_lite(result))
 
     if not found_printers and subnet_base:
         sweep_hosts = [f"{subnet_base}.{i}" for i in range(1, 255)]
@@ -208,12 +234,7 @@ async def quick_scan():
         results = await asyncio.gather(*tasks, return_exceptions=True)
         for result in results:
             if isinstance(result, PrinterInfo):
-                found_printers.append({
-                    "ip": result.ip,
-                    "port": result.port,
-                    "type": result.type,
-                    "hostname": result.hostname
-                })
+                found_printers.append(to_lite(result))
         return {
             "success": True,
             "scanned_hosts": len(common_ips) + len(sweep_hosts),
@@ -463,3 +484,71 @@ def get_network_info():
         "estimated_network": estimated_network,
         "default_scan_range": estimated_network
     }
+
+
+@debug_printer_router.post("/test")
+async def test_printer_port(payload: PrinterTestRequest):
+    ip = _validate_ipv4(payload.ip)
+    port = payload.port
+    if not (1 <= port <= 65535):
+        raise HTTPException(status_code=400, detail="port must be between 1 and 65535")
+    timeout_ms = payload.timeout_ms
+    if timeout_ms < 200:
+        timeout_ms = 200
+    if timeout_ms > 5000:
+        timeout_ms = 5000
+
+    timeout_s = timeout_ms / 1000.0
+    start = time.perf_counter()
+    try:
+        with socket.create_connection((ip, port), timeout=timeout_s) as sock:
+            sock.settimeout(timeout_s)
+        latency_ms = int((time.perf_counter() - start) * 1000)
+        log.debug("Port test success ip=%s port=%s latency_ms=%s", ip, port, latency_ms)
+        return {
+            "ok": True,
+            "ip": ip,
+            "port": port,
+            "reachable": True,
+            "latency_ms": latency_ms
+        }
+    except socket.timeout:
+        return {
+            "ok": True,
+            "ip": ip,
+            "port": port,
+            "reachable": False,
+            "error": "timeout",
+            "latency_ms": None
+        }
+    except ConnectionRefusedError:
+        return {
+            "ok": True,
+            "ip": ip,
+            "port": port,
+            "reachable": False,
+            "error": "refused",
+            "latency_ms": None
+        }
+    except OSError as exc:
+        err_label = "unreachable" if isinstance(exc, OSError) else "error"
+        return {
+            "ok": True,
+            "ip": ip,
+            "port": port,
+            "reachable": False,
+            "error": err_label,
+            "latency_ms": None
+        }
+    except Exception as exc:  # pragma: no cover - defensive
+        detail = str(exc)[:120]
+        log.warning("Port test exception ip=%s port=%s err=%s", ip, port, detail)
+        return {
+            "ok": False,
+            "ip": ip,
+            "port": port,
+            "reachable": False,
+            "error": "exception",
+            "detail": detail,
+            "latency_ms": None
+        }
