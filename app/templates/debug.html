@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+﻿{% extends "layout.html" %}
 
 {% block extra_styles %}
 <link rel="stylesheet" href="/static/css/debug_tabs.css">
@@ -44,6 +44,9 @@
                     <span id="healthBadge" class="status-badge status-warn">Warning</span>
                     <span id="healthText" class="health-text">Some services require attention</span>
                 </div>
+                <ul id="healthReasons" class="health-reasons pro-only">
+                    <li>System is operating normally</li>
+                </ul>
             </div>
             <div class="system-grid">
                 <div class="panel">
@@ -66,10 +69,10 @@
                 <div class="panel">
                     <p class="eyebrow">Backend & Services Status</p>
                     <div style="display:flex;flex-direction:column;gap:4px;line-height:1.3;">
-                        <div><strong>API:</strong> <span id="apiStatus" class="status-badge" title="API reachable (HTTP responding)">offline</span></div>
-                        <div><strong>DB:</strong> <span id="dbStatus" class="status-badge" title="Database reachable (SELECT 1 OK)">offline</span></div>
-                        <div><strong>MQTT:</strong> <span id="mqttStatus" class="status-badge" title="MQTT client connected to broker">offline</span></div>
-                        <div><strong>WebSocket:</strong> <span id="wsStatus" class="status-badge" title="WebSocket has active client connection(s)">offline</span> <small id="wsClients" style="color:var(--text-dim); margin-left:6px;"></small></div>
+                        <div><strong>API:</strong> <span class="info-icon" title="Status of the internal REST API. Indicates whether requests can be processed.">i</span> <span id="apiStatus" class="status-badge" title="API reachable (HTTP responding)">offline</span></div>
+                        <div><strong>DB:</strong> <span class="info-icon" title="Database connection state. Connected means queries can be executed.">i</span> <span id="dbStatus" class="status-badge" title="Database reachable (SELECT 1 OK)">offline</span></div>
+                        <div><strong>MQTT:</strong> <span class="info-icon" title="MQTT service status. Disabled means no broker connection is active.">i</span> <span id="mqttStatus" class="status-badge" title="MQTT client connected to broker">offline</span></div>
+                        <div><strong>WebSocket:</strong> <span class="info-icon" title="WebSocket server state. Listening means the server accepts connections.">i</span> <span id="wsStatus" class="status-badge" title="WebSocket has active client connection(s)">offline</span> <small id="wsClients" style="color:var(--text-dim); margin-left:6px;"></small></div>
                     </div>
                 </div>
 
@@ -77,8 +80,68 @@
                     <p class="eyebrow">Runtime & Requests <span id="sys_runtime_state" class="status-badge status-idle" style="margin-left:6px;" title="No recent requests; showing idle state">Idle</span></p>
                     <div style="display:flex;flex-direction:column;gap:6px;">
                         <div><strong>Requests/min:</strong> <span id="sys_runtime_rpm">-</span></div>
-                        <div><strong>Avg Response:</strong> <span id="sys_runtime_avg">-</span></div>
+                        <div><strong>Avg Response:</strong> <span class="info-icon" title="Average response time of HTTP requests. High values may indicate load or blocking operations.">i</span> <span id="sys_runtime_avg">-</span></div>
                     </div>
+                </div>
+
+                <div class="panel pro-only">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <p class="eyebrow">API Detail</p>
+                        <span class="status-badge status-ok pro-badge">PRO</span>
+                    </div>
+                    <div>Status: <span id="proApiStatus">-</span></div>
+                    <div>Response: <span id="proApiLatency">-</span></div>
+                </div>
+
+                <div class="panel pro-only">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <p class="eyebrow">DB Detail</p>
+                        <span class="status-badge status-ok pro-badge">PRO</span>
+                    </div>
+                    <div>Status: <span id="proDbStatus">-</span></div>
+                    <div>Type: <span id="proDbType">-</span></div>
+                </div>
+
+                <div class="panel pro-only">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <p class="eyebrow">WebSocket Detail</p>
+                        <span class="status-badge status-ok pro-badge">PRO</span>
+                    </div>
+                    <div>Status: <span id="proWsStatus">-</span></div>
+                    <div>Clients: <span id="proWsClients">-</span></div>
+                </div>
+
+                <div class="panel pro-only">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <p class="eyebrow">MQTT Detail</p>
+                        <span class="status-badge status-ok pro-badge">PRO</span>
+                    </div>
+                    <div>Status: <span id="proMqttStatus">-</span></div>
+                    <div>Broker: <span id="proMqttBroker">-</span></div>
+                </div>
+
+                <div class="panel pro-only">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <p class="eyebrow">Warum Warnung?</p>
+                        <span class="status-badge status-ok pro-badge">PRO</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                        <span id="whyBadgePro" class="status-badge status-ok">OK</span>
+                        <span style="color:var(--text-dim);">Erklaert aktive Warnhinweise im System.</span>
+                    </div>
+                    <ul id="whyReasonsPro" class="health-reasons" style="margin-top:4px;">
+                        <li>Keine Warnungen aktiv.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="pro-only pro-coming">
+                <div class="debug-card">
+                    <p class="eyebrow">AMS Detail</p>
+                    <div>Coming soon</div>
+                </div>
+                <div class="debug-card">
+                    <p class="eyebrow">JSON Inspect</p>
+                    <div>Coming soon</div>
                 </div>
             </div>
         </div>
@@ -131,21 +194,74 @@
             </div>
         </div>
         <div id="panel-scanner" class="debug-panel" style="display:none;">
-                <div class="panel">
-                    <div class="scanner-header-card">
-                        <div class="scanner-header-top">
-                            <div>
-                                <p class="eyebrow">Printer Scanner (Lite)</p>
-                                <div class="scanner-hostline"><span id="netHostname">-</span><span class="dot-sep">•</span><span id="netLocalIp">-</span></div>
-                                <div class="scanner-range">Scan Range: <span id="netSuggestedRange">-</span></div>
-                            </div>
-                            <div class="scanner-actions">
-                                <button id="scannerQuickScan" class="btn btn-primary">Quick Scan (LAN)</button>
-                            </div>
+            <div class="panel">
+                <div class="scanner-header-card">
+                    <div class="scanner-header-top">
+                        <div>
+                            <p class="eyebrow">Printer Scanner (Lite)</p>
+                            <div class="scanner-hostline"><span id="netHostname">-</span><span class="dot-sep">.</span><span id="netLocalIp">-</span></div>
+                            <div class="scanner-range">Scan Range: <span id="netSuggestedRange">-</span></div>
+                        </div>
+                        <div class="scanner-actions">
+                            <button id="scannerQuickScan" class="btn btn-primary">Quick Scan (LAN)</button>
                         </div>
                     </div>
-                    <div id="scannerResults" class="scanner-grid">
-                        <div class="badge badge-idle">No printers detected</div>
+                </div>
+                <div id="scannerResults" class="scanner-grid">
+                    <div class="badge badge-idle">No printers detected</div>
+                </div>
+            </div>
+            <div class="panel pro-only" data-mode="pro" style="margin-top:12px;">
+                <p class="eyebrow">Scanner Pro</p>
+                <div class="system-grid" style="margin-top:6px;">
+                    <div class="panel scanner-pro-card pro-disabled-card pro-only" data-mode="pro">
+                        <div class="scanner-pro-head">
+                            <span class="pro-icon fa fa-network-wired" aria-hidden="true"></span>
+                            <span><strong>Deep Probe</strong></span>
+                            <span class="status-badge status-ok pro-badge">PRO</span>
+                            <span id="proProbeBadge" class="status-badge status-idle">IDLE</span>
+                        </div>
+                        <p class="subtitle">Führt eine erweiterte Verbindungs- und Erreichbarkeitsprüfung für das ausgewählte Gerät durch.</p>
+                        <div style="margin-top:8px;">
+                            <button id="proProbeStart" class="btn btn-secondary pro-btn-disabled pro-only-inline" disabled>Probe starten</button>
+                        </div>
+                        <div style="margin-top:6px;color:var(--text-dim);" id="proProbeStatus">Noch keine Probe-Daten vorhanden.</div>
+                        <div style="margin-top:4px;color:var(--text-dim);" id="proProbeLatency">Antwortzeit: -</div>
+                        <div style="margin-top:4px;color:var(--text-dim);" id="proProbeType">Erkannt: -</div>
+                        <div style="margin-top:4px;color:var(--text-dim);" id="proProbeError">Fehlerklasse: -</div>
+                        <div style="margin-top:4px;color:var(--text-dim);" id="proProbeHttp">HTTP-Status: -</div>
+                        <div style="margin-top:4px;color:var(--text-dim);" id="proProbeMessage">Hinweis: -</div>
+                    </div>
+                    <div class="panel scanner-pro-card pro-disabled-card pro-only" data-mode="pro">
+                        <div class="scanner-pro-head">
+                            <span class="pro-icon fa fa-fingerprint" aria-hidden="true"></span>
+                            <span><strong>Geraete-Fingerprint</strong></span>
+                            <span class="status-badge status-ok pro-badge">PRO</span>
+                        </div>
+                        <p class="subtitle">Ermittelt den tatsaechlichen Geraetetyp anhand technischer Merkmale.</p>
+                        <div style="margin-top:8px;">
+                            <button id="proFingerprintStart" class="btn btn-secondary pro-btn-disabled pro-only-inline" disabled>Fingerprint starten</button>
+                        </div>
+                        <div style="margin-top:6px;color:var(--text-dim);" id="proFingerprintStatus">Status: -</div>
+                        <div style="margin-top:4px;color:var(--text-dim);" id="proFingerprintType">Erkannt: -</div>
+                        <div style="margin-top:4px;color:var(--text-dim);" id="proFingerprintConfidence">Vertrauensgrad: -</div>
+                        <div style="margin-top:6px;color:var(--text-dim);">Ports:</div>
+                        <ul id="proFingerprintPorts" style="margin-top:2px;color:var(--text-dim);padding-left:16px;">
+                            <li>-</li>
+                        </ul>
+                    </div>
+                    <div class="panel scanner-pro-card pro-disabled-card pro-only" data-mode="pro">
+                        <div class="scanner-pro-head">
+                            <span class="pro-icon fa fa-code" aria-hidden="true"></span>
+                            <span><strong>Rohdaten / JSON-Ansicht</strong></span>
+                            <span class="status-badge status-ok pro-badge">PRO</span>
+                        </div>
+                        <p class="subtitle">Einmalige Rohdaten-Aufnahme zur Analyse und Fehlersuche.</p>
+                        <div style="margin-top:8px;">
+                            <button class="btn btn-secondary pro-btn-disabled pro-only-inline" disabled title="Pro-Funktion - folgt in Kuerze">Snapshot erfassen</button>
+                        </div>
+                        <div class="pro-hint">Pro-Funktion - folgt in Kuerze</div>
+                        <div style="margin-top:6px;color:var(--text-dim);">Es wurde noch kein Snapshot erstellt.</div>
                     </div>
                 </div>
             </div>

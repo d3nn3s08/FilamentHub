@@ -8,6 +8,7 @@ let scannerInitialized = false;
 let scannerSuggestedRange = null;
 const runningPortTests = new Set();
 window.DEBUG_MODE = 'lite';
+let probeTarget = null;
 
 function normalizePrinterType(val) {
   const v = (val || '').toLowerCase();
@@ -18,6 +19,8 @@ function normalizePrinterType(val) {
 
 function setDebugMode(mode) {
   window.DEBUG_MODE = mode === 'pro' ? 'pro' : 'lite';
+  document.body.classList.remove('debug-lite', 'debug-pro');
+  document.body.classList.add(window.DEBUG_MODE === 'pro' ? 'debug-pro' : 'debug-lite');
   const btnLite = document.getElementById('debugModeLite');
   const btnPro = document.getElementById('debugModePro');
   const label = document.getElementById('debugModeLabel');
@@ -28,6 +31,13 @@ function setDebugMode(mode) {
     label.classList.remove('mode-lite', 'mode-pro');
     label.classList.add(window.DEBUG_MODE === 'pro' ? 'mode-pro' : 'mode-lite');
   }
+  document.querySelectorAll('.pro-only, [data-mode="pro"]').forEach(el => {
+    el.style.display = window.DEBUG_MODE === 'pro' ? '' : 'none';
+  });
+  document.querySelectorAll('.pro-only-inline').forEach(el => {
+    el.style.display = window.DEBUG_MODE === 'pro' ? '' : 'none';
+  });
+  updateProbeButtonState();
 }
 
 function initDebugModeUI() {
@@ -164,10 +174,15 @@ async function loadSystemStatus() {
 }
 
 async function loadBackendStatus() {
+  console.debug('[debug] loadBackendStatus tick', new Date().toISOString());
   try {
     const res = await fetch('/api/debug/system_status');
     if (!res.ok) return;
     const data = await res.json();
+    console.debug('[debug] system_status runtime', data?.runtime);
+    const rt = data?.runtime || {};
+    const stateRaw = (rt.state || 'idle').toString().toLowerCase();
+    const state = stateRaw === 'active' ? 'active' : 'idle';
     setStatus('apiStatus', data?.api?.state || 'offline');
     setStatus('dbStatus', data?.db?.state || 'offline');
     setStatus('mqttStatus', data?.mqtt?.state || 'offline');
@@ -179,30 +194,36 @@ async function loadBackendStatus() {
       db: data?.db?.state,
       mqtt: data?.mqtt?.state,
       ws: data?.websocket?.state,
+      wsClients: clients,
+      runtimeState: state,
+      runtimeAvgMs: rt.avg_response_ms,
+      systemHealth: data?.system_health,
     });
 
-    const runtimeState = data?.runtime?.state;
-    const req = Number(data?.runtime?.requests_per_minute);
-    const avg = Number(data?.runtime?.avg_response_ms);
-    const badge = $('#sys_runtime_state');
-    if (badge) {
-      const isActive = runtimeState === 'active';
-      badge.textContent = isActive ? 'Active' : 'Idle';
-      badge.classList.remove('status-ok', 'status-warn', 'status-error', 'status-idle');
-      badge.classList.add(isActive ? 'status-ok' : 'status-idle');
-    }
-    if (runtimeState === 'active') {
-      setText('sys_runtime_rpm', fmtReq(req));
-      setText('sys_runtime_avg', fmtMs(avg));
-    } else {
-      setText('sys_runtime_rpm', '-');
-      setText('sys_runtime_avg', '-');
-      if (badge) {
-        badge.textContent = 'Idle';
+    const badges = document.querySelectorAll('#sys_runtime_state');
+    console.debug('[debug] runtime state resolved', state, 'rpm', rt?.requests_per_minute, 'avg', rt?.avg_response_ms);
+    const isActive = state === 'active';
+    if (badges.length > 0) {
+      badges.forEach(badge => {
+        badge.textContent = isActive ? 'ACTIVE' : 'IDLE';
         badge.classList.remove('status-ok', 'status-warn', 'status-error', 'status-idle');
-        badge.classList.add('status-idle');
-      }
+        badge.classList.add(isActive ? 'status-ok' : 'status-idle');
+      });
+    } else {
+      console.warn('[runtime] sys_runtime_state not found in DOM');
     }
+    setText(
+      'sys_runtime_rpm',
+      (isActive && typeof rt.requests_per_minute === 'number')
+        ? Math.round(rt.requests_per_minute)
+        : '-'
+    );
+    setText(
+      'sys_runtime_avg',
+      (isActive && typeof rt.avg_response_ms === 'number')
+        ? `${rt.avg_response_ms.toFixed(2)} ms`
+        : '-'
+    );
   } catch (err) {
     // ignore
   }
@@ -345,6 +366,9 @@ function renderScannerResults(printers) {
   const list = $('scannerResults');
   if (!list) return;
   list.innerHTML = '';
+  // Reset Probe-Ziel bis ein erfolgreicher Port-Test gelaufen ist
+  probeTarget = null;
+  updateProbeButtonState();
   if (!Array.isArray(printers) || printers.length === 0) {
     renderScannerEmpty('No printers detected');
     return;
@@ -352,7 +376,7 @@ function renderScannerResults(printers) {
   printers.forEach(pr => {
     const card = document.createElement('div');
     card.className = 'scanner-card';
-    const iconChar = pr.type === 'bambu' ? '🖨' : pr.type === 'klipper' ? '🧩' : '🖥';
+    const iconChar = pr.type === 'bambu' ? '[B]' : pr.type === 'klipper' ? '[K]' : '[P]';
     const typeText = pr.type || 'generic';
     const baseType = normalizePrinterType(typeText);
     const portVal = pr.port || 6000;
@@ -369,8 +393,8 @@ function renderScannerResults(printers) {
       <div class="sc-right">
         <span class="badge ${status === 'reachable' ? 'badge-ok' : status === 'offline' ? 'badge-failed' : 'badge-idle'} sc-status" data-role="statusBadge">${statusLabel}</span>
         <div class="sc-actions">
-          <button class="btn btn-secondary" data-action="testPort" data-ip="${pr.ip || ''}" data-port="${portVal}">🔌 Test</button>
-          <button class="btn btn-primary sc-add disabled btn-add-disabled" data-action="addPrinter" data-ip="${pr.ip || ''}" data-port="${portVal}" data-type="${baseType}" disabled title="Port-Test erforderlich">➕ Zum System</button>
+          <button class="btn btn-secondary" data-action="testPort" data-ip="${pr.ip || ''}" data-port="${portVal}">Test</button>
+          <button class="btn btn-primary sc-add disabled btn-add-disabled" data-action="addPrinter" data-ip="${pr.ip || ''}" data-port="${portVal}" data-type="${baseType}" disabled title="Port-Test erforderlich">Zum System</button>
         </div>
         <div class="sc-sub"><span class="sc-port-result" data-role="portResult">--</span><span class="sc-save-info" data-role="saveInfo"></span></div>
       </div>
@@ -409,12 +433,14 @@ async function handleQuickScanClick() {
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'Scanning...';
+    btn.classList.add('btn-loading');
   }
   if (!scannerSuggestedRange) {
     renderScannerEmpty('Network range not available');
     if (btn) {
       btn.disabled = false;
       btn.textContent = 'Quick Scan (LAN)';
+      btn.classList.remove('btn-loading');
     }
     return;
   }
@@ -434,7 +460,210 @@ async function handleQuickScanClick() {
     if (btn) {
       btn.disabled = false;
       btn.textContent = 'Quick Scan (LAN)';
+      btn.classList.remove('btn-loading');
     }
+  }
+}
+
+function updateProbeUI(data) {
+  const statusEl = document.getElementById('proProbeStatus');
+  const latencyEl = document.getElementById('proProbeLatency');
+  const typeEl = document.getElementById('proProbeType');
+  const msgEl = document.getElementById('proProbeMessage');
+  const errEl = document.getElementById('proProbeError');
+  const httpEl = document.getElementById('proProbeHttp');
+  const badgeEl = document.getElementById('proProbeBadge');
+  const statusText = data?.status || 'Unbekannt';
+  if (statusEl) statusEl.textContent = 'Status: ' + statusText;
+  const latencyText = Number.isFinite(data?.latency_ms) ? 'Antwortzeit: ' + data.latency_ms + ' ms' : 'Antwortzeit: -';
+  if (latencyEl) latencyEl.textContent = latencyText;
+  if (typeEl) typeEl.textContent = 'Erkannt: ' + (data?.detected_type || '-');
+  const errorClass = (data?.error_class || '').toString().trim().toLowerCase();
+  const normalizedStatus = (data?.status || '').toString().toUpperCase();
+  const httpVal = data?.http_status;
+  let httpLabel = '-';
+  let httpCode = null;
+  if (httpVal !== null && httpVal !== undefined && httpVal !== '') {
+    const code = Number(httpVal);
+    if (Number.isFinite(code)) {
+      httpCode = code;
+      const desc =
+        code === 200 ? 'Anfrage erfolgreich, Daten werden geliefert' :
+        code === 401 ? 'Authentifizierung fehlt oder falsch' :
+        code === 404 ? 'Endpunkt existiert nicht' :
+        code === 500 ? 'Interner Fehler am Drucker' : '';
+      httpLabel = desc ? `${code} (${desc})` : String(code);
+    } else {
+      httpLabel = String(httpVal);
+    }
+  }
+  // Fehlerklasse-Logik:
+  // 1) Wenn HTTP-Code vorhanden:
+  //    - 200 -> OK
+  //    - alles andere -> WARNUNG
+  // 2) Wenn kein HTTP-Code:
+  //    - Status != OK -> ERROR
+  //    - sonst -> OK
+  let errorLabel = 'OK';
+  if (httpCode !== null) {
+    errorLabel = httpCode === 200 ? 'OK' : 'WARNUNG';
+  } else if (normalizedStatus !== 'OK') {
+    errorLabel = 'ERROR';
+  }
+  if (errEl) errEl.textContent = 'Fehlerklasse: ' + errorLabel;
+  if (httpLabel === '-' && normalizedStatus === 'OK') {
+    httpLabel = '200 (Anfrage erfolgreich, Daten werden geliefert)';
+  }
+  if (httpEl) httpEl.textContent = 'HTTP-Status: ' + httpLabel;
+  const hint = data?.message || (Array.isArray(data?.details) && data.details.length ? data.details[0] : '-');
+  if (msgEl) msgEl.textContent = 'Hinweis: ' + hint;
+  if (badgeEl) {
+    badgeEl.classList.remove('status-ok', 'status-warn', 'status-error', 'status-idle');
+    let level = 'status-idle';
+    const normalized = (data?.status || '').toString().toUpperCase();
+    if (normalized === 'OK') level = 'status-ok';
+    else if (normalized === 'WARNUNG' || normalized === 'WARNING') level = 'status-warn';
+    else if (normalized === 'FEHLER' || normalized === 'ERROR') level = 'status-error';
+    badgeEl.classList.add(level);
+    badgeEl.textContent = normalized || 'IDLE';
+  }
+}
+
+function updateProbeButtonState() {
+  const probeBtn = document.getElementById('proProbeStart');
+  const fpBtn = document.getElementById('proFingerprintStart');
+  const enabled = document.body.classList.contains('debug-pro') && probeTarget && probeTarget.ip;
+  if (probeBtn) {
+    probeBtn.disabled = !enabled;
+    probeBtn.title = enabled ? '' : 'Probe nur im Pro-Modus nach Port-Test verfuegbar';
+  }
+  if (fpBtn) {
+    fpBtn.disabled = !enabled;
+    fpBtn.title = enabled ? '' : 'Fingerprint erfordert erfolgreichen Port-Test';
+  }
+}
+
+function findFirstScannerTarget() {
+  const card = document.querySelector('.scanner-card');
+  if (!card) return null;
+  const testBtn = card.querySelector('[data-action="testPort"]');
+  if (testBtn) {
+    const ip = testBtn.dataset.ip;
+    const port = Number(testBtn.dataset.port || 0) || null;
+    if (ip) {
+      return { ip, port: port || 6000 };
+    }
+  }
+  return null;
+}
+
+async function handleProbe(btn) {
+  if (!btn) return;
+  if (!document.body.classList.contains('debug-pro')) return;
+  let target = probeTarget;
+  if (!target) {
+    target = findFirstScannerTarget();
+    if (target) {
+      probeTarget = target;
+      updateProbeButtonState();
+    }
+  }
+  if (!target || !target.ip) {
+    updateProbeUI({ status: 'FEHLER', message: 'Kein Ziel fuer Probe gesetzt', detected_type: '-', latency_ms: null });
+    return;
+  }
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Probe laeuft...';
+  updateProbeUI({ status: 'LAEUFT', latency_ms: null, detected_type: '-', message: 'Probe laeuft...' });
+  try {
+    const res = await fetch('/api/debug/printer/probe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ host: target.ip, port: Number(target.port) || 6000 }),
+    });
+    if (!res.ok) {
+      updateProbeUI({ status: 'FEHLER', latency_ms: null, detected_type: '-', message: 'Probe fehlgeschlagen' });
+      return;
+    }
+    const data = await res.json();
+    console.debug('[probe] response', data);
+    updateProbeUI(data);
+  } catch (err) {
+    updateProbeUI({ status: 'FEHLER', latency_ms: null, detected_type: '-', message: 'Probe fehlgeschlagen' });
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+
+function updateFingerprintUI(data) {
+  const statusEl = document.getElementById('proFingerprintStatus');
+  const typeEl = document.getElementById('proFingerprintType');
+  const confEl = document.getElementById('proFingerprintConfidence');
+  const portsEl = document.getElementById('proFingerprintPorts');
+  const statusText = data?.status || 'Unbekannt';
+  if (statusEl) statusEl.textContent = 'Status: ' + statusText;
+  if (typeEl) typeEl.textContent = 'Erkannt: ' + (data?.detected_type || '-');
+  if (confEl) confEl.textContent = 'Vertrauensgrad: ' + (data?.confidence != null ? data.confidence + '%' : '-');
+  if (portsEl) {
+    portsEl.innerHTML = '';
+    const ports = data?.ports && typeof data.ports === 'object' ? data.ports : {};
+    const keys = Object.keys(ports);
+    if (!keys.length) {
+      const li = document.createElement('li');
+      li.textContent = '-';
+      portsEl.appendChild(li);
+    } else {
+      keys.forEach(k => {
+        const info = ports[k] || {};
+        const reach = info.reachable === true ? 'reachable' : info.reachable === false ? 'not reachable' : '-';
+        const err = info.error_class || '-';
+        const msg = info.message || '';
+        const lat = Number.isFinite(info.latency_ms) ? ` (${info.latency_ms} ms)` : '';
+        const li = document.createElement('li');
+        li.textContent = `Port ${k}: ${reach}${lat}${msg ? ' - ' + msg : ''} [${err}]`;
+        portsEl.appendChild(li);
+      });
+    }
+  }
+}
+
+async function handleFingerprint(btn) {
+  if (!btn) return;
+  if (!document.body.classList.contains('debug-pro')) return;
+  let target = probeTarget || findFirstScannerTarget();
+  if (target) {
+    probeTarget = target;
+    updateProbeButtonState();
+  }
+  if (!target || !target.ip) {
+    updateFingerprintUI({ status: 'FEHLER', detected_type: '-', confidence: null, ports: {}, message: 'Kein Ziel fuer Fingerprint gesetzt' });
+    return;
+  }
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Fingerprint laeuft...';
+  updateFingerprintUI({ status: 'LAEUFT', detected_type: '-', confidence: null, ports: {}, message: 'Fingerprint laeuft...' });
+  try {
+    console.debug('[fingerprint] target', target);
+    const res = await fetch('/api/debug/printer/fingerprint', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // host reicht; ohne port prueft der Endpoint automatisch 8883/6000/7125
+      body: JSON.stringify({ host: target.ip }),
+    });
+    if (!res.ok) {
+      updateFingerprintUI({ status: 'FEHLER', detected_type: '-', confidence: null, ports: {}, message: 'Fingerprint fehlgeschlagen' });
+      return;
+    }
+    const data = await res.json();
+    updateFingerprintUI(data);
+  } catch (err) {
+    updateFingerprintUI({ status: 'FEHLER', detected_type: '-', confidence: null, ports: {}, message: 'Fingerprint fehlgeschlagen' });
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
   }
 }
 
@@ -444,7 +673,7 @@ async function handlePortTest(btn, card, ip, port) {
   if (runningPortTests.has(key)) return;
   runningPortTests.add(key);
   btn.disabled = true;
-  btn.textContent = '⏳ Teste...';
+  btn.textContent = 'Teste...';
   setScannerStatus(card, 'testing', 'TESTING', `Port ${port}: testing...`);
   const addBtn = card.querySelector('[data-action="addPrinter"]');
   try {
@@ -473,6 +702,8 @@ async function handlePortTest(btn, card, ip, port) {
     if (reachable) {
       const latText = Number.isFinite(latency) ? ` (${latency} ms)` : '';
       setScannerStatus(card, 'ok', 'OK', `Port ${port}: OK${latText}`);
+      probeTarget = { ip, port: Number(port) || 6000 };
+      updateProbeButtonState();
       if (addBtn) {
         addBtn.disabled = false;
         addBtn.classList.remove('btn-add-disabled', 'disabled');
@@ -499,7 +730,7 @@ async function handlePortTest(btn, card, ip, port) {
     }
   } finally {
     btn.disabled = false;
-    btn.textContent = '🔌 Test';
+    btn.textContent = 'Test';
     runningPortTests.delete(key);
   }
 }
@@ -546,13 +777,13 @@ async function handleAddPrinter(btn, card) {
       setScannerStatus(card, 'ok', 'OK', `Port ${port}: OK`);
     } else {
       btn.disabled = false;
-      btn.textContent = '➕ Zum System';
+      btn.textContent = 'Zum System';
       if (saveInfo) saveInfo.textContent = 'Fehler beim Speichern';
       setScannerStatus(card, 'failed', 'FAIL', `Port ${port}: error`);
     }
   } catch (err) {
     btn.disabled = false;
-    btn.textContent = '➕ Zum System';
+    btn.textContent = 'Zum System';
     if (saveInfo) saveInfo.textContent = 'Fehler beim Speichern';
     setScannerStatus(card, 'failed', 'FAIL', `Port ${port}: error`);
   }
@@ -570,9 +801,24 @@ function initScannerTab() {
 }
 
 function renderSystemHealth(statusData) {
-  const badge = $('#healthBadge');
-  const text = $('#healthText');
-  if (!badge || !text) return;
+  const badges = document.querySelectorAll('#healthBadge');
+  const texts = document.querySelectorAll('#healthText');
+  const reasonsEl = document.getElementById('healthReasons');
+  const whyBadge = document.getElementById('whyBadgePro');
+  const whyList = document.getElementById('whyReasonsPro');
+  const setHealth = (id, ok, warn) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = ok ? 'OK' : 'Attention';
+    el.classList.remove('health-ok', 'health-warn', 'health-bad');
+    if (ok) el.classList.add('health-ok');
+    else if (warn) el.classList.add('health-warn');
+    else el.classList.add('health-bad');
+  };
+  if (!badges.length || !texts.length) {
+    console.warn('[health] healthBadge or healthText not found in DOM');
+    return;
+  }
   const applyClass = (el, level) => {
     el.classList.remove('status-ok', 'status-warn', 'status-error', 'status-idle');
     if (level === 'ok') el.classList.add('status-ok');
@@ -580,28 +826,91 @@ function renderSystemHealth(statusData) {
     else el.classList.add('status-warn');
   };
   // ensure text has no status classes
-  text.classList.remove('status-ok', 'status-warn', 'status-error', 'status-idle');
+  texts.forEach(t => t.classList.remove('status-ok', 'status-warn', 'status-error', 'status-idle'));
   const api = (statusData?.api || '').toLowerCase();
   const db = (statusData?.db || '').toLowerCase();
   const ws = (statusData?.ws || '').toLowerCase();
   const mqtt = (statusData?.mqtt || '').toLowerCase();
 
-  let level = 'warning';
-  if (api === 'offline' || db === 'offline') {
-    level = 'critical';
-  } else if (api === 'online' && db === 'connected' && ws !== 'offline') {
-    level = 'ok';
-  } else {
-    level = 'warning';
-  }
+  const sysHealth = statusData?.systemHealth || {};
+  let level = sysHealth.status || 'warning';
   const textMap = {
     ok: 'All core services operational',
-    warning: 'Some services require attention',
+    warning: 'Warning due to service status or response time.',
     critical: 'Critical system services unavailable',
   };
-  applyClass(badge, level);
-  badge.textContent = level === 'ok' ? 'OK' : level === 'critical' ? 'Critical' : 'Warning';
-  text.textContent = textMap[level] || textMap.warning;
+  let reasons = Array.isArray(sysHealth.reasons) ? sysHealth.reasons.filter(Boolean) : [];
+  if (!statusData?.systemHealth) {
+    const avgMs = Number(statusData?.runtimeAvgMs);
+    const wsClients = Number(statusData?.wsClients);
+    if (Number.isFinite(avgMs) && avgMs >= 600) {
+      reasons.push(`High average response time (${Math.round(avgMs)} ms)`);
+    }
+    if (mqtt === 'disabled') {
+      reasons.push('MQTT service is disabled');
+    }
+    if (ws === 'listening' && (!Number.isFinite(wsClients) || wsClients === 0)) {
+      reasons.push('WebSocket has no active clients');
+    }
+    if (db === 'disconnected' || db === 'offline') {
+      reasons.push('Database is not connected');
+    }
+    level = reasons.length ? 'warning' : 'ok';
+  }
+  if (level === 'warning' && !reasons.length) {
+    reasons = ['Some services require attention'];
+  }
+  if (level === 'ok' && !reasons.length) {
+    reasons = ['System is operating normally'];
+  }
+
+  badges.forEach(b => {
+    applyClass(b, level);
+    b.textContent = level === 'ok' ? 'OK' : level === 'critical' ? 'Critical' : 'Warning';
+  });
+  texts.forEach(t => {
+    t.textContent = level === 'warning' && reasons.length ? reasons[0] : (textMap[level] || textMap.warning);
+  });
+
+  // Mirror to pro detail placeholders
+  setText('proApiStatus', statusData?.api || '-');
+  setText('proDbStatus', statusData?.db || '-');
+  setText('proWsStatus', statusData?.ws || '-');
+  setText('proMqttStatus', statusData?.mqtt || '-');
+
+  if (whyBadge && whyList) {
+    whyBadge.classList.remove('status-ok', 'status-warn', 'status-error', 'status-idle');
+    if (level === 'ok') whyBadge.classList.add('status-ok');
+    else if (level === 'critical') whyBadge.classList.add('status-error');
+    else whyBadge.classList.add('status-warn');
+
+    whyList.innerHTML = '';
+    let whyReasons = Array.isArray(reasons) ? [...reasons] : [];
+    if (level === 'ok') {
+      if (!whyReasons.length || whyReasons[0] === 'System is operating normally') {
+        whyReasons = ['Keine Warnungen aktiv.'];
+      }
+    } else {
+      if (!whyReasons.length) {
+        whyReasons = ['Warnung aktiv, Ursache nicht ermittelt.'];
+      }
+    }
+    whyReasons.forEach(msg => {
+      const li = document.createElement('li');
+      li.textContent = msg;
+      whyList.appendChild(li);
+    });
+  }
+
+  if (reasonsEl) {
+    reasonsEl.innerHTML = '';
+    reasons.forEach(msg => {
+      const li = document.createElement('li');
+      li.textContent = msg;
+      reasonsEl.appendChild(li);
+    });
+    reasonsEl.style.display = document.body.classList.contains('debug-pro') ? '' : 'none';
+  }
 }
 
 function startPolling() {
@@ -630,6 +939,16 @@ document.addEventListener('DOMContentLoaded', () => {
   initDebugModeUI();
   initTabs();
   startPolling();
+  const probeBtn = document.getElementById('proProbeStart');
+  if (probeBtn) {
+    probeBtn.addEventListener('click', () => handleProbe(probeBtn));
+    updateProbeButtonState();
+  }
+  const fpBtn = document.getElementById('proFingerprintStart');
+  if (fpBtn) {
+    fpBtn.addEventListener('click', () => handleFingerprint(fpBtn));
+    updateProbeButtonState();
+  }
   if (activeTab === 'performance') {
     startPerformancePolling();
   }

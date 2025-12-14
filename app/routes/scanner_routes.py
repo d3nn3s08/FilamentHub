@@ -39,6 +39,16 @@ class PrinterTestRequest(BaseModel):
     port: int = 6000
     timeout_ms: int = 1500
 
+class ProbeRequest(BaseModel):
+    host: str
+    port: int
+    kind: Optional[str] = None
+
+class FingerprintRequest(BaseModel):
+    host: str
+    port: Optional[int] = None
+    timeout_ms: int = 2000
+
 
 def _validate_ipv4(ip: str) -> str:
     try:
@@ -552,3 +562,230 @@ async def test_printer_port(payload: PrinterTestRequest):
             "detail": detail,
             "latency_ms": None
         }
+
+
+@debug_printer_router.post("/probe")
+async def probe_printer(payload: ProbeRequest):
+    host = (payload.host or "").strip()
+    if not host:
+        raise HTTPException(status_code=400, detail="host required")
+    port = payload.port
+    if not (1 <= port <= 65535):
+        raise HTTPException(status_code=400, detail="port must be between 1 and 65535")
+    timeout_s = 2.0
+    start = time.perf_counter()
+    detected_type = "unknown"
+    if port == 6000:
+        detected_type = "bambu"
+    elif port == 7125:
+        detected_type = "klipper"
+
+    http_status: Optional[int] = None
+
+    try:
+        with socket.create_connection((host, port), timeout=timeout_s):
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            # Optional: einfacher HTTP-Check fuer Moonraker (Port 7125)
+            if port == 7125:
+                try:
+                    import http.client
+                    conn = http.client.HTTPConnection(host, port=port, timeout=2.0)
+                    conn.request("GET", "/")
+                    resp = conn.getresponse()
+                    http_status = resp.status
+                    conn.close()
+                except Exception:
+                    http_status = None
+            else:
+                # TCP-Connect erfolgreich -> als OK markieren
+                http_status = 200
+    except socket.timeout:
+        return {
+            "ok": True,
+            "status": "FEHLER",
+            "latency_ms": None,
+            "detected_type": detected_type,
+            "http_status": None,
+            "error_class": "timeout",
+            "message": "Zeitüberschreitung beim Verbindungsaufbau",
+            "details": ["Host oder Port reagiert nicht innerhalb des Zeitlimits."]
+        }
+    except ConnectionRefusedError:
+        return {
+            "ok": True,
+            "status": "FEHLER",
+            "latency_ms": None,
+            "detected_type": detected_type,
+            "http_status": None,
+            "error_class": "refused",
+            "message": "Verbindung wurde abgelehnt",
+            "details": ["Dienst auf dem Zielport lehnt die Verbindung ab."]
+        }
+    except OSError as exc:
+        return {
+            "ok": True,
+            "status": "FEHLER",
+            "latency_ms": None,
+            "detected_type": detected_type,
+            "http_status": None,
+            "error_class": "dns" if isinstance(exc, socket.gaierror) else "unreachable",
+            "message": "Zielhost nicht erreichbar",
+            "details": ["Bitte Host/IP und Port prüfen."]
+        }
+    except Exception as exc:
+        detail = str(exc)[:120]
+        log.warning("Probe exception host=%s port=%s err=%s", host, port, detail)
+        raise HTTPException(status_code=500, detail="Probe fehlgeschlagen")
+
+    status_label = "OK"
+    message = "Verbindung erfolgreich aufgebaut"
+    error_class = "none"
+    details = []
+
+    # HTTP-Status auswerten, falls vorhanden
+    if http_status is not None and http_status != 200:
+        if http_status == 401:
+            status_label = "FEHLER"
+            error_class = "auth"
+            message = "Authentifizierung erforderlich oder fehlerhaft"
+            details.append("HTTP 401 vom Ziel erhalten.")
+        elif http_status == 404:
+            status_label = "FEHLER"
+            error_class = "not_found"
+            message = "Endpunkt existiert nicht (404)"
+            details.append("HTTP 404 vom Ziel erhalten.")
+        elif http_status >= 500:
+            status_label = "FEHLER"
+            error_class = "http_error"
+            message = "Interner Fehler am Drucker (HTTP 5xx)"
+            details.append(f"HTTP {http_status} vom Ziel erhalten.")
+        else:
+            status_label = "WARNUNG"
+            error_class = "http"
+            message = f"HTTP Status {http_status}"
+            details.append(f"HTTP {http_status} vom Ziel erhalten.")
+
+    if latency_ms > 600 and status_label == "OK":
+        status_label = "WARNUNG"
+        message = "Hohe Antwortzeit"
+        error_class = "slow"
+        details.append(f"Antwortzeit {latency_ms} ms")
+
+    return {
+        "ok": True,
+        "status": status_label,
+        "latency_ms": latency_ms,
+        "detected_type": detected_type,
+        "http_status": http_status,
+        "error_class": error_class,
+        "message": message,
+        "details": details
+    }
+
+def _fingerprint_port(host: str, port: int, timeout_s: float):
+    """
+    Versucht einen TCP-Connect und liefert ein kleines Statusobjekt zurueck.
+    Fuer 8883 wird ein Hinweis auf Auth/Cert gegeben, wenn Connect klappt.
+    """
+    start = time.perf_counter()
+    try:
+        with socket.create_connection((host, port), timeout=timeout_s):
+            latency_ms = int((time.perf_counter() - start) * 1000)
+            if port == 8883:
+                return {
+                    "reachable": True,
+                    "error_class": "auth_required",
+                    "message": "SSL/MQTT erfordert Login oder Zertifikat",
+                    "latency_ms": latency_ms
+                }
+            return {
+                "reachable": True,
+                "error_class": "ok",
+                "message": "Port erreichbar",
+                "latency_ms": latency_ms
+            }
+    except socket.timeout:
+        return {
+            "reachable": False,
+            "error_class": "timeout",
+            "message": "Zeitueberschreitung",
+            "latency_ms": None
+        }
+    except ConnectionRefusedError:
+        return {
+            "reachable": False,
+            "error_class": "refused",
+            "message": "Verbindung abgelehnt",
+            "latency_ms": None
+        }
+    except OSError:
+        return {
+            "reachable": False,
+            "error_class": "unreachable",
+            "message": "Zielhost nicht erreichbar",
+            "latency_ms": None
+        }
+    except Exception as exc:
+        detail = str(exc)[:120]
+        return {
+            "reachable": False,
+            "error_class": "error",
+            "message": detail,
+            "latency_ms": None
+        }
+
+@debug_printer_router.post("/fingerprint")
+async def fingerprint_printer(payload: FingerprintRequest):
+    """
+    Ermittelt Port-Erreichbarkeit fuer Bambu (8883/6000) und Klipper (7125).
+    Keine echten Credentials, nur TCP + Hinweis bei Auth-Anforderung.
+    """
+    host = (payload.host or "").strip()
+    if not host:
+        raise HTTPException(status_code=400, detail="host required")
+    timeout_ms = payload.timeout_ms
+    if timeout_ms < 200:
+        timeout_ms = 200
+    if timeout_ms > 5000:
+        timeout_ms = 5000
+    timeout_s = timeout_ms / 1000.0
+
+    ports_to_check = []
+    if payload.port:
+        ports_to_check.append(payload.port)
+    else:
+        ports_to_check.extend([8883, 6000, 7125])
+
+    results = {}
+    for p in ports_to_check:
+        results[str(p)] = _fingerprint_port(host, p, timeout_s)
+
+    detected_type = "unknown"
+    confidence = 30
+    if results.get("8883", {}).get("reachable"):
+        detected_type = "bambu"
+        confidence = 95 if results["8883"]["error_class"] == "auth_required" else 90
+    elif results.get("6000", {}).get("reachable"):
+        detected_type = "bambu"
+        confidence = 70
+    if results.get("7125", {}).get("reachable"):
+        detected_type = "klipper"
+        confidence = 95
+
+    # Status-Ableitung: OK wenn mindestens ein relevanter Port reachable ohne harte Fehler,
+    # WARNUNG wenn nur auth_required / http-warn, ERROR wenn keiner reachable.
+    status_label = "ERROR"
+    if any(v.get("reachable") for v in results.values()):
+        status_label = "OK"
+        # auth_required -> Warnung
+        if any(v.get("reachable") and v.get("error_class") == "auth_required" for v in results.values()):
+            status_label = "WARNUNG"
+
+    return {
+        "ok": True,
+        "status": status_label,
+        "detected_type": detected_type,
+        "confidence": confidence,
+        "ports": results,
+        "message": "Fingerprint abgeschlossen"
+    }

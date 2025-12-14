@@ -314,6 +314,114 @@ body {
     border: 1px solid rgba(34,197,94,0.35);
 }
 
+.pro-only {
+    display: none !important;
+}
+body.debug-pro .pro-only {
+    display: block !important;
+}
+.pro-only-inline {
+    display: none !important;
+}
+body.debug-pro .pro-only-inline {
+    display: inline-flex !important;
+}
+.health-details {
+    margin-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding-top: 10px;
+}
+.health-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+.health-ok { color: #4ade80; }
+.health-warn { color: #facc15; }
+.health-bad { color: #f87171; }
+.health-reasons {
+    margin-top: 10px;
+    padding-left: 18px;
+    color: #cdd6e0;
+    font-size: 13px;
+    line-height: 1.4;
+}
+.health-reasons li {
+    margin-bottom: 4px;
+    list-style: disc;
+    opacity: 0.9;
+}
+
+.pro-coming {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+.pro-coming .debug-card {
+    opacity: 0.6;
+    font-size: 0.95rem;
+}
+.scanner-pro-card {
+    position: relative;
+}
+.scanner-pro-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.pro-icon {
+    width: 20px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    color: #9ec5ff;
+    opacity: 0.9;
+}
+.pro-badge {
+    background: rgba(46, 204, 113, 0.18);
+    color: #9ef0c1;
+    border-radius: 8px;
+    padding: 2px 8px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    margin-left: auto;
+}
+.pro-disabled-card {
+    background: rgba(255,255,255,0.03);
+    border-color: rgba(255,255,255,0.08);
+    opacity: 0.9;
+    cursor: default;
+}
+.pro-disabled-card:hover {
+    border-color: rgba(255,255,255,0.08);
+    box-shadow: none;
+}
+.pro-btn-disabled {
+    background: rgba(255,255,255,0.08);
+    color: #cbd5e1;
+    border: 1px solid rgba(255,255,255,0.12);
+    cursor: not-allowed;
+}
+.pro-btn-disabled:hover {
+    background: rgba(255,255,255,0.08);
+    color: #cbd5e1;
+}
+.pro-hint {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    opacity: 0.85;
+}
+.pro-only-inline {
+    display: none;
+}
+body.debug-pro .pro-only-inline {
+    display: inline-flex;
+}
+
 /* Scanner Lite UI polish */
 .scanner-info {
     display: grid;
@@ -497,6 +605,33 @@ body {
     background: linear-gradient(135deg, #2e86de, #1b4f72);
     border-color: #2e86de;
     box-shadow: 0 8px 16px rgba(46,134,222,0.25);
+}
+
+/* Quick Scan Loading */
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+    padding-right: 36px; /* mehr Platz für Spinner */
+    color: #dfe8f3 !important;
+}
+.btn-loading::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    border: 2px solid rgba(255,255,255,0.55);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: btnSpin 0.7s linear infinite;
+    filter: drop-shadow(0 0 4px rgba(255,255,255,0.55));
+}
+
+@keyframes btnSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 @keyframes pulse {
