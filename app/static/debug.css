@@ -326,6 +326,24 @@ body.debug-pro .pro-only {
 body.debug-pro .pro-only-inline {
     display: inline-flex !important;
 }
+.debug-panel {
+    display: none;
+}
+.debug-panel.active-panel {
+    display: block;
+}
+.debug-panel:not(.active-panel) {
+    display: none !important;
+}
+body.debug-pro .debug-panel:not(.active-panel) {
+    display: none !important;
+}
+body.debug-pro .debug-panel.active-panel {
+    display: block !important;
+}
+body:not(.debug-pro) .debug-panel.pro-only {
+    display: none !important;
+}
 .health-details {
     margin-top: 10px;
     border-top: 1px solid rgba(255,255,255,0.08);

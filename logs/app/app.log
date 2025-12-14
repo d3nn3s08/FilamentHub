@@ -53697,3 +53697,679 @@ pip install python-multipart
 2025-12-13 21:03:24,983 [INFO] uvicorn.error - Application startup complete.
 2025-12-13 21:03:24,983 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
 2025-12-13 21:03:24,983 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-13 23:23:13,321 [INFO] uvicorn.error - Started server process [14344]
+2025-12-13 23:23:13,321 [INFO] uvicorn.error - Started server process [14344]
+2025-12-13 23:23:13,322 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-13 23:23:13,322 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-13 23:23:13,322 [INFO] uvicorn.error - Application startup complete.
+2025-12-13 23:23:13,322 [INFO] uvicorn.error - Application startup complete.
+2025-12-13 23:23:13,323 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-13 23:23:13,323 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 00:46:43,993 [ERROR] uvicorn.error - Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 409, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Denis\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\app\main.py", line 99, in runtime_metrics_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 125, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 111, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 391, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 290, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\app\main.py", line 266, in debug_page
+    return debug_templates.TemplateResponse(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        'debug.html',
+        ^^^^^^^^^^^^^
+        {'request': request, 'title': 'FilamentHub Debug Center', 'active_page': 'debug'},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\templating.py", line 209, in TemplateResponse
+    template = self.get_template(name)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\templating.py", line 132, in get_template
+    return self.env.get_template(name)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\loaders.py", line 126, in load
+    source, filename, uptodate = self.get_source(environment, name)
+                                 ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\loaders.py", line 215, in get_source
+    contents = f.read()
+  File "<frozen codecs>", line 325, in decode
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0x97 in position 13477: invalid start byte
+2025-12-14 00:46:43,993 [ERROR] uvicorn.error - Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 409, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Denis\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\app\main.py", line 99, in runtime_metrics_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 125, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 111, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 391, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 290, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\app\main.py", line 266, in debug_page
+    return debug_templates.TemplateResponse(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        'debug.html',
+        ^^^^^^^^^^^^^
+        {'request': request, 'title': 'FilamentHub Debug Center', 'active_page': 'debug'},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\templating.py", line 209, in TemplateResponse
+    template = self.get_template(name)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\templating.py", line 132, in get_template
+    return self.env.get_template(name)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\loaders.py", line 126, in load
+    source, filename, uptodate = self.get_source(environment, name)
+                                 ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\loaders.py", line 215, in get_source
+    contents = f.read()
+  File "<frozen codecs>", line 325, in decode
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0x97 in position 13477: invalid start byte
+2025-12-14 00:47:04,178 [ERROR] fastapi - Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+
+2025-12-14 00:48:21,739 [INFO] uvicorn.error - Started server process [18152]
+2025-12-14 00:48:21,739 [INFO] uvicorn.error - Started server process [18152]
+2025-12-14 00:48:21,739 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 00:48:21,739 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 00:48:21,740 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 00:48:21,740 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 00:48:21,740 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 00:48:21,740 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 00:48:27,259 [ERROR] uvicorn.error - Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 409, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Denis\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\app\main.py", line 99, in runtime_metrics_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 125, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 111, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 391, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 290, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\app\main.py", line 266, in debug_page
+    return debug_templates.TemplateResponse(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        'debug.html',
+        ^^^^^^^^^^^^^
+        {'request': request, 'title': 'FilamentHub Debug Center', 'active_page': 'debug'},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\templating.py", line 209, in TemplateResponse
+    template = self.get_template(name)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\templating.py", line 132, in get_template
+    return self.env.get_template(name)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\loaders.py", line 126, in load
+    source, filename, uptodate = self.get_source(environment, name)
+                                 ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\loaders.py", line 215, in get_source
+    contents = f.read()
+  File "<frozen codecs>", line 325, in decode
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0x97 in position 13477: invalid start byte
+2025-12-14 00:48:27,259 [ERROR] uvicorn.error - Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 409, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.scope, self.receive, self.send
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\applications.py", line 1134, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 191, in __call__
+    with recv_stream, send_stream, collapse_excgroups():
+                                   ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Denis\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_utils.py", line 85, in collapse_excgroups
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 193, in __call__
+    response = await self.dispatch_func(request, call_next)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\app\main.py", line 99, in runtime_metrics_middleware
+    response = await call_next(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 168, in call_next
+    raise app_exc from app_exc.__cause__ or app_exc.__context__
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\base.py", line 144, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\routing.py", line 290, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 125, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 111, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 391, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\fastapi\routing.py", line 290, in run_endpoint_function
+    return await dependant.call(**values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\app\main.py", line 266, in debug_page
+    return debug_templates.TemplateResponse(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        'debug.html',
+        ^^^^^^^^^^^^^
+        {'request': request, 'title': 'FilamentHub Debug Center', 'active_page': 'debug'},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\templating.py", line 209, in TemplateResponse
+    template = self.get_template(name)
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\starlette\templating.py", line 132, in get_template
+    return self.env.get_template(name)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\loaders.py", line 126, in load
+    source, filename, uptodate = self.get_source(environment, name)
+                                 ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub\.venv\Lib\site-packages\jinja2\loaders.py", line 215, in get_source
+    contents = f.read()
+  File "<frozen codecs>", line 325, in decode
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0x97 in position 13477: invalid start byte
+2025-12-14 00:49:47,415 [INFO] uvicorn.error - Started server process [9140]
+2025-12-14 00:49:47,415 [INFO] uvicorn.error - Started server process [9140]
+2025-12-14 00:49:47,415 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 00:49:47,415 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 00:49:47,416 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 00:49:47,416 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 00:49:47,416 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 00:49:47,416 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 00:53:52,541 [INFO] uvicorn.error - Started server process [17452]
+2025-12-14 00:53:52,541 [INFO] uvicorn.error - Started server process [17452]
+2025-12-14 00:53:52,541 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 00:53:52,541 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 00:53:52,542 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 00:53:52,542 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 00:53:52,542 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 00:53:52,542 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 02:19:02,930 [INFO] uvicorn.error - Shutting down
+2025-12-14 02:19:02,930 [INFO] uvicorn.error - Shutting down
+2025-12-14 02:19:03,041 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 02:19:03,041 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 02:19:03,041 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 02:19:03,041 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 02:19:03,041 [INFO] uvicorn.error - Finished server process [17452]
+2025-12-14 02:19:03,041 [INFO] uvicorn.error - Finished server process [17452]
+2025-12-14 02:19:21,213 [INFO] uvicorn.error - Started server process [24692]
+2025-12-14 02:19:21,213 [INFO] uvicorn.error - Started server process [24692]
+2025-12-14 02:19:21,213 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 02:19:21,213 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 02:19:21,214 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 02:19:21,214 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 02:19:21,214 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 02:19:21,214 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 12:00:09,196 [INFO] uvicorn.error - Started server process [5336]
+2025-12-14 12:00:09,196 [INFO] uvicorn.error - Started server process [5336]
+2025-12-14 12:00:09,197 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 12:00:09,197 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 12:00:09,197 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 12:00:09,197 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 12:00:09,198 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 12:00:09,198 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 13:22:33,138 [INFO] admin.audit - {"ts": "2025-12-14T12:22:33Z", "event": "admin_access_denied", "details": {"path": "/admin/notifications", "ip": "127.0.0.1"}}
+2025-12-14 13:22:35,735 [INFO] admin.audit - {"ts": "2025-12-14T12:22:35Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
+2025-12-14 13:22:35,746 [INFO] admin.audit - {"ts": "2025-12-14T12:22:35Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-14 13:22:35,779 [INFO] admin.audit - {"ts": "2025-12-14T12:22:35Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
+2025-12-14 14:14:21,900 [INFO] uvicorn.error - Shutting down
+2025-12-14 14:14:21,900 [INFO] uvicorn.error - Shutting down
+2025-12-14 14:14:22,000 [INFO] uvicorn.error - Waiting for connections to close. (CTRL+C to force quit)
+2025-12-14 14:14:22,000 [INFO] uvicorn.error - Waiting for connections to close. (CTRL+C to force quit)
+2025-12-14 14:14:24,483 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 14:14:24,483 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 14:14:24,484 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 14:14:24,484 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 14:14:24,484 [INFO] uvicorn.error - Finished server process [5336]
+2025-12-14 14:14:24,484 [INFO] uvicorn.error - Finished server process [5336]
+2025-12-14 14:14:37,607 [INFO] uvicorn.error - Started server process [15748]
+2025-12-14 14:14:37,607 [INFO] uvicorn.error - Started server process [15748]
+2025-12-14 14:14:37,608 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 14:14:37,608 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 14:14:37,608 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 14:14:37,608 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 14:14:37,609 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 14:14:37,609 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 14:14:51,941 [WARNING] app.routes.config_routes - Config fallback applied for debug.runtime.enabled
+2025-12-14 14:14:51,942 [WARNING] app.routes.config_routes - Config fallback applied for debug.runtime.poll_interval_ms
+2025-12-14 14:14:51,942 [WARNING] app.routes.config_routes - Config fallback applied for scanner.pro.deep_probe
+2025-12-14 14:14:51,942 [WARNING] app.routes.config_routes - Config fallback applied for scanner.pro.fingerprint_enabled
+2025-12-14 14:14:51,942 [WARNING] app.routes.config_routes - Config fallback applied for fingerprint.enabled
+2025-12-14 14:14:51,942 [WARNING] app.routes.config_routes - Config fallback applied for fingerprint.timeout_ms
+2025-12-14 14:15:20,634 [WARNING] app.routes.config_routes - Config fallback applied for debug.runtime.enabled
+2025-12-14 14:15:20,635 [WARNING] app.routes.config_routes - Config fallback applied for scanner.pro.deep_probe
+2025-12-14 14:15:20,635 [WARNING] app.routes.config_routes - Config fallback applied for scanner.pro.fingerprint_enabled
+2025-12-14 14:15:20,635 [WARNING] app.routes.config_routes - Config fallback applied for fingerprint.enabled
+2025-12-14 14:15:52,792 [WARNING] app.routes.config_routes - Config fallback applied for debug.runtime.enabled
+2025-12-14 14:15:52,793 [WARNING] app.routes.config_routes - Config fallback applied for scanner.pro.deep_probe
+2025-12-14 14:15:52,793 [WARNING] app.routes.config_routes - Config fallback applied for scanner.pro.fingerprint_enabled
+2025-12-14 14:15:52,793 [WARNING] app.routes.config_routes - Config fallback applied for fingerprint.enabled
+2025-12-14 14:15:57,227 [WARNING] app.routes.config_routes - Config fallback applied for debug.runtime.enabled
+2025-12-14 14:15:57,227 [WARNING] app.routes.config_routes - Config fallback applied for scanner.pro.deep_probe
+2025-12-14 14:15:57,227 [WARNING] app.routes.config_routes - Config fallback applied for scanner.pro.fingerprint_enabled
+2025-12-14 14:15:57,227 [WARNING] app.routes.config_routes - Config fallback applied for fingerprint.enabled
+2025-12-14 14:18:12,813 [INFO] uvicorn.error - Shutting down
+2025-12-14 14:18:12,813 [INFO] uvicorn.error - Shutting down
+2025-12-14 14:18:12,921 [INFO] uvicorn.error - Waiting for connections to close. (CTRL+C to force quit)
+2025-12-14 14:18:12,921 [INFO] uvicorn.error - Waiting for connections to close. (CTRL+C to force quit)
+2025-12-14 14:18:16,464 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 14:18:16,464 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 14:18:16,465 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 14:18:16,465 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 14:18:16,465 [INFO] uvicorn.error - Finished server process [15748]
+2025-12-14 14:18:16,465 [INFO] uvicorn.error - Finished server process [15748]
+2025-12-14 14:18:28,591 [INFO] uvicorn.error - Started server process [8392]
+2025-12-14 14:18:28,591 [INFO] uvicorn.error - Started server process [8392]
+2025-12-14 14:18:28,591 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 14:18:28,591 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 14:18:28,592 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 14:18:28,592 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 14:18:28,592 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 14:18:28,592 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 14:19:30,389 [INFO] uvicorn.error - Shutting down
+2025-12-14 14:19:30,389 [INFO] uvicorn.error - Shutting down
+2025-12-14 14:19:30,496 [INFO] uvicorn.error - Waiting for connections to close. (CTRL+C to force quit)
+2025-12-14 14:19:30,496 [INFO] uvicorn.error - Waiting for connections to close. (CTRL+C to force quit)
+2025-12-14 14:19:31,459 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 14:19:31,459 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 14:19:31,459 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 14:19:31,459 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 14:19:31,459 [INFO] uvicorn.error - Finished server process [8392]
+2025-12-14 14:19:31,459 [INFO] uvicorn.error - Finished server process [8392]
+2025-12-14 14:19:35,430 [INFO] uvicorn.error - Started server process [13288]
+2025-12-14 14:19:35,430 [INFO] uvicorn.error - Started server process [13288]
+2025-12-14 14:19:35,431 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 14:19:35,431 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 14:19:35,431 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 14:19:35,431 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 14:19:35,432 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 14:19:35,432 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 14:23:08,393 [INFO] uvicorn.error - Shutting down
+2025-12-14 14:23:08,393 [INFO] uvicorn.error - Shutting down
+2025-12-14 14:23:08,494 [INFO] uvicorn.error - Waiting for connections to close. (CTRL+C to force quit)
+2025-12-14 14:23:08,494 [INFO] uvicorn.error - Waiting for connections to close. (CTRL+C to force quit)
+2025-12-14 14:23:12,493 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 14:23:12,493 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 14:23:12,493 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 14:23:12,493 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 14:23:12,494 [INFO] uvicorn.error - Finished server process [13288]
+2025-12-14 14:23:12,494 [INFO] uvicorn.error - Finished server process [13288]
+2025-12-14 14:23:17,703 [INFO] uvicorn.error - Started server process [18596]
+2025-12-14 14:23:17,703 [INFO] uvicorn.error - Started server process [18596]
+2025-12-14 14:23:17,704 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 14:23:17,704 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 14:23:17,704 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 14:23:17,704 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 14:23:17,705 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 14:23:17,705 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 14:29:26,854 [INFO] uvicorn.error - Shutting down
+2025-12-14 14:29:26,854 [INFO] uvicorn.error - Shutting down
+2025-12-14 14:29:26,967 [INFO] uvicorn.error - Waiting for connections to close. (CTRL+C to force quit)
+2025-12-14 14:29:26,967 [INFO] uvicorn.error - Waiting for connections to close. (CTRL+C to force quit)
+2025-12-14 14:29:30,610 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 14:29:30,610 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 14:29:30,611 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 14:29:30,611 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 14:29:30,611 [INFO] uvicorn.error - Finished server process [18596]
+2025-12-14 14:29:30,611 [INFO] uvicorn.error - Finished server process [18596]
+2025-12-14 14:29:40,991 [INFO] uvicorn.error - Started server process [18688]
+2025-12-14 14:29:40,991 [INFO] uvicorn.error - Started server process [18688]
+2025-12-14 14:29:40,991 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 14:29:40,991 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 14:29:40,991 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 14:29:40,991 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 14:29:40,992 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 14:29:40,992 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 19:20:45,351 [INFO] uvicorn.error - Shutting down
+2025-12-14 19:20:45,351 [INFO] uvicorn.error - Shutting down
+2025-12-14 19:20:45,461 [INFO] uvicorn.error - Waiting for connections to close. (CTRL+C to force quit)
+2025-12-14 19:20:45,461 [INFO] uvicorn.error - Waiting for connections to close. (CTRL+C to force quit)
+2025-12-14 19:20:46,226 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 19:20:46,226 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 19:20:46,227 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 19:20:46,227 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 19:20:46,227 [INFO] uvicorn.error - Finished server process [18688]
+2025-12-14 19:20:46,227 [INFO] uvicorn.error - Finished server process [18688]
+2025-12-14 19:20:50,692 [INFO] uvicorn.error - Started server process [21740]
+2025-12-14 19:20:50,692 [INFO] uvicorn.error - Started server process [21740]
+2025-12-14 19:20:50,693 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 19:20:50,693 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 19:20:50,693 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 19:20:50,693 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 19:20:50,693 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 19:20:50,693 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 19:24:42,132 [INFO] uvicorn.error - Shutting down
+2025-12-14 19:24:42,132 [INFO] uvicorn.error - Shutting down
+2025-12-14 19:24:42,241 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 19:24:42,241 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 19:24:42,241 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 19:24:42,241 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 19:24:42,241 [INFO] uvicorn.error - Finished server process [21740]
+2025-12-14 19:24:42,241 [INFO] uvicorn.error - Finished server process [21740]
+2025-12-14 19:24:50,157 [INFO] uvicorn.error - Started server process [9264]
+2025-12-14 19:24:50,157 [INFO] uvicorn.error - Started server process [9264]
+2025-12-14 19:24:50,158 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 19:24:50,158 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 19:24:50,158 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 19:24:50,158 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 19:24:50,159 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 19:24:50,159 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 19:25:04,669 [INFO] admin.audit - {"ts": "2025-12-14T18:25:04Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-14 19:28:40,545 [INFO] uvicorn.error - Shutting down
+2025-12-14 19:28:40,545 [INFO] uvicorn.error - Shutting down
+2025-12-14 19:28:40,655 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 19:28:40,655 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 19:28:40,655 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 19:28:40,655 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 19:28:40,656 [INFO] uvicorn.error - Finished server process [9264]
+2025-12-14 19:28:40,656 [INFO] uvicorn.error - Finished server process [9264]
+2025-12-14 19:28:49,304 [INFO] uvicorn.error - Started server process [4360]
+2025-12-14 19:28:49,304 [INFO] uvicorn.error - Started server process [4360]
+2025-12-14 19:28:49,304 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 19:28:49,304 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 19:28:49,305 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 19:28:49,305 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 19:28:49,305 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 19:28:49,305 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 20:41:10,963 [INFO] uvicorn.error - Shutting down
+2025-12-14 20:41:10,963 [INFO] uvicorn.error - Shutting down
+2025-12-14 20:41:11,067 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 20:41:11,067 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 20:41:11,071 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 20:41:11,071 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 20:41:11,071 [INFO] uvicorn.error - Finished server process [4360]
+2025-12-14 20:41:11,071 [INFO] uvicorn.error - Finished server process [4360]
+2025-12-14 20:41:16,275 [INFO] uvicorn.error - Started server process [17480]
+2025-12-14 20:41:16,275 [INFO] uvicorn.error - Started server process [17480]
+2025-12-14 20:41:16,275 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 20:41:16,275 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 20:41:16,276 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 20:41:16,276 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 20:41:16,276 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 20:41:16,276 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 20:49:07,800 [ERROR] fastapi - Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+
+2025-12-14 20:49:07,865 [INFO] App - FilamentHub Logging-System initialisiert.
+2025-12-14 20:49:07,865 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}
+2025-12-14 20:54:52,876 [INFO] uvicorn.error - Started server process [22024]
+2025-12-14 20:54:52,876 [INFO] uvicorn.error - Started server process [22024]
+2025-12-14 20:54:52,876 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 20:54:52,876 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 20:54:52,877 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 20:54:52,877 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 20:54:52,877 [ERROR] uvicorn.error - [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8085): [winerror 10048] normalerweise darf jede socketadresse (protokoll, netzwerkadresse oder anschluss) nur jeweils einmal verwendet werden
+2025-12-14 20:54:52,877 [ERROR] uvicorn.error - [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8085): [winerror 10048] normalerweise darf jede socketadresse (protokoll, netzwerkadresse oder anschluss) nur jeweils einmal verwendet werden
+2025-12-14 20:54:52,877 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 20:54:52,877 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 20:54:52,878 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 20:54:52,878 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 20:56:04,625 [INFO] uvicorn.error - Started server process [21372]
+2025-12-14 20:56:04,625 [INFO] uvicorn.error - Started server process [21372]
+2025-12-14 20:56:04,625 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 20:56:04,625 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 20:56:04,626 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 20:56:04,626 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 20:56:04,626 [ERROR] uvicorn.error - [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8085): [winerror 10048] normalerweise darf jede socketadresse (protokoll, netzwerkadresse oder anschluss) nur jeweils einmal verwendet werden
+2025-12-14 20:56:04,626 [ERROR] uvicorn.error - [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8085): [winerror 10048] normalerweise darf jede socketadresse (protokoll, netzwerkadresse oder anschluss) nur jeweils einmal verwendet werden
+2025-12-14 20:56:04,626 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 20:56:04,626 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-14 20:56:04,627 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 20:56:04,627 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-14 20:58:35,080 [INFO] uvicorn.error - Started server process [23804]
+2025-12-14 20:58:35,080 [INFO] uvicorn.error - Started server process [23804]
+2025-12-14 20:58:35,080 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 20:58:35,080 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 20:58:35,080 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 20:58:35,080 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 20:58:35,081 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 20:58:35,081 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 21:11:06,206 [ERROR] fastapi - Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+
+2025-12-14 21:11:26,483 [INFO] uvicorn.error - Started server process [676]
+2025-12-14 21:11:26,483 [INFO] uvicorn.error - Started server process [676]
+2025-12-14 21:11:26,483 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 21:11:26,483 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-14 21:11:26,484 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 21:11:26,484 [INFO] uvicorn.error - Application startup complete.
+2025-12-14 21:11:26,485 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-14 21:11:26,485 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)

@@ -7,6 +7,8 @@ import os
 router = APIRouter(prefix="/api/debug", tags=["Debug & Config"])
 
 
+DEPRECATED_LOGGING_RESPONSE = {"deprecated": True, "use": "/api/config"}
+
 # -----------------------------
 # MODELS
 # -----------------------------
@@ -66,9 +68,11 @@ def get_db_tables():
 
 @router.get("/config/logging")
 def get_logging_config():
-    """Gibt die Logging-Konfiguration zurück."""
-    config = load_config()
-    return config.get("logging", {})
+    """Gibt die Logging-Konfiguration zur?ck."""
+    return DEPRECATED_LOGGING_RESPONSE
+
+
+@router.get("/config")
 
 
 @router.get("/config")
@@ -80,81 +84,28 @@ def get_full_config():
 @router.post("/config/logging/toggle")
 def toggle_logging_module(data: LogModuleToggle):
     """Schaltet ein Logging-Modul an/aus."""
-    config = load_config()
-    if "logging" not in config or "modules" not in config["logging"]:
-        raise HTTPException(status_code=400, detail="Logging-Konfiguration fehlt")
+    return DEPRECATED_LOGGING_RESPONSE
 
-    modules = config["logging"]["modules"]
-    if data.module not in modules:
-        raise HTTPException(status_code=404, detail=f"Modul '{data.module}' nicht gefunden")
 
-    modules[data.module]["enabled"] = data.enabled
-    save_config(config)
-    return {
-        "success": True,
-        "module": data.module,
-        "enabled": data.enabled,
-        "message": f"Modul '{data.module}' wurde {'aktiviert' if data.enabled else 'deaktiviert'}",
-    }
+@router.post("/config/logging/level")
 
 
 @router.post("/config/logging/level")
 def update_log_level(data: LogLevelUpdate):
     """Setzt das globale Log-Level (DEBUG/INFO/WARNING/ERROR/CRITICAL)."""
-    allowed = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-    level = data.level.upper()
-    if level not in allowed:
-        raise HTTPException(status_code=400, detail=f"Ungültiges Log-Level. Erlaubt: {', '.join(allowed)}")
+    return DEPRECATED_LOGGING_RESPONSE
 
-    config = load_config()
-    config["logging"]["level"] = level
-    save_config(config)
-    return {"success": True, "level": level, "message": f"Log-Level auf '{level}' gesetzt. Neustart empfohlen."}
+
+@router.post("/config/logging/rotation")
 
 
 @router.post("/config/logging/rotation")
 def update_log_rotation(data: LogRotationUpdate):
     """Aktualisiert Logrotation (max_size_mb, backup_count) und passt MQTT-Logger an."""
-    config = load_config()
-    if "logging" not in config:
-        config["logging"] = {}
-    config["logging"]["max_size_mb"] = data.max_size_mb
-    config["logging"]["backup_count"] = data.backup_count
-    save_config(config)
+    return DEPRECATED_LOGGING_RESPONSE
 
-    try:
-        import logging
-        from logging.handlers import RotatingFileHandler
-        from app.routes.mqtt_routes import mqtt_message_logger
 
-        for handler in mqtt_message_logger.handlers[:]:
-            mqtt_message_logger.removeHandler(handler)
-            handler.close()
-
-        logfile = "logs/mqtt/mqtt_messages.log"
-        os.makedirs(os.path.dirname(logfile), exist_ok=True)
-        new_handler = RotatingFileHandler(
-            logfile,
-            maxBytes=data.max_size_mb * 1024 * 1024,
-            backupCount=data.backup_count,
-            encoding="utf-8",
-        )
-        formatter = logging.Formatter("%(asctime)s | %(message)s")
-        new_handler.setFormatter(formatter)
-        mqtt_message_logger.addHandler(new_handler)
-        return {
-            "success": True,
-            "max_size_mb": data.max_size_mb,
-            "backup_count": data.backup_count,
-            "message": f"Logger aktualisiert: max {data.max_size_mb} MB, {data.backup_count} Backups",
-        }
-    except Exception as e:
-        return {
-            "success": True,
-            "max_size_mb": data.max_size_mb,
-            "backup_count": data.backup_count,
-            "message": f"Config gespeichert, aber Logger-Update fehlgeschlagen: {e}. Neustart empfohlen.",
-        }
+@router.get("/modules/status")
 
 
 @router.get("/modules/status")

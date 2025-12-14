@@ -335,54 +335,12 @@ def docker_compose_ps():
 @router.get("/logs/list")
 def list_log_files():
     """Listet alle Log-Dateien auf"""
-    logs_root = "logs"
-    log_files = {}
-    
-    if not os.path.exists(logs_root):
-        return {"log_files": {}, "total": 0}
-    
-    for module in os.listdir(logs_root):
-        module_path = os.path.join(logs_root, module)
-        if os.path.isdir(module_path):
-            files = []
-            for file in os.listdir(module_path):
-                if file.endswith('.log'):
-                    file_path = os.path.join(module_path, file)
-                    size = os.path.getsize(file_path)
-                    files.append({
-                        "name": file,
-                        "size_kb": round(size / 1024, 2),
-                        "path": file_path
-                    })
-            log_files[module] = files
-    
-    total = sum(len(files) for files in log_files.values())
-    return {"log_files": log_files, "total": total}
-
+    return {"deprecated": True, "use": "/api/debug/logs"}
 
 @router.post("/logs/clear/{module}")
 async def clear_module_logs(module: str):
-    """Löscht alle Logs eines Moduls"""
-    module_path = os.path.join("logs", module)
-    
-    if not os.path.exists(module_path):
-        raise HTTPException(status_code=404, detail=f"Modul '{module}' nicht gefunden")
-    
-    deleted = 0
-    for file in os.listdir(module_path):
-        if file.endswith('.log'):
-            try:
-                os.remove(os.path.join(module_path, file))
-                deleted += 1
-            except Exception as e:
-                pass
-    
-    return {
-        "success": True,
-        "message": f"{deleted} Log-Dateien gelöscht",
-        "deleted_count": deleted
-    }
-
+    """Loescht alle Logs eines Moduls"""
+    return {"deprecated": True, "use": "/api/debug/logs"}
 
 # -----------------------------
 # BACKUP

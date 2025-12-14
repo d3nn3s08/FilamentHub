@@ -7,13 +7,19 @@ import asyncio
 import time
 import logging
 from typing import List, Dict, Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 import ipaddress
+import json
+from sqlmodel import Session, select
+from app.database import get_session
+from app.models.settings import Setting
 
 router = APIRouter(prefix="/api/scanner", tags=["Printer Scanner"])
 debug_printer_router = APIRouter(prefix="/api/debug/printer", tags=["Debug Printer"])
 log = logging.getLogger(__name__)
+DEFAULT_FINGERPRINT_PORTS = [8883, 6000, 7125]
+DEFAULT_FINGERPRINT_TIMEOUT_MS = 1500
 
 
 # -----------------------------
@@ -695,7 +701,14 @@ def _fingerprint_port(host: str, port: int, timeout_s: float):
                 return {
                     "reachable": True,
                     "error_class": "auth_required",
-                    "message": "SSL/MQTT erfordert Login oder Zertifikat",
+                    "message": "SSL/MQTT erreichbar, Login/Zertifikat erforderlich",
+                    "latency_ms": latency_ms
+                }
+            elif port == 7125:
+                return {
+                    "reachable": True,
+                    "error_class": "ok",
+                    "message": "Port erreichbar (Klipper/Moonraker)",
                     "latency_ms": latency_ms
                 }
             return {
@@ -734,50 +747,127 @@ def _fingerprint_port(host: str, port: int, timeout_s: float):
             "latency_ms": None
         }
 
+def _load_settings_map(session: Session) -> Dict[str, str]:
+    data: Dict[str, str] = {}
+    for row in session.exec(select(Setting)).all():
+        data[row.key] = row.value
+    return data
+
+
+def _get_bool(settings: Dict[str, str], key: str, default: bool) -> bool:
+    val = settings.get(key)
+    if val is None:
+        return default
+    return str(val).lower() in {"1", "true", "yes", "on"}
+
+
+def _get_int(settings: Dict[str, str], key: str, default: int) -> int:
+    val = settings.get(key)
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return default
+
+
+def _get_ports(settings: Dict[str, str], key: str, default_ports: List[int]) -> List[int]:
+    val = settings.get(key)
+    if not val:
+        return default_ports
+    raw_val = val
+    if isinstance(val, str) and val.strip().startswith("["):
+        try:
+            parsed = json.loads(val)
+            raw_val = parsed
+        except Exception:
+            raw_val = val
+    if isinstance(raw_val, list):
+        parts = raw_val
+    else:
+        parts = [p.strip() for p in str(raw_val).split(",")]
+    ports: List[int] = []
+    for p in parts:
+        try:
+            port_int = int(p)
+            if 1 <= port_int <= 65535:
+                ports.append(port_int)
+        except ValueError:
+            continue
+    return ports or default_ports
+
+
 @debug_printer_router.post("/fingerprint")
-async def fingerprint_printer(payload: FingerprintRequest):
+async def fingerprint_printer(payload: FingerprintRequest, session: Session = Depends(get_session)):
     """
     Ermittelt Port-Erreichbarkeit fuer Bambu (8883/6000) und Klipper (7125).
     Keine echten Credentials, nur TCP + Hinweis bei Auth-Anforderung.
     """
+    settings_map = _load_settings_map(session)
+    pro_enabled = _get_bool(settings_map, "scanner.pro.fingerprint_enabled", False)
+    if not pro_enabled:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "ok": False,
+                "error": "pro_feature_disabled",
+                "message": "Device fingerprinting is a Pro feature",
+            },
+        )
+
+    fingerprint_enabled = _get_bool(settings_map, "fingerprint.enabled", False)
+    if not fingerprint_enabled:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "ok": False,
+                "error": "pro_feature_disabled",
+                "message": "Device fingerprinting is a Pro feature",
+            },
+        )
+
     host = (payload.host or "").strip()
     if not host:
         raise HTTPException(status_code=400, detail="host required")
-    timeout_ms = payload.timeout_ms
-    if timeout_ms < 200:
-        timeout_ms = 200
-    if timeout_ms > 5000:
-        timeout_ms = 5000
+    timeout_ms_setting = _get_int(settings_map, "fingerprint.timeout_ms", DEFAULT_FINGERPRINT_TIMEOUT_MS)
+    timeout_ms = payload.timeout_ms or timeout_ms_setting
+    if timeout_ms < 500:
+        timeout_ms = 500
     timeout_s = timeout_ms / 1000.0
 
-    ports_to_check = []
+    ports_to_check: List[int] = []
     if payload.port:
         ports_to_check.append(payload.port)
     else:
-        ports_to_check.extend([8883, 6000, 7125])
+        ports_to_check.extend(_get_ports(settings_map, "fingerprint.ports", DEFAULT_FINGERPRINT_PORTS))
 
     results = {}
+    results_list = []
     for p in ports_to_check:
-        results[str(p)] = _fingerprint_port(host, p, timeout_s)
+        res = _fingerprint_port(host, p, timeout_s)
+        results[str(p)] = res
+        results_list.append(
+            {
+                "port": p,
+                "status": res.get("error_class", "unreachable"),
+                "message": res.get("message"),
+                "latency_ms": res.get("latency_ms"),
+            }
+        )
 
     detected_type = "unknown"
-    confidence = 30
-    if results.get("8883", {}).get("reachable"):
-        detected_type = "bambu"
-        confidence = 95 if results["8883"]["error_class"] == "auth_required" else 90
-    elif results.get("6000", {}).get("reachable"):
-        detected_type = "bambu"
-        confidence = 70
+    confidence = 10
     if results.get("7125", {}).get("reachable"):
         detected_type = "klipper"
         confidence = 95
+    elif results.get("6000", {}).get("reachable"):
+        detected_type = "bambu"
+        confidence = 90
+    elif results.get("8883", {}).get("reachable"):
+        detected_type = "bambu"
+        confidence = 70
 
-    # Status-Ableitung: OK wenn mindestens ein relevanter Port reachable ohne harte Fehler,
-    # WARNUNG wenn nur auth_required / http-warn, ERROR wenn keiner reachable.
     status_label = "ERROR"
     if any(v.get("reachable") for v in results.values()):
         status_label = "OK"
-        # auth_required -> Warnung
         if any(v.get("reachable") and v.get("error_class") == "auth_required" for v in results.values()):
             status_label = "WARNUNG"
 
@@ -787,5 +877,6 @@ async def fingerprint_printer(payload: FingerprintRequest):
         "detected_type": detected_type,
         "confidence": confidence,
         "ports": results,
+        "results": results_list,
         "message": "Fingerprint abgeschlossen"
     }

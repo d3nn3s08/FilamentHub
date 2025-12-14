@@ -29,98 +29,15 @@ mqtt_ws_clients = set()
 async def websocket_logs(websocket: WebSocket, module: str):
 
     await websocket.accept()
-
-    log_file_map = {
-
-        "app": "logs/app/app.log",
-
-        "bambu": "logs/bambu/bambu.log",
-
-        "klipper": "logs/klipper/klipper.log",
-
-        "errors": "logs/errors/errors.log",
-
-        "mqtt": "logs/mqtt/mqtt_messages.log"
-
-    }
-
-    log_file = log_file_map.get(module)
-
     try:
-
-        # Optional: nur die letzten N Zeilen senden (tail). Default: 0 = keine Historie
-
-        tail_param = websocket.query_params.get("tail", "0") if hasattr(websocket, "query_params") else "0"
-
-        try:
-
-            tail = int(tail_param)
-
-        except Exception:
-
-            tail = 0
-
-
-
-        last_size = 0
-
-        if log_file and os.path.exists(log_file):
-
-            # Falls tail > 0 angefordert wurde, sende letzte N Zeilen; ansonsten �berspringe Historie
-
-            if tail > 0:
-
-                try:
-
-                    with open(log_file, "r", encoding="utf-8") as f:
-
-                        dq = deque(f, maxlen=tail)
-
-                    for line in dq:
-
-                        await websocket.send_text(line.strip())
-
-                except Exception:
-
-                    pass
-
-            # setze Startposition auf Dateiende, damit keine Historie erneut gesendet wird
-
-            try:
-
-                last_size = os.path.getsize(log_file)
-
-            except Exception:
-
-                last_size = 0
-
-        while True:
-
-            if log_file:
-
-                try:
-
-                    with open(log_file, "r", encoding="utf-8") as f:
-
-                        f.seek(last_size)
-
-                        new_lines = f.readlines()
-
-                        last_size = f.tell()
-
-                        for line in new_lines:
-
-                            await websocket.send_text(line.strip())
-
-                except FileNotFoundError:
-
-                    pass
-
-            await asyncio.sleep(1)
-
-    except WebSocketDisconnect:
-
+        await websocket.send_json({"deprecated": True, "use": "/api/debug/logs"})
+    except Exception:
         pass
+    finally:
+        try:
+            await websocket.close(code=1001)
+        except Exception:
+            pass
 
 """
 
@@ -1966,18 +1883,5 @@ async def suggest_topics(session=Depends(get_session)):
 
 async def get_mqtt_logs():
 
-    """Gibt die empfangenen MQTT-Nachrichten als Text zur�ck"""
-
-    try:
-
-        with open("logs/mqtt/mqtt_messages.log", "r", encoding="utf-8") as f:
-
-            return f.read()
-
-    except FileNotFoundError:
-
-        return "Noch keine MQTT-Nachrichten empfangen."
-
-    except Exception as e:
-
-        return f"Fehler beim Lesen der Logdatei: {e}"
+    """Gibt die empfangenen MQTT-Nachrichten als Text zur?ck"""
+    return {"deprecated": True, "use": "/api/debug/logs"}

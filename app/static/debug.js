@@ -9,6 +9,137 @@ let scannerSuggestedRange = null;
 const runningPortTests = new Set();
 window.DEBUG_MODE = 'lite';
 let probeTarget = null;
+let configLoaded = false;
+let configSnapshot = {};
+let logViewerState = { module: 'app', lastCount: 0 };
+
+function setConfigEditable(enabled) {
+  document.querySelectorAll('#panel-config input, #panel-config select, #panel-config button').forEach(el => {
+    if (el.id && el.id.startsWith('cfg_')) {
+      el.disabled = !enabled;
+    }
+  });
+  if (enabled) {
+    applyConfigEnableStates();
+  }
+}
+
+function applyConfigEnableStates() {
+  // Health gate
+  const healthEnabled = document.getElementById('cfg_health_enabled')?.checked;
+  ['cfg_health_warn_latency', 'cfg_health_error_latency'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !healthEnabled;
+  });
+  ['cfg_health_cancel', 'cfg_health_save'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !healthEnabled;
+  });
+
+  // Runtime gate
+  const runtimeEnabled = document.getElementById('cfg_runtime_enabled')?.checked;
+  ['cfg_runtime_poll_interval'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !runtimeEnabled;
+  });
+  ['cfg_runtime_cancel', 'cfg_runtime_save'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !runtimeEnabled;
+  });
+
+  // Scanner gate: Save/Cancel aktiv, wenn mindestens eine Option aktivierbar ist (Checkboxen selbst bleiben immer aktiv)
+  const scannerDeep = document.getElementById('cfg_scanner_deep_probe')?.checked;
+  const scannerFp = document.getElementById('cfg_scanner_fingerprint')?.checked;
+  const scannerEnabled = !!(scannerDeep || scannerFp);
+  ['cfg_scanner_cancel', 'cfg_scanner_save'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !scannerEnabled;
+  });
+
+  // Fingerprint gate
+  const fpEnabled = document.getElementById('cfg_fingerprint_enabled')?.checked;
+  ['cfg_fingerprint_ports', 'cfg_fingerprint_timeout'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !fpEnabled;
+  });
+  ['cfg_fingerprint_cancel', 'cfg_fingerprint_save'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !fpEnabled;
+  });
+}
+
+function renderLogViewer(data) {
+  const statusEl = document.getElementById('log-overview-status');
+  const entriesEl = document.getElementById('log-entries');
+  const detailEl = document.getElementById('log-detail');
+  if (!statusEl || !entriesEl || !detailEl) return;
+  const safeData = data && typeof data === 'object' ? data : {};
+  const module = safeData.module || logViewerState.module || 'app';
+  const items = Array.isArray(safeData.items) ? safeData.items : [];
+  const count = Number.isFinite(safeData.count) ? safeData.count : items.length;
+  logViewerState.lastCount = count;
+  statusEl.textContent = `Modul: ${module} • Einträge: ${items.length} / ${count}`;
+  if (items.length === 0) {
+    entriesEl.textContent = 'Keine Logs verfuegbar.';
+    detailEl.textContent = 'Noch kein Eintrag ausgewaehlt.';
+    return;
+  }
+  const listText = items.join('\n');
+  entriesEl.textContent = listText;
+  detailEl.textContent = items[0] || 'Noch kein Eintrag ausgewaehlt.';
+}
+
+async function loadLogViewer(module = 'app') {
+  if (window.DEBUG_MODE !== 'pro') return;
+  const statusEl = document.getElementById('log-overview-status');
+  const entriesEl = document.getElementById('log-entries');
+  const detailEl = document.getElementById('log-detail');
+  if (!statusEl || !entriesEl || !detailEl) return;
+  logViewerState.module = module;
+  statusEl.textContent = 'Lade Logs...';
+  entriesEl.textContent = '...';
+  detailEl.textContent = 'Noch kein Eintrag ausgewaehlt.';
+  try {
+    const resp = await fetch(`/api/debug/logs?module=${encodeURIComponent(module)}&limit=200`);
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error(txt || 'Fehler beim Laden');
+    }
+    const json = await resp.json();
+    renderLogViewer(json);
+  } catch (err) {
+    statusEl.textContent = 'Fehler beim Laden der Logs.';
+    entriesEl.textContent = (err && err.message) || 'Unbekannter Fehler';
+    detailEl.textContent = 'Keine Details verfuegbar.';
+  }
+}
+
+function setActiveTab(target) {
+  if (!target) return;
+  activeTab = target;
+  document.querySelectorAll('.debug-panel').forEach(panel => {
+    const isActive = panel.id === `panel-${activeTab}`;
+    panel.classList.toggle('active-panel', isActive);
+    panel.style.display = isActive ? '' : 'none';
+  });
+  document.querySelectorAll('.debug-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.tab === activeTab);
+  });
+  if (activeTab === 'performance') {
+    startPerformancePolling();
+  } else {
+    stopPerformancePolling();
+  }
+  if (activeTab === 'scanner') {
+    initScannerTab();
+  }
+  if (activeTab === 'config') {
+    loadConfigData();
+  }
+  if (activeTab === 'logs' && window.DEBUG_MODE === 'pro') {
+    loadLogViewer();
+  }
+}
 
 function normalizePrinterType(val) {
   const v = (val || '').toLowerCase();
@@ -31,13 +162,32 @@ function setDebugMode(mode) {
     label.classList.remove('mode-lite', 'mode-pro');
     label.classList.add(window.DEBUG_MODE === 'pro' ? 'mode-pro' : 'mode-lite');
   }
+  setConfigEditable(window.DEBUG_MODE === 'pro');
   document.querySelectorAll('.pro-only, [data-mode="pro"]').forEach(el => {
-    el.style.display = window.DEBUG_MODE === 'pro' ? '' : 'none';
+    const isPanel = el.classList.contains('debug-panel');
+    if (window.DEBUG_MODE === 'pro') {
+      if (isPanel) {
+        const target = el.id?.replace('panel-', '');
+        el.style.display = target === activeTab ? '' : 'none';
+      } else {
+        el.style.display = '';
+      }
+    } else {
+      el.style.display = 'none';
+    }
   });
   document.querySelectorAll('.pro-only-inline').forEach(el => {
     el.style.display = window.DEBUG_MODE === 'pro' ? '' : 'none';
   });
   updateProbeButtonState();
+  if (window.DEBUG_MODE === 'lite') {
+    const activeTabEl = document.querySelector(`.debug-tab[data-tab="${activeTab}"]`);
+    if (activeTabEl && activeTabEl.dataset.mode === 'pro') {
+      setActiveTab('system');
+      return;
+    }
+  }
+  setActiveTab(activeTab);
 }
 
 function initDebugModeUI() {
@@ -46,6 +196,7 @@ function initDebugModeUI() {
   if (btnLite) btnLite.addEventListener('click', () => setDebugMode('lite'));
   if (btnPro) btnPro.addEventListener('click', () => setDebugMode('pro'));
   setDebugMode(window.DEBUG_MODE || 'lite');
+  initConfigActions();
 }
 
 function $(id) {
@@ -57,6 +208,27 @@ function setText(id, value, fallback = '-') {
   if (!el) return;
   const safe = value === undefined || value === null || value === '' ? fallback : value;
   el.textContent = safe;
+}
+
+function setCheckbox(id, value) {
+  const el = $(id);
+  if (!el) return;
+  el.checked = Boolean(value);
+}
+
+function setInputValue(id, value) {
+  const el = $(id);
+  if (!el) return;
+  el.value = value !== undefined && value !== null ? value : '';
+}
+
+function setSelectValue(id, value, allowed = []) {
+  const el = $(id);
+  if (!el) return;
+  const normalized = (value || '').toString().toLowerCase();
+  if (allowed.length === 0 || allowed.includes(normalized)) {
+    el.value = normalized;
+  }
 }
 
 function fmtMs(n) {
@@ -89,6 +261,143 @@ function fmtUptime(val) {
     return val;
   }
   return '-';
+}
+
+function populateConfigFields(data) {
+  const cfg = data && typeof data === 'object' ? data : {};
+  const cm = cfg.config_manager && typeof cfg.config_manager === 'object' ? cfg.config_manager : {};
+  const debug = cfg.debug && typeof cfg.debug === 'object' ? cfg.debug : {};
+  const systemHealth = debug.system_health && typeof debug.system_health === 'object' ? debug.system_health : {};
+  const runtime = debug.runtime && typeof debug.runtime === 'object' ? debug.runtime : {};
+  const logging = cfg.logging && typeof cfg.logging === 'object' ? cfg.logging : {};
+  const scanner = cfg.scanner && typeof cfg.scanner === 'object' ? cfg.scanner : {};
+  const scannerPro = scanner.pro && typeof scanner.pro === 'object' ? scanner.pro : {};
+  const fp = cfg.fingerprint && typeof cfg.fingerprint === 'object' ? cfg.fingerprint : {};
+
+  setCheckbox('cfg_health_enabled', systemHealth.enabled ?? cm.health_enabled);
+  setInputValue('cfg_health_warn_latency', systemHealth.warn_latency_ms ?? cm.health_latency_warn_ms);
+  setInputValue('cfg_health_error_latency', systemHealth.error_latency_ms ?? cm.health_latency_error_ms);
+
+  setSelectValue('cfg_logging_level', logging.level ?? cm.log_level, ['off', 'basic', 'verbose']);
+  setCheckbox('cfg_logging_to_file', logging.file_enabled ?? cm.log_to_file);
+  const logStatus = cfg.logging_status || cm.logging_status || {};
+  setText('cfg_logging_status_app', (logStatus.app ?? false) ? 'on' : 'off');
+  setText('cfg_logging_status_bambu', (logStatus.bambu ?? false) ? 'on' : 'off');
+  setText('cfg_logging_status_klipper', (logStatus.klipper ?? false) ? 'on' : 'off');
+  setText('cfg_logging_status_mqtt', (logStatus.mqtt ?? false) ? 'on' : 'off');
+
+  setCheckbox('cfg_runtime_enabled', runtime.enabled ?? cm.runtime_enabled);
+  setInputValue('cfg_runtime_poll_interval', runtime.poll_interval_ms ?? cm.runtime_poll_interval_ms);
+
+  setCheckbox('cfg_scanner_deep_probe', scannerPro.deep_probe ?? cm.scanner_deep_probe);
+  setCheckbox('cfg_scanner_fingerprint', scannerPro.fingerprint_enabled ?? cm.scanner_fingerprint);
+
+  setCheckbox('cfg_fingerprint_enabled', fp.enabled);
+  const portsVal = Array.isArray(fp.ports) ? fp.ports.join(', ') : '';
+  setInputValue('cfg_fingerprint_ports', portsVal);
+  setInputValue('cfg_fingerprint_timeout', fp.timeout_ms);
+
+  configSnapshot = {
+    health_enabled: systemHealth.enabled ?? cm.health_enabled,
+    health_warn_latency: systemHealth.warn_latency_ms ?? cm.health_latency_warn_ms,
+    health_error_latency: systemHealth.error_latency_ms ?? cm.health_latency_error_ms,
+    logging_level: logging.level ?? cm.log_level,
+    logging_to_file: logging.file_enabled ?? cm.log_to_file,
+    runtime_enabled: runtime.enabled ?? cm.runtime_enabled,
+    runtime_poll_interval: runtime.poll_interval_ms ?? cm.runtime_poll_interval_ms,
+    scanner_deep_probe: scannerPro.deep_probe ?? cm.scanner_deep_probe,
+    scanner_fingerprint: scannerPro.fingerprint_enabled ?? cm.scanner_fingerprint,
+    fingerprint_enabled: fp.enabled,
+    fingerprint_ports: Array.isArray(fp.ports) ? fp.ports.join(', ') : '',
+    fingerprint_timeout: fp.timeout_ms,
+  };
+  setConfigEditable(true);
+  applyConfigEnableStates();
+}
+
+function resetConfigCard(card) {
+  if (!configSnapshot || Object.keys(configSnapshot).length === 0) return;
+  if (card === 'health' || card === 'all') {
+    setCheckbox('cfg_health_enabled', configSnapshot.health_enabled);
+    setInputValue('cfg_health_warn_latency', configSnapshot.health_warn_latency);
+    setInputValue('cfg_health_error_latency', configSnapshot.health_error_latency);
+  }
+  if (card === 'logging' || card === 'all') {
+    setSelectValue('cfg_logging_level', configSnapshot.logging_level, ['off', 'basic', 'verbose']);
+    setCheckbox('cfg_logging_to_file', configSnapshot.logging_to_file);
+  }
+  if (card === 'runtime' || card === 'all') {
+    setCheckbox('cfg_runtime_enabled', configSnapshot.runtime_enabled);
+    setInputValue('cfg_runtime_poll_interval', configSnapshot.runtime_poll_interval);
+  }
+  if (card === 'scanner' || card === 'all') {
+    setCheckbox('cfg_scanner_deep_probe', configSnapshot.scanner_deep_probe);
+    setCheckbox('cfg_scanner_fingerprint', configSnapshot.scanner_fingerprint);
+  }
+  if (card === 'fingerprint' || card === 'all') {
+    setCheckbox('cfg_fingerprint_enabled', configSnapshot.fingerprint_enabled);
+    setInputValue('cfg_fingerprint_ports', configSnapshot.fingerprint_ports);
+    setInputValue('cfg_fingerprint_timeout', configSnapshot.fingerprint_timeout);
+  }
+}
+
+function parsePortsInput(val) {
+  if (!val) return [];
+  const parts = val.split(',').map(p => p.trim()).filter(Boolean);
+  return parts.map(p => parseInt(p, 10)).filter(p => Number.isInteger(p));
+}
+
+async function saveConfigSection(section) {
+  const payload = {};
+  if (section === 'health') {
+    payload['debug.system_health.enabled'] = document.getElementById('cfg_health_enabled').checked;
+    payload['debug.system_health.warn_latency_ms'] = parseInt(document.getElementById('cfg_health_warn_latency').value, 10);
+    payload['debug.system_health.error_latency_ms'] = parseInt(document.getElementById('cfg_health_error_latency').value, 10);
+  }
+  if (section === 'logging') {
+    payload['logging.level'] = document.getElementById('cfg_logging_level').value;
+    payload['logging.file_enabled'] = document.getElementById('cfg_logging_to_file').checked;
+  }
+  if (section === 'runtime') {
+    payload['debug.runtime.enabled'] = document.getElementById('cfg_runtime_enabled').checked;
+    payload['debug.runtime.poll_interval_ms'] = parseInt(document.getElementById('cfg_runtime_poll_interval').value, 10);
+  }
+  if (section === 'scanner') {
+    payload['scanner.pro.deep_probe'] = document.getElementById('cfg_scanner_deep_probe').checked;
+    payload['scanner.pro.fingerprint_enabled'] = document.getElementById('cfg_scanner_fingerprint').checked;
+  }
+  if (section === 'fingerprint') {
+    payload['fingerprint.enabled'] = document.getElementById('cfg_fingerprint_enabled').checked;
+    payload['fingerprint.ports'] = parsePortsInput(document.getElementById('cfg_fingerprint_ports').value);
+    payload['fingerprint.timeout_ms'] = parseInt(document.getElementById('cfg_fingerprint_timeout').value, 10);
+  }
+  try {
+    const res = await fetch('/api/config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    populateConfigFields(data);
+  } catch (err) {
+    // ignore save errors for now
+  }
+}
+
+
+async function loadConfigData() {
+  if (!document.body.classList.contains('debug-pro')) return;
+  if (configLoaded) return;
+  try {
+    const res = await fetch('/api/config/current');
+    if (!res.ok) return;
+    const data = await res.json();
+    populateConfigFields(data);
+    configLoaded = true;
+  } catch (err) {
+    // ignore load errors
+  }
 }
 
 function setBadgeState(el, state) {
@@ -124,24 +433,41 @@ function initTabs() {
   document.querySelectorAll('.debug-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       const target = tab.dataset.tab;
-      document.querySelectorAll('.debug-panel').forEach(panel => {
-        panel.style.display = panel.id === 'panel-' + target ? '' : 'none';
-      });
-      document.querySelectorAll('.debug-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      activeTab = target;
-      if (activeTab === 'performance') {
-        startPerformancePolling();
-      } else {
-        stopPerformancePolling();
+      if (window.DEBUG_MODE === 'lite' && tab.dataset.mode === 'pro') {
+        return;
       }
-      if (activeTab === 'scanner') {
-        initScannerTab();
-      }
+      setActiveTab(target);
     });
   });
   const initial = document.querySelector('.debug-tab.active');
   activeTab = initial?.dataset?.tab || 'system';
+  setActiveTab(activeTab);
+}
+
+function initConfigActions() {
+  const bind = (id, section, handler) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', handler.bind(null, section));
+  };
+  const watch = (id) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', applyConfigEnableStates);
+  };
+  bind('cfg_health_cancel', 'health', () => resetConfigCard('health'));
+  bind('cfg_health_save', 'health', saveConfigSection);
+  bind('cfg_logging_cancel', 'logging', () => resetConfigCard('logging'));
+  bind('cfg_logging_save', 'logging', saveConfigSection);
+  bind('cfg_runtime_cancel', 'runtime', () => resetConfigCard('runtime'));
+  bind('cfg_runtime_save', 'runtime', saveConfigSection);
+  bind('cfg_scanner_cancel', 'scanner', () => resetConfigCard('scanner'));
+  bind('cfg_scanner_save', 'scanner', saveConfigSection);
+  bind('cfg_fingerprint_cancel', 'fingerprint', () => resetConfigCard('fingerprint'));
+  bind('cfg_fingerprint_save', 'fingerprint', saveConfigSection);
+  watch('cfg_health_enabled');
+  watch('cfg_runtime_enabled');
+  watch('cfg_scanner_deep_probe');
+  watch('cfg_scanner_fingerprint');
+  watch('cfg_fingerprint_enabled');
 }
 
 async function loadSystemStatus() {
@@ -837,7 +1163,7 @@ function renderSystemHealth(statusData) {
   const textMap = {
     ok: 'All core services operational',
     warning: 'Warning due to service status or response time.',
-    critical: 'Critical system services unavailable',
+    critical: 'Critical system services',
   };
   let reasons = Array.isArray(sysHealth.reasons) ? sysHealth.reasons.filter(Boolean) : [];
   if (!statusData?.systemHealth) {
@@ -869,7 +1195,8 @@ function renderSystemHealth(statusData) {
     b.textContent = level === 'ok' ? 'OK' : level === 'critical' ? 'Critical' : 'Warning';
   });
   texts.forEach(t => {
-    t.textContent = level === 'warning' && reasons.length ? reasons[0] : (textMap[level] || textMap.warning);
+    t.textContent = textMap[level] || textMap.warning;
+    applyClass(t, level);
   });
 
   // Mirror to pro detail placeholders

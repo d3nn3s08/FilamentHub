@@ -1,14 +1,5 @@
-{"ts": "2025-12-12T22:44:17Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
-{"ts": "2025-12-12T22:44:23Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
-{"ts": "2025-12-12T22:44:23Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
-{"ts": "2025-12-12T22:44:23Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
-{"ts": "2025-12-12T22:44:25Z", "event": "admin_userflag_set", "details": {"user_id": "u_k56sec9gf3f1764875135329", "flag": "welcome_popup", "value": false}}
-{"ts": "2025-12-12T22:44:29Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
-{"ts": "2025-12-12T22:44:30Z", "event": "admin_auth_required_failed", "details": {"ip": "127.0.0.1"}}
-{"ts": "2025-12-12T22:44:30Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
-{"ts": "2025-12-12T22:44:42Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
-{"ts": "2025-12-12T22:44:42Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
-{"ts": "2025-12-12T22:44:42Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
-{"ts": "2025-12-12T22:55:06Z", "event": "admin_access", "details": {"path": "/admin/notifications", "ip": "127.0.0.1"}}
-{"ts": "2025-12-12T22:55:40Z", "event": "admin_migrate_start", "details": {"ip": "127.0.0.1"}}
-{"ts": "2025-12-12T22:55:41Z", "event": "admin_migrate_success", "details": {"ip": "127.0.0.1", "stdout": ""}}
+{"ts": "2025-12-14T12:22:33Z", "event": "admin_access_denied", "details": {"path": "/admin/notifications", "ip": "127.0.0.1"}}
+{"ts": "2025-12-14T12:22:35Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-14T12:22:35Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-14T12:22:35Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-14T18:25:04Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}

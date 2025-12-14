@@ -1,50 +1,51 @@
-import os
-from typing import List
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query, Request
+from app.services import log_reader
+
 
 router = APIRouter(prefix="/api/debug", tags=["Debug Logs"])
 
-LOG_PATH = os.path.join("logs", "app", "app.log")
 DEFAULT_LIMIT = 200
-MAX_LIMIT = 1000
+MAX_LIMIT = log_reader.MAX_LIMIT
 
-def _tail_lines(path: str, limit: int) -> List[str]:
-    if not os.path.exists(path):
-        return []
+
+def _is_admin(request: Request | None) -> bool:
+    """
+    Leichte Admin-Prüfung: nutzt das bestehende admin_token-Cookie,
+    um Admin-Logs nur für authentifizierte Nutzer freizugeben.
+    """
+    if request is None:
+        return False
     try:
-        with open(path, "r", encoding="utf-8", errors="ignore") as f:
-            lines = f.readlines()
+        from app.routes.admin_routes import admin_tokens  # type: ignore
     except Exception:
-        return []
-    if limit <= 0:
-        return []
-    return lines[-limit:]
+        return False
+    token = request.cookies.get("admin_token")
+    return bool(token and token in admin_tokens)
 
-def _parse_level(line: str) -> str:
-    upper = line.upper()
-    if " ERROR" in upper or upper.startswith("ERROR"):
-        return "error"
-    if " WARN" in upper or " WARNING" in upper or upper.startswith("WARN"):
-        return "warning"
-    return "info"
 
 @router.get("/logs")
-async def debug_logs(limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT), level: str | None = None):
+async def debug_logs(
+    request: Request,
+    module: str = Query("app"),
+    limit: int = Query(DEFAULT_LIMIT, ge=1, le=MAX_LIMIT),
+    offset: int = Query(0, ge=0),
+    level: str | None = Query(None, description="off/basic/verbose filter, optional"),
+    search: str | None = Query(None, description="Freitext-Suche, optional"),
+):
     try:
-        lines = _tail_lines(LOG_PATH, limit)
-        level_norm = (level or "").lower()
-        allowed = {"info", "warning", "error"}
-        logs = []
-        for line in lines:
-            ts = ""
-            msg = line.strip("\n")
-            parts = msg.split(" ", 2)
-            if len(parts) >= 2:
-                ts = f"{parts[0]} {parts[1]}"
-            lvl = _parse_level(line)
-            if level_norm in allowed and lvl != level_norm:
-                continue
-            logs.append({"ts": ts, "level": lvl, "message": msg})
-        return {"ok": True, "logs": logs}
-    except Exception:
-        return {"ok": False, "logs": []}
+        allow_admin = _is_admin(request)
+        result = log_reader.read_logs(
+            module=module,
+            limit=limit,
+            offset=offset,
+            level=level,
+            search=search,
+            allow_admin=allow_admin,
+        )
+        return result
+    except log_reader.LogAccessError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

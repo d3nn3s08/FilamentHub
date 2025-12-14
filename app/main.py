@@ -76,6 +76,8 @@ from app.routes.debug_system_routes import router as debug_system_router
 from app.routes.debug_performance_routes import router as debug_performance_router
 from app.routes.debug_network_routes import router as debug_network_router
 from app.routes.notification_routes import router as notification_router
+from app.routes.config_routes import router as config_router
+from app.routes import debug_log_routes
 
 from app.websocket.log_stream import stream_log
 
@@ -149,6 +151,8 @@ app.include_router(debug_performance_router)
 app.include_router(debug_network_router)
 app.include_router(debug_printer_router)
 app.include_router(notification_router)
+app.include_router(config_router)
+app.include_router(debug_log_routes.router)
 
 
 # -----------------------------------------------------

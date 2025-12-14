@@ -7,6 +7,8 @@ import platform
 import shutil
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from app.database import get_session
+from app.routes.config_routes import _load_config
 
 router = APIRouter(prefix="/api/system", tags=["System Status"])
 
@@ -52,24 +54,35 @@ def detect_printer_mode(config):
 # -----------------------------
 @router.get("/status")
 def system_status():
-    config = load_config()
+    cfg_yaml = load_config()
+    cfg_settings = None
+    try:
+        with next(get_session()) as session:
+            cfg_settings = _load_config(session)
+    except Exception:
+        cfg_settings = None
 
     # APP BLOCK
     app_info = {
-        "name": config["app"]["name"],
-        "version": config["app"]["version"],
-        "environment": config["app"]["environment"],
+        "name": cfg_yaml["app"]["name"],
+        "version": cfg_yaml["app"]["version"],
+        "environment": cfg_yaml["app"]["environment"],
         "uptime": format_uptime(time.time() - START_TIME),
     }
 
     # LOGGING BLOCK
+    logging_cfg = (cfg_settings or {}).get("logging") or cfg_yaml.get("logging", {})
+    logging_status = (cfg_settings or {}).get("logging_status", {})
     logging_info = {
-        "level": config["logging"]["level"],
-        "modules": {
-            name: cfg["enabled"]
-            for name, cfg in config["logging"]["modules"].items()
-        }
+        "level": logging_cfg.get("level", cfg_yaml.get("logging", {}).get("level", "basic")),
+        "modules": {},
     }
+    if logging_status:
+        logging_info["modules"] = {name: bool(val) for name, val in logging_status.items()}
+    else:
+        logging_info["modules"] = {
+            name: cfg.get("enabled", False) for name, cfg in cfg_yaml.get("logging", {}).get("modules", {}).items()
+        }
 
     # SYSTEM BLOCK (CPU/RAM/DISK)
     vm = psutil.virtual_memory()
@@ -102,7 +115,7 @@ def system_status():
     klipper_status = "offline"
     bambu_active = 0
     klipper_active = 0
-    mode = detect_printer_mode(config)
+    mode = detect_printer_mode(cfg_yaml)
     try:
         with next(get_session()) as session:
             printers = session.exec(select(Printer).where(Printer.active == True)).all()  # noqa: E712

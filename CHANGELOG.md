@@ -1,3 +1,13 @@
+## 2025-12-14 (Logging Refactor)
+- Logging: zentraler Log Reader + /api/debug/logs als einzige Quelle, Legacy-Endpunkte liefern Deprecation-Hinweis.
+- Systemstatus + Debug Center lesen Logging-Level/File-Status aus Settings; Log Viewer ruft nur noch /api/debug/logs.
+
+## 2025-12-14
+- Debug Center: neuer Pro-Tab "Log Viewer" (Placeholder)
+
+## 2025-12-14
+- Pro Config Manager – Backend Keys & Defaults vorbereitet
+
 ## 2025-12-13 (Server Start)
 - Fix: run.py gibt Hinweis bei belegtem Port und erlaubt PORT-Override, damit Uvicorn nicht still beendet.
 - Server-Port-Handling vereinheitlicht (Default 8085 aus config.yaml, ENV HOST/PORT Override).
@@ -9,6 +19,7 @@
 - UI polish: Printer Scanner Lite modernisiert (Cards, Badges, Buttons)
 - Lite Printer Save: Duplikat-Schutz (IP + Typ) und Status-Feedback beim Hinzufuegen
 - Debug Center: Lite/Pro Umschalt-Button mit persistiertem Modus
+- Debug Center / Printer Scanner: Scanner Pro – Anzeige-Cards (Platzhalter, deutsch)
 
 ## 2025-12-13 (Rebuild)
 ### Changed
@@ -104,3 +115,10 @@
 - WebSocket-Status semantisch korrigiert (offline â‰  kein Client).
 
 - Added: Debug Center Lite/Pro Mode mit dynamischer Tab-Sichtbarkeit und Settings-Persistenz.
+- Debug Center / Printer Scanner: Pro-Icons und Disabled-State optimiert (Anzeige-only)
+- Debug Center / Printer Scanner: Pro-Icons und Disabled-State optimiert (Anzeige-only)
+- Debug Center / Printer Scanner: Deep Probe (Pro) Button->Backend->Ergebnisanzeige
+
+
+
+

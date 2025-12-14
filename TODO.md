@@ -1,11 +1,29 @@
+- [ ] Log Viewer Pro: Tab angelegt (Content folgt)
+- [x] Zentraler Log Reader implementiert (/api/debug/logs)
+- [x] Legacy Log-Endpunkte als deprecated markiert
+- [x] Logging-Status und Level aus Settings laden (system_routes)
+- [x] Log Viewer Pro nutzt /api/debug/logs (keine Alt-Routen)
+- [ ] Log Viewer: Filter/Modulwahl und Detailanzeige finalisieren
 - [x] Port-Architektur finalisiert (Default 8085, ENV HOST/PORT Override).
 - [x] Uvicorn-Start unter Windows stabilisiert
+- [ ] Config Manager UI (Pro): Skeleton + JS anbinden
 - [ ] Enhance performance metrics (optional), keep endpoint read-only
 - [ ] Add advanced scanner (Pro): active probing, vendor detection
 - [ ] Implementiere Persist-Flow 'Zum System hinzufuegen' fuer getestete Drucker
 - [ ] Optional: gleiche Card-Optik fuer Pro-Scanner uebernehmen
 - [ ] Frontend Save-Flow finalisieren (Status/Toast) nach Dup-Check
 - [ ] Pro Mode Panels mit Inhalt fuellen (Mode-Umschalt-UI vorhanden)
+- [ ] Scanner Pro: Deep Probe Logik implementieren (Pro Feature)
+- [ ] Scanner Pro: Device Fingerprint Logik implementieren
+- [ ] Scanner Pro: Why Warning erklaeren (diagnostic reason)
+- [ ] Scanner Pro: JSON Snapshot erfassen/speichern
+- [ ] Pro-Unlock/Persistenz konzipieren (aktuell Anzeige-only)
+- [ ] Scanner Pro: Icons finalisieren (netzwerk, fingerprint, warnung, code)
+- [ ] Scanner Pro: Disabled-State/UI-Feedback produktiv einsetzen, wenn Logik aktiv wird
+- [ ] Scanner Pro: Deep Probe Endpoint + UI Flow finalisieren
+- [ ] Scanner Pro: Warn-/Fehlerklassifikation erweitern (Basis umgesetzt)
+- [ ] Regel: Lite-Ansicht ist final und unveraenderlich (keine UI/Logik-Aenderungen)
+- [ ] Pro-Features strikt kapseln, keine Sichtbarkeit im Lite-Modus
 
 ## Debug Center Open Tasks
 - Pro: MQTT Charts

@@ -27,6 +27,8 @@
         <div class="debug-tab active" data-tab="system" data-mode="lite">System Status</div>
         <div class="debug-tab" data-tab="performance" data-mode="lite">Performance</div>
         <div class="debug-tab" data-tab="scanner" data-mode="lite">Printer Scanner</div>
+        <div class="debug-tab pro-only" data-tab="logs" data-mode="pro" style="display:none;">Log Viewer</div>
+        <div class="debug-tab pro-only" data-tab="config" data-mode="pro" style="display:none;">Config Manager</div>
     </div>
     <div class="debug-mode-toggle">
         <div class="debug-mode-pill">
@@ -264,6 +266,150 @@
                         <div style="margin-top:6px;color:var(--text-dim);">Es wurde noch kein Snapshot erstellt.</div>
                     </div>
                 </div>
+            </div>
+        </div>
+        <div id="panel-config" class="debug-panel pro-only" data-mode="pro" style="display:none;">
+            <div class="system-grid" style="margin-top:10px;">
+                <div class="panel">
+                    <p class="eyebrow">System Health</p>
+                    <label style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+                        <input type="checkbox" id="cfg_health_enabled" disabled>
+                        <span>Health-Überwachung aktiv</span>
+                    </label>
+                    <label style="display:flex;flex-direction:column;gap:4px;margin:6px 0;">
+                        <span>Warn-Schwelle Latenz (ms)</span>
+                        <input type="number" id="cfg_health_warn_latency" placeholder="600" disabled>
+                    </label>
+                    <label style="display:flex;flex-direction:column;gap:4px;margin:6px 0;">
+                        <span>Fehler-Schwelle Latenz (ms)</span>
+                        <input type="number" id="cfg_health_error_latency" placeholder="1200" disabled>
+                    </label>
+                    <small style="color:var(--text-dim);">Steuert die Ampel-Logik im System Health Bereich.</small>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button class="btn btn-secondary" id="cfg_health_cancel" disabled>Abbrechen</button>
+                        <button class="btn btn-primary" id="cfg_health_save" disabled>Speichern</button>
+                    </div>
+                </div>
+                <div class="panel">
+                    <p class="eyebrow">Logging</p>
+                    <label style="display:flex;flex-direction:column;gap:4px;margin:6px 0;">
+                        <span>Log-Level</span>
+                        <select id="cfg_logging_level" disabled>
+                            <option>off</option>
+                            <option>basic</option>
+                            <option>verbose</option>
+                        </select>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+                        <input type="checkbox" id="cfg_logging_to_file" disabled>
+                        <span>Logs in Datei schreiben</span>
+                    </label>
+                    <div style="color:var(--text-dim); font-size:12px; margin-top:6px; line-height:1.3;">
+                        <div>off = kein Logging, basic = Basis-Events, verbose = detailliertes Debug.</div>
+                        <div>Module aktiv: App <span id="cfg_logging_status_app">false</span>, Bambu <span id="cfg_logging_status_bambu">false</span>, Klipper <span id="cfg_logging_status_klipper">false</span>, MQTT <span id="cfg_logging_status_mqtt">false</span></div>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button class="btn btn-secondary" id="cfg_logging_cancel" disabled>Abbrechen</button>
+                        <button class="btn btn-primary" id="cfg_logging_save" disabled>Speichern</button>
+                    </div>
+                </div>
+                <div class="panel">
+                    <p class="eyebrow">Runtime Monitoring</p>
+                    <label style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+                        <input type="checkbox" id="cfg_runtime_enabled" disabled>
+                        <span>Runtime-Überwachung aktiv</span>
+                    </label>
+                    <label style="display:flex;flex-direction:column;gap:4px;margin:6px 0;">
+                        <span>Poll-Intervall (ms)</span>
+                        <input type="number" id="cfg_runtime_poll_interval" placeholder="2000" disabled>
+                    </label>
+                    <small style="color:var(--text-dim);">Beeinflusst Aktualisierung von Runtime & Requests.</small>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button class="btn btn-secondary" id="cfg_runtime_cancel" disabled>Abbrechen</button>
+                        <button class="btn btn-primary" id="cfg_runtime_save" disabled>Speichern</button>
+                    </div>
+                </div>
+                <div class="panel">
+                    <p class="eyebrow">Scanner (Pro)</p>
+                    <label style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+                        <input type="checkbox" id="cfg_scanner_deep_probe" disabled>
+                        <span>Deep-Probe aktivieren</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+                        <input type="checkbox" id="cfg_scanner_fingerprint" disabled>
+                        <span>Geräte-Fingerprint erlauben</span>
+                    </label>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button class="btn btn-secondary" id="cfg_scanner_cancel" disabled>Abbrechen</button>
+                        <button class="btn btn-primary" id="cfg_scanner_save" disabled>Speichern</button>
+                    </div>
+                </div>
+                <div class="panel">
+                    <p class="eyebrow">Geräte-Fingerprint</p>
+                    <label style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+                        <input type="checkbox" id="cfg_fingerprint_enabled" disabled>
+                        <span>Fingerprint-System aktiv</span>
+                    </label>
+                    <label style="display:flex;flex-direction:column;gap:4px;margin:6px 0;">
+                        <span>Prüf-Ports</span>
+                        <input type="text" id="cfg_fingerprint_ports" placeholder="8883, 6000, 7125" disabled>
+                    </label>
+                    <label style="display:flex;flex-direction:column;gap:4px;margin:6px 0;">
+                        <span>Timeout (ms)</span>
+                        <input type="number" id="cfg_fingerprint_timeout" placeholder="1500" disabled>
+                    </label>
+                    <small style="color:var(--text-dim);">Ermittelt den tatsächlichen Gerätetyp anhand technischer Merkmale (TCP-Port-Reaktion, Protokollverhalten).</small>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button class="btn btn-secondary" id="cfg_fingerprint_cancel" disabled>Abbrechen</button>
+                        <button class="btn btn-primary" id="cfg_fingerprint_save" disabled>Speichern</button>
+                    </div>
+                </div>
+            </div>
+            <p class="subtitle" style="margin-top:10px;">Änderungen speichern – folgt in späterer Pro-Version</p>
+        </div>
+        <div id="panel-logs" class="debug-panel pro-only" data-mode="pro" style="display:none;">
+            <div class="panel pro-only">
+                <p class="eyebrow">Log Uebersicht</p>
+                <p class="subtitle">Dieser Bereich zeigt System- und Diagnose-Logs zur Analyse.</p>
+                <div id="log-overview-status" style="margin-top:6px;color:var(--text-dim);">Aktuell sind keine Logs geladen.</div>
+            </div>
+            <div class="panel pro-only" style="margin-top:10px;">
+                <p class="eyebrow">Log Eintraege</p>
+                <div id="log-entries" style="color:var(--text-dim);">Log-Eintraege werden hier angezeigt, sobald sie geladen werden.</div>
+            </div>
+            <div class="panel pro-only" style="margin-top:10px;">
+                <p class="eyebrow">Log Filter</p>
+                <p class="subtitle">Filterfunktionen stehen im Pro-Modus zur Verfuegung.</p>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;max-width:320px;">
+                    <label style="display:flex;flex-direction:column;gap:4px;">
+                        <span>Level</span>
+                        <select disabled>
+                            <option>Alle</option>
+                            <option>Info</option>
+                            <option>Warn</option>
+                            <option>Error</option>
+                        </select>
+                    </label>
+                    <label style="display:flex;flex-direction:column;gap:4px;">
+                        <span>Modul</span>
+                        <select disabled>
+                            <option>Alle</option>
+                            <option>App</option>
+                            <option>Bambu</option>
+                            <option>Klipper</option>
+                            <option>MQTT</option>
+                        </select>
+                    </label>
+                    <label style="display:flex;flex-direction:column;gap:4px;">
+                        <span>Suche</span>
+                        <input type="text" disabled placeholder="Filter folgt" />
+                    </label>
+                </div>
+            </div>
+            <div class="panel pro-only" style="margin-top:10px;">
+                <p class="eyebrow">Log Details</p>
+                <p class="subtitle">Waehle einen Log-Eintrag aus, um Details anzuzeigen.</p>
+                <div id="log-detail" style="color:var(--text-dim); margin-top:6px;">Noch kein Eintrag ausgewaehlt.</div>
             </div>
         </div>
     </div>

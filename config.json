@@ -1,5 +1,26 @@
-{ 
-  "name": "FilamentHub", 
+{
+  "name": "FilamentHub",
   "version": "0.1.0-alpha.1",
-  "generated": "21.11.2025 11:53:38,62" 
-} 
+  "generated": "21.11.2025 11:53:38,62",
+  "debug": {
+    "runtime": {
+      "enabled": true,
+      "poll_interval_ms": 2000
+    }
+  },
+  "scanner": {
+    "pro": {
+      "deep_probe": false,
+      "fingerprint_enabled": false
+    }
+  },
+  "fingerprint": {
+    "enabled": false,
+    "ports": [
+      8883,
+      6000,
+      7125
+    ],
+    "timeout_ms": 1500
+  }
+}
