@@ -17,6 +17,7 @@ depends_on = None
 
 def upgrade():
     op.add_column("spool", sa.Column("used_count", sa.Integer(), nullable=False, server_default="0"))
+    op.add_column("spool", sa.Column("first_seen", sa.Text(), nullable=True))
     op.add_column("spool", sa.Column("last_slot", sa.Integer(), nullable=True))
     # remove server_default after backfill
     with op.batch_alter_table("spool") as batch_op:
