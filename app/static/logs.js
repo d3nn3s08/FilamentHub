@@ -36,7 +36,12 @@ async function loadLog() {
 
         const res = await fetch(endpoint);
         const data = await res.json();
-        lines = data.lines;
+        // Falls lines ein String ist (statt Array), splitten
+        if (typeof data.lines === "string") {
+            lines = data.lines.split('\n');
+        } else {
+            lines = data.lines;
+        }
     }
 
     output.innerHTML = "";
@@ -78,24 +83,25 @@ function startLive() {
 // -------------------------------
 function applyLogLines(lines) {
     output.innerHTML = "";
-    lines.forEach(appendLogLine);
+    // Zeige nur die letzten 50 Einträge
+    const lastLines = lines.slice(-50);
+    lastLines.forEach(appendLogLine);
 }
 
 function appendLogLine(line) {
     const filter = filterSelect.value;
+    if (filter !== "ALL" && !line.includes(filter)) return;
 
-    if (filter !== "ALL" && !line.includes(filter))
-        return;
-
+    // Zeilenumbruch und bessere Lesbarkeit
     const div = document.createElement("div");
-
+    div.style.wordBreak = "break-all";
+    div.style.whiteSpace = "pre-wrap";
+    div.style.padding = "2px 0";
     if (line.includes("ERROR")) div.className = "error";
     else if (line.includes("WARNING")) div.className = "warning";
     else div.className = "info";
-
     div.textContent = line;
     output.appendChild(div);
-
     // Auto-scroll down
     output.scrollTop = output.scrollHeight;
 }

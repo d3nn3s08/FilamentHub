@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import Session, select
-from typing import List
+from typing import List, Dict, Any
 import socket
 import httpx
 import os
 from app.database import get_session
 from app.models.printer import Printer, PrinterCreate, PrinterRead
+
+# Hinweis: kleine Kommentar-Änderung, um Dateisystem-Änderung und Reload zu triggern
 
 router = APIRouter(prefix="/api/printers", tags=["printers"])
 
@@ -67,6 +69,30 @@ def get_printer(printer_id: str, session: Session = Depends(get_session)):
     return p_dict
 
 
+@router.get("/{printer_id}/credentials", response_model=Dict[str, Any], summary="Get Printer Credentials")
+def get_printer_credentials(printer_id: str, session: Session = Depends(get_session)):
+    """
+    Lade Drucker Credentials (MQTT-relevant) aus der Datenbank.
+    Liefert nur die Felder, die für MQTT-Connections benötigt werden.
+    """
+    printer = session.get(Printer, printer_id)
+    if not printer:
+        raise HTTPException(status_code=404, detail=f"Drucker mit ID {printer_id} nicht gefunden")
+
+    return {
+        "success": True,
+        "printer_id": printer.id,
+        "name": printer.name,
+        "api_key": printer.api_key,
+        "cloud_serial": printer.cloud_serial,
+        "ip_address": printer.ip_address,
+        "port": printer.port,
+        "printer_type": printer.printer_type,
+        "mqtt_version": printer.mqtt_version,
+        "model": printer.model
+    }
+
+
 @router.post("/")
 def create_printer(printer: PrinterCreate, session: Session = Depends(get_session)):
     """Neuen Drucker anlegen"""
@@ -87,6 +113,10 @@ def create_printer(printer: PrinterCreate, session: Session = Depends(get_sessio
     if printer.printer_type in ["bambu", "bambu_lab"]:
         if not printer.cloud_serial or not printer.api_key:
             raise HTTPException(status_code=400, detail="Seriennummer und Access Code sind erforderlich")
+
+    # Setze Standard-MQTT-Port für Bambu auf 8883, falls nicht angegeben
+    if printer.printer_type in ["bambu", "bambu_lab"] and not printer.port:
+        printer.port = 8883
 
     db_printer = Printer.model_validate(printer)
     session.add(db_printer)
@@ -118,10 +148,13 @@ def update_printer(printer_id: str, printer: PrinterCreate, session: Session = D
     if printer.printer_type in ["bambu", "bambu_lab"]:
         if not printer.cloud_serial or not printer.api_key:
             raise HTTPException(status_code=400, detail="Seriennummer und Access Code sind erforderlich")
-    
+    # If Bambu and no port provided, default to 8883
+    # (apply after merging data below to cover updates that switch type)
     printer_data = printer.model_dump(exclude_unset=True)
     for key, value in printer_data.items():
         setattr(db_printer, key, value)
+    if db_printer.printer_type in ["bambu", "bambu_lab"] and not db_printer.port:
+        db_printer.port = 8883
     
     session.add(db_printer)
     session.commit()

@@ -1,3 +1,383 @@
+/* MQTT Status-Badge Farblogik */
+.status-badge.status-ok {
+    background: rgba(46,204,113,0.2);
+    color: #8ef0b5;
+}
+.status-badge.status-error {
+    background: rgba(231,76,60,0.2);
+    color: #ff9a8a;
+}
+.status-badge.status-warn {
+    background: rgba(241,196,15,0.18);
+    color: #ffd666;
+}
+.status-badge.status-idle {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.7);
+}
+
+.status-dot.dot-ok {
+    background: #28a745;
+}
+.status-dot.dot-error {
+    background: #dc3545;
+}
+.status-dot.dot-warn {
+    background: #ffc107;
+}
+.status-dot.dot-idle {
+    background: #888;
+}
+/* MQTT Connection Card – Modernes Design */
+.mqtt-connection-card {
+    border: 2px solid var(--accent);
+    box-shadow: 0 4px 24px 0 rgba(79,195,247,0.07);
+    border-radius: 13px;
+    background: var(--bg-card);
+    padding: 18px 16px 12px 16px;
+    margin-bottom: 22px;
+    max-width: 440px;
+}
+.mqtt-conn-header {
+    margin-bottom: 24px;
+}
+.mqtt-conn-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 2px;
+}
+.mqtt-conn-desc {
+    font-size: 0.95rem;
+    color: var(--text-dim);
+    margin-bottom: 0;
+}
+.status-indicator {
+    margin-bottom: 16px;
+    background: #181c20;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 1rem;
+}
+.status-dot {
+    width: 12px;
+    height: 12px;
+    margin-right: 8px;
+}
+.status-text {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+}
+.status-detail {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+}
+.printer-select {
+    margin-bottom: 8px;
+}
+.printer-chip {
+    font-size: 0.95rem;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 7px 14px;
+    border: 1.5px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    color: var(--text);
+    margin-bottom: 4px;
+    transition: all 0.2s;
+}
+.printer-chip.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px 0 rgba(79,195,247,0.12);
+}
+.printer-chip:hover {
+    border-color: var(--accent);
+    background: rgba(79,195,247,0.18);
+    color: var(--accent);
+}
+.form-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.form-input {
+    font-size: 1rem;
+    font-family: 'Consolas', monospace;
+    background: #181c20;
+    color: #fff;
+    border: 1.2px solid var(--border);
+    border-radius: 7px;
+    padding: 8px 10px;
+    margin-bottom: 0;
+    transition: border 0.2s;
+}
+.form-input:focus {
+    border-color: var(--accent);
+    outline: none;
+}
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 0;
+}
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+/* Kompaktere MQTT-Buttons */
+.btn-connect {
+    background: linear-gradient(135deg, #66bb6a, #43a047);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    border-radius: 7px;
+    border: none;
+    padding: 7px 0 7px 0;
+    min-width: 90px;
+    flex: 1;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+.btn-connect:hover {
+    box-shadow: 0 8px 24px rgba(102, 187, 106, 0.18);
+    transform: translateY(-2px);
+}
+/* Kompaktere MQTT-Buttons */
+.btn-disconnect {
+    background: linear-gradient(135deg, #ef5350, #d32f2f);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    border-radius: 7px;
+    border: none;
+    padding: 7px 0 7px 0;
+    min-width: 90px;
+    flex: 1;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+.btn-disconnect:hover {
+    box-shadow: 0 8px 24px rgba(239, 83, 80, 0.18);
+    transform: translateY(-2px);
+}
+/* Kompaktere MQTT-Buttons */
+.btn-secondary {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    border-radius: 7px;
+    border: none;
+    padding: 7px 0 7px 0;
+    min-width: 90px;
+    flex: 1;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+.btn-secondary:hover {
+    background: var(--accent);
+    color: #fff;
+}
+.info-box {
+    background: rgba(79, 195, 247, 0.13);
+    border-left: 3px solid var(--accent);
+    padding: 10px 12px;
+    border-radius: 7px;
+    font-size: 0.97rem;
+    color: #b3e5fc;
+    margin-top: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+}
+.info-box strong {
+    color: #fff;
+}
+@media (max-width: 700px) {
+    .mqtt-connection-card {
+        padding: 8px 2px 6px 2px;
+        max-width: 100%;
+    }
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+    }
+    .action-buttons {
+        flex-direction: column;
+        gap: 6px;
+    }
+}
+/* MQTT Connection Card Styles */
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    animation: pulse 2s infinite;
+}
+.status-dot.connected { background: var(--success); }
+.status-dot.disconnected { background: var(--error); animation: none; }
+
+.status-text {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.status-detail {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: 'Consolas', monospace;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.form-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'Consolas', monospace;
+}
+.form-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79, 195, 247, 0.1);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.printer-select {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.printer-chip {
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 600;
+}
+.printer-chip:hover {
+    background: rgba(79, 195, 247, 0.15);
+    border-color: var(--accent);
+}
+.printer-chip.active {
+    background: rgba(79, 195, 247, 0.25);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.printer-chip-loading {
+    padding: 8px 16px;
+    color: var(--text-dim);
+    font-style: italic;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.btn-connect {
+    flex: 1;
+    background: linear-gradient(135deg, #66bb6a, #43a047);
+}
+.btn-connect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(102, 187, 106, 0.3);
+}
+.btn-disconnect {
+    flex: 1;
+    background: linear-gradient(135deg, #ef5350, #d32f2f);
+}
+.btn-disconnect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(239, 83, 80, 0.3);
+}
+
+.info-box {
+    background: rgba(79, 195, 247, 0.1);
+    border-left: 3px solid var(--accent);
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-dim);
+}
+.info-box strong {
+    color: var(--text);
+}
+
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+}
+.btn-loading::after {
+    content: "";
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    .action-buttons {
+        flex-direction: column;
+    }
+}
 /* Printer Status Farben */
 .status-online {
     color: #66bb6a !important;

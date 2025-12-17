@@ -1,4 +1,16 @@
-﻿import logging
+﻿from fastapi import FastAPI, Query
+from app.routes.debug_routes import get_logs, delete_logs
+
+app = FastAPI()
+
+@app.get("/api/debug/logs")
+def api_get_logs(module: str = Query("app"), limit: int = Query(100)):
+    return get_logs(module=module, limit=limit)
+
+@app.delete("/api/debug/logs")
+def api_delete_logs(module: str = Query("app")):
+    return delete_logs(module=module)
+import logging
 from logging.handlers import RotatingFileHandler
 import yaml
 import os
@@ -78,8 +90,12 @@ from app.routes.debug_network_routes import router as debug_network_router
 from app.routes.notification_routes import router as notification_router
 from app.routes.config_routes import router as config_router
 from app.routes import debug_log_routes
+from app.routes import mqtt_runtime_routes
 
 from app.websocket.log_stream import stream_log
+from sqlmodel import Session, select
+from app.database import engine
+from app.models.printer import Printer
 
 
 # -----------------------------------------------------
@@ -152,7 +168,10 @@ app.include_router(debug_network_router)
 app.include_router(debug_printer_router)
 app.include_router(notification_router)
 app.include_router(config_router)
-app.include_router(debug_log_routes.router)
+app.include_router(debug_log_routes.router, prefix="/api/debug", tags=["debug"])
+
+# Runtime MQTT control endpoints (separate from legacy mqtt_routes to avoid collisions)
+app.include_router(mqtt_runtime_routes.router, prefix="/api/mqtt/runtime", tags=["mqtt"])
 
 
 # -----------------------------------------------------
@@ -206,18 +225,6 @@ async def printers_page(request: Request):
     )
 
 
-@app.get('/printers-modern', response_class=HTMLResponse)
-async def printers_modern_page(request: Request):
-    # Test-Layout, bleibt vom bestehenden Drucker-UI getrennt
-    return templates.TemplateResponse(
-        'printers_modern.html',
-        {
-            'request': request,
-            'title': 'Drucker (Preview) - FilamentHub',
-            'active_page': 'printers'
-        },
-    )
-
 @app.get('/jobs', response_class=HTMLResponse)
 async def jobs_page(request: Request):
     return templates.TemplateResponse(
@@ -267,9 +274,16 @@ async def logs_page(request: Request):
 @app.get('/debug', response_class=HTMLResponse)
 async def debug_page(request: Request):
     debug_templates = Jinja2Templates(directory='app/templates')
+    printers = []
+    try:
+        with Session(engine) as session:
+            printers = session.exec(select(Printer)).all()
+    except Exception:
+        printers = []
+
     return debug_templates.TemplateResponse(
         'debug.html',
-        {'request': request, 'title': 'FilamentHub Debug Center', 'active_page': 'debug'},
+        {'request': request, 'title': 'FilamentHub Debug Center', 'active_page': 'debug', 'printers': printers},
     )
 
 

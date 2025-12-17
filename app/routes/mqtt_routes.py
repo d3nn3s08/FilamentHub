@@ -10,6 +10,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, De
 
 import sqlalchemy as sa
 
+from app.services import mqtt_runtime
+
 # ...existing code...
 
 router = APIRouter(prefix="/api/mqtt", tags=["MQTT"])
@@ -29,15 +31,98 @@ mqtt_ws_clients = set()
 async def websocket_logs(websocket: WebSocket, module: str):
 
     await websocket.accept()
+
+    log_file_map = {
+
+        "app": "logs/app/app.log",
+
+        "bambu": "logs/bambu/bambu.log",
+
+        "klipper": "logs/klipper/klipper.log",
+
+        "errors": "logs/errors/errors.log",
+
+        "mqtt": "logs/mqtt/mqtt_messages.log"
+
+    }
+
+    log_file = log_file_map.get(module)
+
     try:
-        await websocket.send_json({"deprecated": True, "use": "/api/debug/logs"})
-    except Exception:
-        pass
-    finally:
+
+        # Optional: nur die letzten N Zeilen senden (tail). Default: 0 = keine Historie
+
+        tail_param = websocket.query_params.get("tail", "0") if hasattr(websocket, "query_params") else "0"
+
         try:
-            await websocket.close(code=1001)
+
+            tail = int(tail_param)
+
         except Exception:
-            pass
+
+            tail = 0
+
+
+
+        last_size = 0
+
+        if log_file and os.path.exists(log_file):
+
+            # Falls tail > 0 angefordert wurde, sende letzte N Zeilen; ansonsten �berspringe Historie
+
+            if tail > 0:
+
+                try:
+
+                    with open(log_file, "r", encoding="utf-8") as f:
+
+                        dq = deque(f, maxlen=tail)
+
+                    for line in dq:
+
+                        await websocket.send_text(line.strip())
+
+                except Exception:
+
+                    pass
+
+            # setze Startposition auf Dateiende, damit keine Historie erneut gesendet wird
+
+            try:
+
+                last_size = os.path.getsize(log_file)
+
+            except Exception:
+
+                last_size = 0
+
+        while True:
+
+            if log_file:
+
+                try:
+
+                    with open(log_file, "r", encoding="utf-8") as f:
+
+                        f.seek(last_size)
+
+                        new_lines = f.readlines()
+
+                        last_size = f.tell()
+
+                        for line in new_lines:
+
+                            await websocket.send_text(line.strip())
+
+                except FileNotFoundError:
+
+                    pass
+
+            await asyncio.sleep(1)
+
+    except WebSocketDisconnect:
+
+        pass
 
 """
 
@@ -51,7 +136,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Re
 
 from pydantic import BaseModel
 
-from typing import Dict, List, Optional, Set, Any, Sequence
+from typing import Dict, List, Optional, Set, Any, Sequence, cast
 
 import ssl
 
@@ -299,7 +384,8 @@ def on_connect(client, userdata, flags, rc, properties=None):
 
         print(f"[MQTT] Connected: {connection_id}")
 
-        # Default-Topic dynamisch aus cloud_serial oder client_id ableiten, falls nichts abonniert
+        # Default-Topic: bei Bambu ausschließlich cloud_serial verwenden.
+        # Kein Fallback auf client_id, um falsche Topics zu vermeiden.
 
         if not subscribed_topics:
 
@@ -307,17 +393,11 @@ def on_connect(client, userdata, flags, rc, properties=None):
 
             try:
 
-                cid = userdata.get('client_id') if userdata else None
-
                 cserial = userdata.get('cloud_serial') if userdata else None
 
                 if cserial:
 
                     default_topic = f"device/{cserial}/report"
-
-                elif cid:
-
-                    default_topic = f"device/{cid}/report"
 
             except Exception:
 
@@ -330,6 +410,10 @@ def on_connect(client, userdata, flags, rc, properties=None):
                 client.subscribe(default_topic)
 
                 subscribed_topics.add(default_topic)
+                try:
+                    mqtt_runtime.register_subscription(default_topic)
+                except Exception:
+                    pass
 
         else:
 
@@ -338,6 +422,10 @@ def on_connect(client, userdata, flags, rc, properties=None):
                 print(f"Abonniere MQTT-Topic: {topic}")
 
                 client.subscribe(topic)
+                try:
+                    mqtt_runtime.register_subscription(topic)
+                except Exception:
+                    pass
 
     else:
 
@@ -348,6 +436,10 @@ def on_connect(client, userdata, flags, rc, properties=None):
         # Fehlschlag: vorhandene Subscriptions leeren, damit Status korrekt ist
 
         subscribed_topics.clear()
+        try:
+            mqtt_runtime.clear_subscriptions()
+        except Exception:
+            pass
 
         try:
 
@@ -540,24 +632,13 @@ def on_message(client, userdata, msg):
                     job_data = mapped_dict.get("job")
 
                 if printer_service_ref:
-
-                    printer_service_ref.update_printer(
-
-                        printer_name_for_service or serial_from_topic or "unknown",
-
-                        mapped_obj,
-
-                    )
-
-                    if caps:
-
-                        printer_service_ref.update_capabilities(
-
-                            printer_name_for_service or serial_from_topic or "unknown",
-
-                            caps,
-
-                        )
+                    # Prefer cloud_serial as key. If no serial is present, ignore updates.
+                    if serial_from_topic:
+                        printer_service_ref.update_printer(serial_from_topic, mapped_obj)
+                        if caps:
+                            printer_service_ref.update_capabilities(serial_from_topic, caps)
+                    else:
+                        print("[MQTT] Received mapped data without cloud_serial; update skipped")
 
                 if caps and isinstance(mapped_dict, dict):
 
@@ -1152,7 +1233,8 @@ def on_message(client, userdata, msg):
 
 
                                     if job.id is not None:
-                                        session.exec(sa.delete(JobSpoolUsage).where(JobSpoolUsage.job_id == job.id))
+                                        job_spool_usage_table = cast(Any, JobSpoolUsage).__table__
+                                        session.exec(sa.delete(job_spool_usage_table).where(job_spool_usage_table.c.job_id == job.id))
 
                                     order_idx = 0
 
@@ -1492,6 +1574,11 @@ async def disconnect_mqtt(broker: str, port: int = 1883):
 
             message_buffer.clear()
 
+            try:
+                mqtt_runtime.clear_subscriptions()
+            except Exception:
+                pass
+
         
 
         return {
@@ -1545,6 +1632,10 @@ async def subscribe_topic(subscription: MQTTSubscription):
         
 
         subscribed_topics.add(topic)
+        try:
+            mqtt_runtime.register_subscription(topic)
+        except Exception:
+            pass
 
         
 
@@ -1597,6 +1688,10 @@ async def unsubscribe_topic(subscription: MQTTSubscription):
         
 
         subscribed_topics.discard(topic)
+        try:
+            mqtt_runtime.unregister_subscription(topic)
+        except Exception:
+            pass
 
         
 
@@ -1883,5 +1978,18 @@ async def suggest_topics(session=Depends(get_session)):
 
 async def get_mqtt_logs():
 
-    """Gibt die empfangenen MQTT-Nachrichten als Text zur?ck"""
-    return {"deprecated": True, "use": "/api/debug/logs"}
+    """Gibt die empfangenen MQTT-Nachrichten als Text zur�ck"""
+
+    try:
+
+        with open("logs/mqtt/mqtt_messages.log", "r", encoding="utf-8") as f:
+
+            return f.read()
+
+    except FileNotFoundError:
+
+        return "Noch keine MQTT-Nachrichten empfangen."
+
+    except Exception as e:
+
+        return f"Fehler beim Lesen der Logdatei: {e}"

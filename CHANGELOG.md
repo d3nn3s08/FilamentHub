@@ -1,4 +1,36 @@
+### Geändert
+- [Debug Center] MQTT Tab: Card-basiertes Layout analog System Status (UI-Struktur, keine Logik)
+### Geändert
+- MQTT-Tab: Pro-Cards (Subscriptions, Live Messages, Health & Statistik) verwenden jetzt die systemkonforme .panel/.panel-header/.panel-body Struktur. Eigene Card-Klassen entfernt.
+## 2025-12-15
+- [Debug Center] MQTT-Tab: Lite-Modus aktiviert (auch im Lite-Modus sichtbar)
+- [Debug Center] MQTT-Übersicht: Card sichtbar gemacht und Layout an System Status angepasst
+- [Debug Center] MQTT-Tab mit Overview-Grundstruktur hinzugefügt (Pro-Modus)
+- [Debug Center] MQTT-Tab: Pro-Cards ergänzt (Struktur, Pro-Modus)
+- [Debug Center] MQTT Debug UI: Connect/Disconnect nutzt Runtime-Endpunkte (/api/mqtt/runtime/*)
+- [MQTT] UI zeigt echten Runtime-Status nach Connect/Disconnect
+- [MQTT] UI behandelt Validation-Fehler (HTTP 422) korrekt
+- [MQTT] Topics-Übersicht (Counts + Last Seen) im Pro-Tab ergänzt
+- [MQTT] Connect-Button baut echte MQTT-Verbindung auf
+- [MQTT] Runtime-Service eingeführt (Reuse PrinterMQTTClient)
+- [MQTT] Runtime API-Endpunkte ergänzt (connect/disconnect/status)
+- [MQTT] Runtime-Connect Endpoint geprüft und stabilisiert
+- [MQTT] Connect Button zuverlässig über Tab-Init gebunden
+- [MQTT] Connect Button nutzt panel-lokale Inputs, kein globales DOM mehr
+- [MQTT] Connect-Button stabilisiert (Runtime Endpoint, Handler-Fix)
+- [MQTT] Status-Badge Farben korrigiert (nicht verbunden = rot)
+- [MQTT] Connect nutzt erkannte Drucker inkl. api_key aus DB
+[Debug Center] Log Viewer Pro: Zeilenklick + Detailfläche auch bei einstzeiligen Logs
+[Debug Center] Log Viewer Pro: Stacktrace per Zeilenklick toggelbar
+[Debug Center] Log Viewer Pro: Message-Layout und Timestamp verbessert
+[Debug Center] Log Viewer Pro: legacy State-Datei als ungenutzt markiert
+[Debug Center] Log Viewer Pro: Frontend-Filter aktiviert
+[Debug Center] Log Viewer Pro: Toolbar optisch integriert
 ## 2025-12-14 (Logging Refactor)
+## 2025-12-14 (Debug Center)
+- [Debug Center] Log Viewer Pro: Minimal neu aufgebaut (Renderer + Stacktrace Toggle stabil)
+ - [Debug Center] Log Viewer Pro: API-Anbindung an neuen Renderer (automatisches Laden)
+	- [Debug Center] Log Viewer Pro: UI-Grundstruktur ergänzt (Toolbar ohne Logik)
 - Logging: zentraler Log Reader + /api/debug/logs als einzige Quelle, Legacy-Endpunkte liefern Deprecation-Hinweis.
 - Systemstatus + Debug Center lesen Logging-Level/File-Status aus Settings; Log Viewer ruft nur noch /api/debug/logs.
 
@@ -6,7 +38,7 @@
 - Debug Center: neuer Pro-Tab "Log Viewer" (Placeholder)
 
 ## 2025-12-14
-- Pro Config Manager � Backend Keys & Defaults vorbereitet
+- Pro Config Manager � Backend Keys & Defaults vorbereitet
 
 ## 2025-12-13 (Server Start)
 - Fix: run.py gibt Hinweis bei belegtem Port und erlaubt PORT-Override, damit Uvicorn nicht still beendet.
@@ -19,7 +51,7 @@
 - UI polish: Printer Scanner Lite modernisiert (Cards, Badges, Buttons)
 - Lite Printer Save: Duplikat-Schutz (IP + Typ) und Status-Feedback beim Hinzufuegen
 - Debug Center: Lite/Pro Umschalt-Button mit persistiertem Modus
-- Debug Center / Printer Scanner: Scanner Pro � Anzeige-Cards (Platzhalter, deutsch)
+- Debug Center / Printer Scanner: Scanner Pro � Anzeige-Cards (Platzhalter, deutsch)
 
 ## 2025-12-13 (Rebuild)
 ### Changed
@@ -118,6 +150,11 @@
 - Debug Center / Printer Scanner: Pro-Icons und Disabled-State optimiert (Anzeige-only)
 - Debug Center / Printer Scanner: Pro-Icons und Disabled-State optimiert (Anzeige-only)
 - Debug Center / Printer Scanner: Deep Probe (Pro) Button->Backend->Ergebnisanzeige
+
+## [2025-12-14] Logging-System stabil
+- Abschluss-Checks durchgeführt: Limit, Modul-Whitelist, Admin-Gate, Logging-Level, Endpoint-Konsistenz
+- Prefix-Kollision behoben: /api/debug/logs
+- System als STABIL markiert, Basis für weitere Features
 
 
 

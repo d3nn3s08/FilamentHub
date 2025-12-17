@@ -156,8 +156,12 @@ def system_status():
             else:
                 health_status = "warning"
                 reasons.append("Average response time not available")
-            if mqtt_state_value == "disabled":
                 reasons.append("MQTT service is disabled")
+                if health_status == "ok":
+                    health_status = "warning"
+            # Service-MQTT ist immer abgeleitet vom Runtime-MQTT-Status
+            if mqtt_state_value != "connected":
+                reasons.append("Nicht verbunden")
                 if health_status == "ok":
                     health_status = "warning"
     except Exception:

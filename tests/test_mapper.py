@@ -10,7 +10,7 @@ from app.services.universal_mapper import UniversalMapper
 # ==== HIER DEINE DRUCKERDATEN EINTRAGEN ====
 PRINTER_IP = "192.168.178.41"       # <- deine X1C IP
 USERNAME   = "bblp"               # <- fest
-API_KEY    = "3e0685ba"   # <- dein Key
+API_KEY    = "<ACCESS_CODE>"   # <- dein Key
 MODEL      = "X1C"
 # ===========================================
 # Datei, in die wir die erste Payload speichern

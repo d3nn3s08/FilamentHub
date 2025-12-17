@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from app.services import log_reader
 
 
-router = APIRouter(prefix="/api/debug", tags=["Debug Logs"])
+router = APIRouter(tags=["Debug Logs"])
 
 DEFAULT_LIMIT = 200
 MAX_LIMIT = log_reader.MAX_LIMIT

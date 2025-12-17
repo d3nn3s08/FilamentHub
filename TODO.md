@@ -1,6 +1,20 @@
-- [ ] Log Viewer Pro: Tab angelegt (Content folgt)
-- [x] Zentraler Log Reader implementiert (/api/debug/logs)
-- [x] Legacy Log-Endpunkte als deprecated markiert
+* [x] MQTT Tab: Card-Layout an System Status angepasst (UI-Struktur, keine Logik)
+* [ ] MQTT Datenanbindung folgt
+* [ ] MQTT Debug UI: Connect/Disconnect nutzt /api/mqtt/runtime/* (Schritt 1C)
+* [ ] MQTT UI: Runtime-Status + Fehlerhandling (inkl. 422) finalisiert (Schritt 1D)
+* [x] MQTT: Topics/Subscribers Übersicht (read-only) umgesetzt (Schritt 2A)
+* [x] MQTT UI: Connect-Button triggert Runtime-Connect (final)
+* [x] MQTT-Tab: Pro-Cards (Subscriptions, Live Messages, Health & Statistik) auf systemkonforme .panel-Struktur umgestellt (keine eigenen Card-Klassen mehr)
+[x] MQTT-Tab: Overview-Grundstruktur angelegt
+[x] MQTT-Tab: Card-Layout an System-Status-Card-Pattern angepasst
+[x] MQTT-Tab: Lite-Modus aktiviert (auch im Lite-Modus sichtbar)
+[ ] MQTT-Statusdaten später anbinden
+[ ] Log Viewer Pro: Einstzeilige Logs mit dezenter Detailfläche bei Klick
+[ ] Log Viewer Pro: Zeilenklick toggelt Stacktrace
+[ ] Log Viewer Pro: Message-Layout + Timestamp ergänzt
+[ ] Log Viewer Pro: Alter State (log_viewer_state.js) als ungenutzt markiert
+[ ] Log Viewer Pro: Filter (Level/Modul/Suche) aktiviert
+ [ ] Log Viewer Pro: Toolbar UI gestylt
 - [x] Logging-Status und Level aus Settings laden (system_routes)
 - [x] Log Viewer Pro nutzt /api/debug/logs (keine Alt-Routen)
 - [ ] Log Viewer: Filter/Modulwahl und Detailanzeige finalisieren
@@ -29,6 +43,8 @@
 - Pro: MQTT Charts
 - Pro: AMS Deep Inspect
 - Pro: JSON Inspector polish
+
+* [ ] MQTT: Topics/Subscribers Übersicht (read-only) umgesetzt (Schritt 2A)
 
 # Performance Lite Panel
 - [x] UX verbessert: Initial-Load sofort, Loading-State, Soft-Cache (Frontend, Debug Center)
@@ -116,6 +132,9 @@
 - [ ] Optional: WS-Client-IP/Browser im Pro-Modus anzeigen
 - [ ] Optional: WS-Message-Rate anzeigen
 - [ ] MQTT-Live-Daten vollstaendig anbinden (nach Broker-Setup)
+- [ ] MQTT Runtime: PrinterMQTTClient als zentrale Runtime-Instanz angebunden
+- [ ] MQTT Runtime API: connect/disconnect/status Endpoints (Debug)
+- [x] MQTT Runtime: Connect-Endpoint validiert (Schritt 1B)
 - [x] Performance-Panel Frontend (Lite) an neuen /api/performance/panel Vertrag anbinden (defensive Fallbacks)
 - [ ] Performance-Panel Pro: History/Statistics, Sparklines und Recording-Felder nachziehen
 - [ ] Performance-API Feld-Normalisierung klären (statistics vs stats, recording_start vs recording_since)
@@ -124,3 +143,11 @@
 - [ ] Optional: Pro-Hinweis/Badge im UI für eingeschränkte Tabs
 - [ ] Runtime/Requests im Debug-Frontend an Middleware-Metriken anbinden (Req/min, Avg Response)
 - [ ] Optional: WS-Client-Details im Pro-Modus anzeigen
+- [x] Abschluss-Checks Log-System durchgeführt
+- [x] Limit-Capping, Modul-Whitelist, Admin-Gate, Logging-Level, Endpoint-Konsistenz geprüft
+- [x] Log-System als STABIL markiert
+- [x] Architektur-Fix abgeschlossen
+- MQTT Connect: Panel-lokale Feldbindung finalisiert
+- MQTT: Connect Handler vereinheitlicht (ein Endpoint, eine Funktion)
+- MQTT Status-Farblogik korrigiert (Disconnected=rot)
+- MQTT Connect: Schnellauswahl priorisiert, Passwort aus DB

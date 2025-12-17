@@ -19,6 +19,7 @@ function setConfigEditable(enabled) {
       el.disabled = !enabled;
     }
   });
+
   if (enabled) {
     applyConfigEnableStates();
   }
@@ -150,8 +151,12 @@ function normalizePrinterType(val) {
 
 function setDebugMode(mode) {
   window.DEBUG_MODE = mode === 'pro' ? 'pro' : 'lite';
-  document.body.classList.remove('debug-lite', 'debug-pro');
-  document.body.classList.add(window.DEBUG_MODE === 'pro' ? 'debug-pro' : 'debug-lite');
+  document.body.classList.remove('debug-lite', 'debug-pro', 'pro-mode');
+  const modeClass = window.DEBUG_MODE === 'pro' ? 'debug-pro' : 'debug-lite';
+  document.body.classList.add(modeClass);
+  if (window.DEBUG_MODE === 'pro') {
+    document.body.classList.add('pro-mode');
+  }
   const btnLite = document.getElementById('debugModeLite');
   const btnPro = document.getElementById('debugModePro');
   const label = document.getElementById('debugModeLabel');
@@ -204,6 +209,11 @@ function $(id) {
 }
 
 function setText(id, value, fallback = '-') {
+  // Nur MQTT-Status-BADGES werden geschützt, nicht die Daten-Felder
+  // Status-Badges werden von mqtt-connect-handler.js verwaltet
+  const mqttStatusBadges = ['mqttStatus', 'mqttStatusBadge', 'mqttConnBadge', 'proMqttStatus'];
+  if (mqttStatusBadges.includes(id)) return;
+  
   const el = $(id);
   if (!el) return;
   const safe = value === undefined || value === null || value === '' ? fallback : value;
@@ -415,6 +425,11 @@ function setBadgeState(el, state) {
 }
 
 function setStatus(id, state) {
+  // MQTT-Status wird ausschließlich von mqtt-connect-handler.js verwaltet
+  // Schütze ALLE MQTT-Status-Elemente vor Überschreibung
+  const mqttElements = ['mqttStatus', 'mqttStatusBadge', 'mqttConnBadge', 'proMqttStatus'];
+  if (mqttElements.includes(id)) return;
+  
   const el = $(id);
   if (!el) return;
   const val = state || 'offline';
@@ -500,18 +515,16 @@ async function loadSystemStatus() {
 }
 
 async function loadBackendStatus() {
-  console.debug('[debug] loadBackendStatus tick', new Date().toISOString());
   try {
     const res = await fetch('/api/debug/system_status');
     if (!res.ok) return;
     const data = await res.json();
-    console.debug('[debug] system_status runtime', data?.runtime);
     const rt = data?.runtime || {};
     const stateRaw = (rt.state || 'idle').toString().toLowerCase();
     const state = stateRaw === 'active' ? 'active' : 'idle';
     setStatus('apiStatus', data?.api?.state || 'offline');
     setStatus('dbStatus', data?.db?.state || 'offline');
-    setStatus('mqttStatus', data?.mqtt?.state || 'offline');
+    // MQTT-Status wird NICHT mehr hier gesetzt - mqtt-connect-handler.js ist zuständig
     setStatus('wsStatus', data?.websocket?.state || 'offline');
     const clients = data?.websocket?.clients || 0;
     setText('wsClients', clients ? `(${clients} clients)` : '');
@@ -527,7 +540,6 @@ async function loadBackendStatus() {
     });
 
     const badges = document.querySelectorAll('#sys_runtime_state');
-    console.debug('[debug] runtime state resolved', state, 'rpm', rt?.requests_per_minute, 'avg', rt?.avg_response_ms);
     const isActive = state === 'active';
     if (badges.length > 0) {
       badges.forEach(badge => {
@@ -1156,7 +1168,7 @@ function renderSystemHealth(statusData) {
   const api = (statusData?.api || '').toLowerCase();
   const db = (statusData?.db || '').toLowerCase();
   const ws = (statusData?.ws || '').toLowerCase();
-  const mqtt = (statusData?.mqtt || '').toLowerCase();
+  // mqtt variable entfernt - wird nicht mehr benötigt, da mqtt-connect-handler.js zuständig ist
 
   const sysHealth = statusData?.systemHealth || {};
   let level = sysHealth.status || 'warning';
@@ -1172,9 +1184,7 @@ function renderSystemHealth(statusData) {
     if (Number.isFinite(avgMs) && avgMs >= 600) {
       reasons.push(`High average response time (${Math.round(avgMs)} ms)`);
     }
-    if (mqtt === 'disabled') {
-      reasons.push('MQTT service is disabled');
-    }
+    // MQTT-Status-Checks entfernt - mqtt-connect-handler.js ist zuständig
     if (ws === 'listening' && (!Number.isFinite(wsClients) || wsClients === 0)) {
       reasons.push('WebSocket has no active clients');
     }
@@ -1203,7 +1213,7 @@ function renderSystemHealth(statusData) {
   setText('proApiStatus', statusData?.api || '-');
   setText('proDbStatus', statusData?.db || '-');
   setText('proWsStatus', statusData?.ws || '-');
-  setText('proMqttStatus', statusData?.mqtt || '-');
+  // proMqttStatus wird NICHT mehr hier gesetzt - mqtt-connect-handler.js ist zuständig
 
   if (whyBadge && whyList) {
     whyBadge.classList.remove('status-ok', 'status-warn', 'status-error', 'status-idle');
@@ -1263,23 +1273,415 @@ function stopPerformancePolling() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  initDebugModeUI();
-  initTabs();
-  startPolling();
+
+  if (typeof initDebugModeUI === 'function') {
+    initDebugModeUI();
+  } else {
+    console.warn('[debug.js] initDebugModeUI fehlt – übersprungen');
+  }
+
+  if (typeof initTabs === 'function') {
+    initTabs();
+  } else {
+    console.warn('[debug.js] initTabs fehlt – übersprungen');
+  }
+
+  if (typeof startPolling === 'function') {
+    startPolling();
+  } else {
+    console.warn('[debug.js] startPolling fehlt – übersprungen');
+  }
+
   const probeBtn = document.getElementById('proProbeStart');
-  if (probeBtn) {
+  if (probeBtn && typeof handleProbe === 'function') {
     probeBtn.addEventListener('click', () => handleProbe(probeBtn));
-    updateProbeButtonState();
+    if (typeof updateProbeButtonState === 'function') {
+      updateProbeButtonState();
+    }
   }
+
   const fpBtn = document.getElementById('proFingerprintStart');
-  if (fpBtn) {
+  if (fpBtn && typeof handleFingerprint === 'function') {
     fpBtn.addEventListener('click', () => handleFingerprint(fpBtn));
-    updateProbeButtonState();
+    if (typeof updateProbeButtonState === 'function') {
+      updateProbeButtonState();
+    }
   }
-  if (activeTab === 'performance') {
-    startPerformancePolling();
-  }
-  if (activeTab === 'scanner') {
-    initScannerTab();
+
+  if (typeof activeTab !== 'undefined') {
+    if (activeTab === 'performance' && typeof startPerformancePolling === 'function') {
+      startPerformancePolling();
+    }
+    if (activeTab === 'scanner' && typeof initScannerTab === 'function') {
+      initScannerTab();
+    }
   }
 });
+
+// ============================================
+// MQTT TOPICS MANAGEMENT FUNCTIONS
+// ============================================
+
+async function refreshMQTTTopics() {
+    console.log('refreshMQTTTopics called');
+    try {
+        const r = await fetch('/api/mqtt/runtime/topics', { method: 'GET' });
+        const data = await r.json();
+        console.log('Topics API response:', data);
+        if (r.ok && data && data.connected) {
+            _renderTopics(data.items || []);
+            return;
+        }
+        _renderTopics([]);
+    } catch (e) {
+        console.error('refreshMQTTTopics error:', e);
+        const hint = document.getElementById('mqttTopicsHint');
+        if (hint) hint.textContent = 'Keine Daten';
+        _renderTopics([]);
+    }
+}
+
+function _renderTopics(items) {
+    console.log('_renderTopics called with', items);
+    const list = document.getElementById('topicsList');
+    const empty = document.getElementById('topicsEmpty');
+    const hint = document.getElementById('mqttTopicsHint');
+    const countEl = document.getElementById('mqttSubscriptionsCount');
+    if (!list) return;
+
+    const safeItems = Array.isArray(items) ? items : [];
+    if (countEl) countEl.textContent = String(safeItems.length);
+
+    if (safeItems.length === 0) {
+        if (hint) hint.textContent = 'Keine Topics';
+        if (empty) empty.style.display = 'block';
+        list.style.display = 'none';
+        return;
+    }
+
+    if (empty) empty.style.display = 'none';
+    list.style.display = 'block';
+    list.innerHTML = '';
+
+    safeItems.forEach((topic) => {
+        const row = document.createElement('div');
+        row.className = 'kv';
+
+        const k = document.createElement('div');
+        k.className = 'k';
+        k.style.fontFamily = 'Consolas,monospace';
+        k.style.whiteSpace = 'nowrap';
+        k.style.overflow = 'hidden';
+        k.style.textOverflow = 'ellipsis';
+        k.title = String(topic || '');
+        k.textContent = String(topic || '');
+
+        const v = document.createElement('div');
+        v.className = 'v';
+        v.textContent = 'abonniert';
+
+        row.appendChild(k);
+        row.appendChild(v);
+        list.appendChild(row);
+    });
+}
+
+let _mqttTopicsPollTimer = null;
+
+function _syncTopicsPolling() {
+    console.log('_syncTopicsPolling called, _mqttLastConnected:', window._mqttLastConnected);
+    const shouldRun = Boolean(window._mqttLastConnected);
+    if (!shouldRun) {
+        if (_mqttTopicsPollTimer) {
+            clearInterval(_mqttTopicsPollTimer);
+            _mqttTopicsPollTimer = null;
+        }
+        const hint = document.getElementById('mqttTopicsHint');
+        if (hint) hint.textContent = 'Nicht verbunden';
+        const empty = document.getElementById('topicsEmpty');
+        const list = document.getElementById('topicsList');
+        if (empty) empty.style.display = 'block';
+        if (list) list.style.display = 'none';
+        return;
+    }
+
+    if (_mqttTopicsPollTimer) return;
+    console.log('Starting topics polling...');
+    refreshMQTTTopics().catch(() => {});
+    _mqttTopicsPollTimer = setInterval(() => {
+        refreshMQTTTopics().catch(() => {});
+    }, 4000);
+}
+
+let _mqttMessagesPollTimer = null;
+
+async function refreshMQTTMessages() {
+    console.log('refreshMQTTMessages called');
+    try {
+        const r = await fetch('/api/mqtt/runtime/messages?limit=50', { method: 'GET' });
+        const data = await r.json();
+        console.log('Messages API response:', data);
+        if (r.ok && data) {
+            _renderMessages(data.messages || []);
+            return;
+        }
+        _renderMessages([]);
+    } catch (e) {
+        console.error('refreshMQTTMessages error:', e);
+        _renderMessages([]);
+    }
+}
+
+function _renderMessages(messages) {
+    console.log('_renderMessages called with', messages.length, 'messages');
+    const container = document.getElementById('mqttLiveMessages');
+    if (!container) {
+        console.warn('Live messages container not found');
+        return;
+    }
+
+    const safeMessages = Array.isArray(messages) ? messages : [];
+
+    if (safeMessages.length === 0) {
+        container.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">Keine Live-Nachrichten</div>';
+        return;
+    }
+
+    // Clear and rebuild
+    container.innerHTML = '';
+
+    safeMessages.forEach((msg, idx) => {
+        if (!msg || typeof msg !== 'object') return;
+
+        const msgDiv = document.createElement('div');
+        msgDiv.style.cssText = 'padding: 12px 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;';
+
+        // Left: Topic and Payload
+        const leftDiv = document.createElement('div');
+        leftDiv.style.cssText = 'flex: 1; min-width: 0;';
+
+        const topicSpan = document.createElement('div');
+        topicSpan.style.cssText = 'font-family: Consolas, monospace; color: #3498db; font-weight: 500; word-break: break-all;';
+        topicSpan.textContent = msg.topic || '';
+
+        const payloadSpan = document.createElement('div');
+        payloadSpan.style.cssText = 'font-family: Consolas, monospace; color: #666; font-size: 12px; margin-top: 4px; word-break: break-all; max-height: 60px; overflow: hidden;';
+        const payload = String(msg.payload || '').substring(0, 150);
+        payloadSpan.textContent = payload || '(empty)';
+
+        leftDiv.appendChild(topicSpan);
+        leftDiv.appendChild(payloadSpan);
+
+        // Right: Timestamp
+        const timeSpan = document.createElement('div');
+        timeSpan.style.cssText = 'font-size: 12px; color: var(--text-dim); white-space: nowrap;';
+        try {
+            const ts = new Date(msg.timestamp);
+            const hours = String(ts.getHours()).padStart(2, '0');
+            const mins = String(ts.getMinutes()).padStart(2, '0');
+            const secs = String(ts.getSeconds()).padStart(2, '0');
+            timeSpan.textContent = `${hours}:${mins}:${secs}`;
+        } catch (e) {
+            timeSpan.textContent = '00:00:00';
+        }
+
+        msgDiv.appendChild(leftDiv);
+        msgDiv.appendChild(timeSpan);
+        container.appendChild(msgDiv);
+    });
+}
+
+function _syncMessagesPolling() {
+    console.log('_syncMessagesPolling called, _mqttLastConnected:', window._mqttLastConnected);
+    const shouldRun = Boolean(window._mqttLastConnected);
+    
+    if (!shouldRun) {
+        if (_mqttMessagesPollTimer) {
+            clearInterval(_mqttMessagesPollTimer);
+            _mqttMessagesPollTimer = null;
+        }
+        return;
+    }
+
+    if (_mqttMessagesPollTimer) return;
+    console.log('Starting messages polling...');
+    refreshMQTTMessages().catch(() => {});
+    _mqttMessagesPollTimer = setInterval(() => {
+        refreshMQTTMessages().catch(() => {});
+    }, 2000);  // Update every 2 seconds for live feel
+}
+
+// MQTT Detail & Health Functions
+async function refreshMQTTDetails() {
+    console.log('refreshMQTTDetails called');
+    try {
+        const r = await fetch('/api/mqtt/runtime/status', { method: 'GET' });
+        const data = await r.json();
+        console.log('MQTT Details response:', data);
+        
+        if (r.ok && data) {
+            _updateMQTTDetails(data);
+            return;
+        }
+        _clearMQTTDetails();
+    } catch (e) {
+        console.error('refreshMQTTDetails error:', e);
+        _clearMQTTDetails();
+    }
+}
+
+function _updateMQTTDetails(status) {
+    // MQTT Detail Panel - Lite Version
+    const statusEl_lite = document.getElementById('mqttStatus_lite');
+    const brokerEl_lite = document.getElementById('mqttBroker_lite');
+    const clientsEl_lite = document.getElementById('mqttClients_lite');
+    
+    if (statusEl_lite) {
+        statusEl_lite.textContent = status.connected ? 'Verbunden' : 'Nicht verbunden';
+        statusEl_lite.style.color = status.connected ? '#2ecc71' : '#e74c3c';
+    }
+    
+    if (brokerEl_lite) {
+        brokerEl_lite.textContent = status.broker || '-';
+    }
+    
+    if (clientsEl_lite) {
+        clientsEl_lite.textContent = '1';  // Wir haben immer 1 client (runtime)
+    }
+    
+    // MQTT Detail Panel - Pro Version
+    const statusEl_pro = document.getElementById('mqttStatus_pro');
+    const brokerEl_pro = document.getElementById('mqttBroker_pro');
+    const clientsEl_pro = document.getElementById('mqttClients_pro');
+    
+    if (statusEl_pro) {
+        statusEl_pro.textContent = status.connected ? 'Verbunden' : 'Nicht verbunden';
+        statusEl_pro.style.color = status.connected ? '#2ecc71' : '#e74c3c';
+    }
+    
+    if (brokerEl_pro) {
+        brokerEl_pro.textContent = status.broker || '-';
+    }
+    
+    if (clientsEl_pro) {
+        clientsEl_pro.textContent = '1';  // Wir haben immer 1 client (runtime)
+    }
+    
+    // Health & Statistik Panel - Lite Version
+    const msgSecEl_lite = document.getElementById('mqttMsgSec_lite');
+    const errorsEl_lite = document.getElementById('mqttErrors_lite');
+    const qosAvgEl_lite = document.getElementById('mqttQosAvg_lite');
+    
+    if (msgSecEl_lite) {
+        // Calculate messages per second from uptime and message_count
+        const msgCount = parseInt(status.message_count || 0);
+        const uptime = status.uptime || '00:00:00';
+        let msgPerSec = 0;
+        
+        try {
+            const parts = uptime.split(':');
+            if (parts.length === 3) {
+                const hours = parseInt(parts[0]) || 0;
+                const mins = parseInt(parts[1]) || 0;
+                const secs = parseInt(parts[2]) || 0;
+                const totalSecs = hours * 3600 + mins * 60 + secs;
+                msgPerSec = totalSecs > 0 ? (msgCount / totalSecs).toFixed(2) : 0;
+            }
+        } catch (e) {
+            msgPerSec = 0;
+        }
+        msgSecEl_lite.textContent = msgPerSec + ' msg/s';
+    }
+    
+    if (errorsEl_lite) {
+        errorsEl_lite.textContent = '0';  // No error tracking yet
+    }
+    
+    if (qosAvgEl_lite) {
+        qosAvgEl_lite.textContent = status.qos || '1';
+    }
+    
+    // Health & Statistik Panel - Pro Version
+    const msgSecEl_pro = document.getElementById('mqttMsgSec_pro');
+    const errorsEl_pro = document.getElementById('mqttErrors_pro');
+    const qosAvgEl_pro = document.getElementById('mqttQosAvg_pro');
+    
+    if (msgSecEl_pro) {
+        // Calculate messages per second from uptime and message_count
+        const msgCount = parseInt(status.message_count || 0);
+        const uptime = status.uptime || '00:00:00';
+        let msgPerSec = 0;
+        
+        try {
+            const parts = uptime.split(':');
+            if (parts.length === 3) {
+                const hours = parseInt(parts[0]) || 0;
+                const mins = parseInt(parts[1]) || 0;
+                const secs = parseInt(parts[2]) || 0;
+                const totalSecs = hours * 3600 + mins * 60 + secs;
+                msgPerSec = totalSecs > 0 ? (msgCount / totalSecs).toFixed(2) : 0;
+            }
+        } catch (e) {
+            msgPerSec = 0;
+        }
+        msgSecEl_pro.textContent = msgPerSec + ' msg/s';
+    }
+    
+    if (errorsEl_pro) {
+        errorsEl_pro.textContent = '0';  // No error tracking yet
+    }
+    
+    if (qosAvgEl_pro) {
+        qosAvgEl_pro.textContent = status.qos || '1';
+    }
+}
+
+function _clearMQTTDetails() {
+    const elements = [
+        'mqttStatus_lite', 'mqttBroker_lite', 'mqttClients_lite',
+        'mqttMsgSec_lite', 'mqttErrors_lite', 'mqttQosAvg_lite',
+        'mqttStatus_pro', 'mqttBroker_pro', 'mqttClients_pro',
+        'mqttMsgSec_pro', 'mqttErrors_pro', 'mqttQosAvg_pro'
+    ];
+    
+    elements.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '-';
+    });
+}
+
+let _mqttDetailsPollTimer = null;
+
+function _syncDetailsPoll() {
+    console.log('_syncDetailsPoll called, _mqttLastConnected:', window._mqttLastConnected);
+    const shouldRun = Boolean(window._mqttLastConnected);
+    
+    if (!shouldRun) {
+        if (_mqttDetailsPollTimer) {
+            clearInterval(_mqttDetailsPollTimer);
+            _mqttDetailsPollTimer = null;
+        }
+        _clearMQTTDetails();
+        return;
+    }
+
+    if (_mqttDetailsPollTimer) return;
+    console.log('Starting details polling...');
+    refreshMQTTDetails().catch(() => {});
+    _mqttDetailsPollTimer = setInterval(() => {
+        refreshMQTTDetails().catch(() => {});
+    }, 5000);  // Update every 5 seconds
+}
+
+// Export globally
+window.refreshMQTTTopics = refreshMQTTTopics;
+window._renderTopics = _renderTopics;
+window._syncTopicsPolling = _syncTopicsPolling;
+window.refreshMQTTMessages = refreshMQTTMessages;
+window._renderMessages = _renderMessages;
+window._syncMessagesPolling = _syncMessagesPolling;
+window.refreshMQTTDetails = refreshMQTTDetails;
+window._updateMQTTDetails = _updateMQTTDetails;
+window._syncDetailsPoll = _syncDetailsPoll;
+
+console.log('✓ MQTT Topics & Messages functions exported from debug.js');

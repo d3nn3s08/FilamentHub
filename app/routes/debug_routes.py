@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+import logging
 from pydantic import BaseModel
 import sqlite3
 import yaml
@@ -173,3 +174,169 @@ def check_restart_required():
         "reason": "Config-Änderungen wurden vorgenommen",
         "recommendation": "Server neu starten für Änderungen",
     }
+
+
+@router.get("/logs")
+def get_logs(module: str = "app", limit: int = 100):
+    """
+    Gibt Log-Einträge zurück.
+    Query-Parameter: module (app|mqtt|bambu|klipper|errors), limit (default: 100)
+    """
+    import glob
+    import re
+    from datetime import datetime
+    
+    # Map module names to folder names
+    module_map = {
+        "app": "app",
+        "mqtt": "mqtt",
+        "3d_drucker": "3d_drucker",
+        "3d-drucker": "3d_drucker",
+        "3d_printer": "3d_drucker",
+        "printer": "3d_drucker",
+        "bambu": "3d_drucker",
+        "klipper": "klipper",
+        "errors": "errors"
+    }
+    
+    module = module_map.get(module.lower(), module)
+    config = load_config()
+    logs_root = config.get("paths", {}).get("logs", "./logs")
+    
+    # Suche nach Log-Dateien - auch in Unterordnern
+    log_pattern = os.path.join(logs_root, f"{module}*.log")
+    log_files = glob.glob(log_pattern)
+    
+    # Falls nicht gefunden, suche in Unterordner mit gleichem Namen
+    if not log_files:
+        log_pattern_sub = os.path.join(logs_root, module, "*.log")
+        log_files = glob.glob(log_pattern_sub)
+    
+    if not log_files:
+        return {
+            "logs": [], 
+            "count": 0, 
+            "module": module, 
+            "debug": {
+                "logs_root": logs_root,
+                "pattern_1": log_pattern,
+                "pattern_2": os.path.join(logs_root, module, "*.log"),
+                "cwd": os.getcwd()
+            }
+        }
+    
+    # Neueste Log-Datei verwenden
+    log_file = max(log_files, key=os.path.getmtime)
+    
+    logs = []
+    total_lines_read = 0
+    try:
+        with open(log_file, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            total_lines_read = len(lines)
+            
+            # Nimm die letzten 'limit' Zeilen
+            lines = lines[-limit:]
+            
+            # Parse Log-Zeilen (Format: 2025-11-24 21:47:48,910 [INFO] uvicorn.error – Message)
+            # Unterstützt verschiedene Dash-Zeichen: - – —
+            log_pattern = re.compile(
+                r'^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:,\d{3})?)\s+\[(\w+)\]\s+([\w\.]+)\s+[\u2013\u2014\-–—]+\s+(.+)$'
+            )
+            
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                match = log_pattern.match(line)
+                if match:
+                    timestamp, level, log_module, message = match.groups()
+                    logs.append({
+                        "timestamp": timestamp,
+                        "module": log_module,
+                        "level": level,
+                        "message": message
+                    })
+                else:
+                    # Fallback: unformatierte Zeile - versuche trotzdem Timestamp zu extrahieren
+                    timestamp_match = re.match(r'^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:,\d{3})?)', line)
+                    if timestamp_match:
+                        timestamp = timestamp_match.group(1)
+                        message = line[len(timestamp):].strip()
+                    else:
+                        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        message = line
+                    
+                    logs.append({
+                        "timestamp": timestamp,
+                        "module": module,
+                        "level": "INFO",
+                        "message": message
+                    })
+    
+    except Exception as e:
+        import traceback
+        return {
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+            "logs": [],
+            "count": 0,
+            "module": module,
+            "file": log_file if 'log_file' in locals() else None
+        }
+    
+    return {
+        "logs": logs,
+        "count": len(logs),
+        "module": module,
+        "file": os.path.basename(log_file),
+        "debug": {
+            "total_lines_read": total_lines_read,
+            "file_path": log_file,
+            "limit": limit
+        }
+    }
+
+
+def delete_logs(module: str = "app"):
+    """
+    Löscht Log-Dateien für das angegebene Modul.
+    Unterstützt Unterordnerstruktur.
+    """
+    import glob
+    module_map = {
+        "app": "app",
+        "mqtt": "mqtt",
+        "3d_drucker": "3d_drucker",
+        "3d-drucker": "3d_drucker",
+        "3d_printer": "3d_drucker",
+        "printer": "3d_drucker",
+        "klipper": "klipper",
+        "errors": "errors"
+    }
+    module_key = module_map.get(module.lower(), module)
+    cfg = load_config()
+    logs_root = cfg.get("paths", {}).get("logs", "./logs")
+
+    # Muster: Root/app*.log und Root/app/*.log
+    patterns = [
+        os.path.join(logs_root, f"{module_key}*.log"),
+        os.path.join(logs_root, module_key, "*.log"),
+    ]
+
+    deleted = []
+    for pat in patterns:
+        for fp in glob.glob(pat):
+            try:
+                os.remove(fp)
+                deleted.append(fp)
+            except Exception:
+                pass
+    # Server-Log: Löschvorgang protokollieren
+    try:
+        logger = logging.getLogger("app")
+        logger.info(f"Log-Dateien gelöscht: module={module_key}, count={len(deleted)}")
+    except Exception:
+        pass
+    return {"deleted": deleted, "module": module_key}

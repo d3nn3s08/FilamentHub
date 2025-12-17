@@ -1,3 +1,5 @@
+import sys
+
 import uvicorn
 import logging
 import yaml
@@ -5,6 +7,26 @@ import os
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler, RotatingFileHandler
 from utils.dummy_logger import DummyLogger
+
+
+def _ensure_python_multipart_installed() -> None:
+    try:
+        import multipart  # noqa: F401
+    except Exception:
+        in_venv = hasattr(sys, "base_prefix") and sys.prefix != sys.base_prefix
+        hint = (
+            "Fehlendes Paket: python-multipart.\n"
+            "Installiere es in genau der Python-Umgebung, mit der du startest.\n\n"
+            "Empfohlen (Projekt-venv): .\\.venv\\Scripts\\python.exe run.py\n"
+            "Oder installiere global: pip install python-multipart\n"
+        )
+        if in_venv:
+            hint += "(Info: Du bist bereits in einer venv, dort fehlt das Paket.)\n"
+        else:
+            hint += "(Info: Du startest gerade nicht aus der Projekt-venv.)\n"
+
+        print(hint, file=sys.stderr)
+        raise SystemExit(1)
 
 
 def load_config():
@@ -21,6 +43,8 @@ def get_server_bind(cfg):
         port = 8085
     return host, port
 
+
+_ensure_python_multipart_installed()
 
 config = load_config()
 
@@ -70,9 +94,9 @@ klipper_logger = create_logger("Klipper", "klipper", level=global_level, enabled
 
 
 def create_mqtt_logger():
-    folder = os.path.join(LOG_ROOT, "mqtt")
+    folder = os.path.join(LOG_ROOT, "3d_drucker")
     os.makedirs(folder, exist_ok=True)
-    logfile = os.path.join(folder, "mqtt_messages.log")
+    logfile = os.path.join(folder, "3d_drucker.log")
     max_size_mb = log_config.get("max_size_mb", 10)
     backup_count = log_config.get("backup_count", 3)
     handler = RotatingFileHandler(
@@ -83,7 +107,7 @@ def create_mqtt_logger():
     )
     formatter = logging.Formatter("%(asctime)s | %(message)s")
     handler.setFormatter(formatter)
-    logger = logging.getLogger("MQTT")
+    logger = logging.getLogger("3D_drucker")
     logger.setLevel(logging.INFO)
     logger.addHandler(handler)
     return logger

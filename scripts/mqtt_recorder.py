@@ -15,7 +15,7 @@ from app.services.universal_mapper import UniversalMapper
 HOST = "192.168.178.41"
 PORT = 8883
 USERNAME = "bblp"
-PASSWORD = "3e0685ba"
+PASSWORD = "<ACCESS_CODE>"
 TOPIC = "device/+/report"
 PROTOCOL = mqtt.MQTTv5
 

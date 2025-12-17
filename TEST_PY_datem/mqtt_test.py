@@ -11,7 +11,7 @@ serial_number = "00M09A372601070"  # <-- hier echte Seriennummer eintragen
 topic = f"device/{serial_number}/report"
 message = "Testnachricht"
 username = "bblp"
-password = "3e0685ba"  # <-- Passwort aus Drucker-Netzwerkeinstellungen
+password = "<ACCESS_CODE>"  # <-- Passwort aus Drucker-Netzwerkeinstellungen
 
 
 client = mqtt.Client(protocol=mqtt.MQTTv311, callback_api_version=mqtt.CallbackAPIVersion.VERSION2)

@@ -2,6 +2,11 @@
 
 {% block extra_styles %}
 <link rel="stylesheet" href="/static/css/debug_tabs.css">
+<link rel="stylesheet" href="/static/css/log_viewer.css">
+<link rel="stylesheet" href="/static/css/debug-theme.css">
+<script src="/static/js/log_viewer_renderer.js"></script>
+<script src="/static/js/log_viewer_controller.js"></script>
+<script src="/static/js/json_renderer.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -21,12 +26,37 @@
         .status-warn { background:rgba(241,196,15,0.18); color:#ffd666; }
         .status-error { background:rgba(231,76,60,0.2); color:#ff9a8a; }
         .status-idle { background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.7); }
+        .mqtt-overview-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; }
+        .kv { display:flex; flex-direction:column; gap:4px; }
+        .kv .k { font-size:12px; opacity:0.75; }
+        .kv .v { font-size:16px; font-weight:700; }
+        #panel-mqtt .panel { border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.18); border-radius:12px; padding:16px; }
+        #panel-mqtt .eyebrow { margin-bottom:12px; }
+        /* Card Header */
+        .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+        .card-header h3 { font-size:16px; font-weight:700; margin:0; opacity:0.95; }
+        .pro-badge { padding:4px 10px; border-radius:6px; background:rgba(46,204,113,0.2); color:#8ef0b5; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
+        /* Info Grid */
+        .info-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:16px; }
+        .info-label { font-size:12px; opacity:0.65; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px; }
+        .info-value { font-size:16px; font-weight:700; opacity:0.95; }
+        /* Pro-Mode default: alles mit .pro-only verstecken, nur bei .pro-mode anzeigen */
+        .pro-only { display: none !important; }
+        .pro-mode .pro-only { display: block !important; }
+        /* MQTT PRO Grid Exception */
+        .pro-mode #panel-mqtt .mqtt-pro-grid { display: grid !important; }
+        /* Sichtbarkeit: Elemente nur im MQTT-Panel anzeigen (robust, tab-unabhängig) */
+        .mqtt-only { display: none !important; }
+        #panel-mqtt .mqtt-only { display: block !important; }
+        .debug-panel:not(#panel-mqtt) .mqtt-only { display: none !important; }
     </style>
 
     <div class="debug-tabs">
         <div class="debug-tab active" data-tab="system" data-mode="lite">System Status</div>
         <div class="debug-tab" data-tab="performance" data-mode="lite">Performance</div>
         <div class="debug-tab" data-tab="scanner" data-mode="lite">Printer Scanner</div>
+        <div class="debug-tab" data-tab="mqtt" data-mode="lite">MQTT</div>
+        <div class="debug-tab pro-only" data-tab="json" data-mode="pro">JSON Inspector</div>
         <div class="debug-tab pro-only" data-tab="logs" data-mode="pro" style="display:none;">Log Viewer</div>
         <div class="debug-tab pro-only" data-tab="config" data-mode="pro" style="display:none;">Config Manager</div>
     </div>
@@ -73,7 +103,7 @@
                     <div style="display:flex;flex-direction:column;gap:4px;line-height:1.3;">
                         <div><strong>API:</strong> <span class="info-icon" title="Status of the internal REST API. Indicates whether requests can be processed.">i</span> <span id="apiStatus" class="status-badge" title="API reachable (HTTP responding)">offline</span></div>
                         <div><strong>DB:</strong> <span class="info-icon" title="Database connection state. Connected means queries can be executed.">i</span> <span id="dbStatus" class="status-badge" title="Database reachable (SELECT 1 OK)">offline</span></div>
-                        <div><strong>MQTT:</strong> <span class="info-icon" title="MQTT service status. Disabled means no broker connection is active.">i</span> <span id="mqttStatus" class="status-badge" title="MQTT client connected to broker">offline</span></div>
+                        <div><strong>MQTT:</strong> <span class="info-icon" title="MQTT-Status: Zeigt 'Verbunden', sobald irgendein MQTT-Client aktiv ist. Andernfalls 'Nicht verbunden'.">i</span> <span id="mqttStatus" class="status-badge" title="MQTT-Status: Zeigt 'Verbunden', sobald irgendein MQTT-Client aktiv ist. Andernfalls 'Nicht verbunden'.">offline</span></div>
                         <div><strong>WebSocket:</strong> <span class="info-icon" title="WebSocket server state. Listening means the server accepts connections.">i</span> <span id="wsStatus" class="status-badge" title="WebSocket has active client connection(s)">offline</span> <small id="wsClients" style="color:var(--text-dim); margin-left:6px;"></small></div>
                     </div>
                 </div>
@@ -113,14 +143,7 @@
                     <div>Clients: <span id="proWsClients">-</span></div>
                 </div>
 
-                <div class="panel pro-only">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <p class="eyebrow">MQTT Detail</p>
-                        <span class="status-badge status-ok pro-badge">PRO</span>
-                    </div>
-                    <div>Status: <span id="proMqttStatus">-</span></div>
-                    <div>Broker: <span id="proMqttBroker">-</span></div>
-                </div>
+                <!-- Hinweis: MQTT-Detail-Karte ist separat im MQTT-Tab platziert und dort sichtbar -->
 
                 <div class="panel pro-only">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -185,6 +208,53 @@
                         </div>
                         <div id="perfUptimeValue" style="font-size:1.3rem;margin:6px 0 2px;">-</div>
                         <div id="perfUptimeSub" style="color:var(--text-dim);">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pro: JSON Inspector Panel -->
+        <div id="panel-json" class="debug-panel pro-only" data-mode="pro" style="display:none;">
+            <div class="system-grid">
+                <!-- Status & Meta -->
+                <div class="panel">
+                    <div class="card-header">
+                        <h3>JSON Inspector</h3>
+                        <span class="status-badge status-error" id="json-status">Disconnected</span>
+                    </div>
+                    <div class="info-grid">
+                        <div>
+                            <div class="info-label">Messages Received</div>
+                            <div class="info-value" id="json-msg-count">0</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Handler aktiv</div>
+                            <div class="info-value" id="json-handler-count">0</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Source</div>
+                            <div class="info-value">logs/mqtt/mqtt_messages.log</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Datei-Upload -->
+                <div class="panel">
+                    <div class="card-header">
+                        <h3>JSON Datei analysieren</h3>
+                    </div>
+                    <div>
+                        <input type="file" id="json-upload" accept=".json,.log,.txt">
+                    </div>
+                </div>
+
+                <!-- JSON Baum Ansicht -->
+                <div class="panel">
+                    <div class="card-header">
+                        <h3>JSON Struktur</h3>
+                    </div>
+                    <div id="json-inspector-tree" class="json-tree">
+                        <div class="info-label">Waiting for JSON data…</div>
                     </div>
                 </div>
             </div>
@@ -367,51 +437,1891 @@
             </div>
             <p class="subtitle" style="margin-top:10px;">Änderungen speichern – folgt in späterer Pro-Version</p>
         </div>
-        <div id="panel-logs" class="debug-panel pro-only" data-mode="pro" style="display:none;">
-            <div class="panel pro-only">
-                <p class="eyebrow">Log Uebersicht</p>
-                <p class="subtitle">Dieser Bereich zeigt System- und Diagnose-Logs zur Analyse.</p>
-                <div id="log-overview-status" style="margin-top:6px;color:var(--text-dim);">Aktuell sind keine Logs geladen.</div>
-            </div>
-            <div class="panel pro-only" style="margin-top:10px;">
-                <p class="eyebrow">Log Eintraege</p>
-                <div id="log-entries" style="color:var(--text-dim);">Log-Eintraege werden hier angezeigt, sobald sie geladen werden.</div>
-            </div>
-            <div class="panel pro-only" style="margin-top:10px;">
-                <p class="eyebrow">Log Filter</p>
-                <p class="subtitle">Filterfunktionen stehen im Pro-Modus zur Verfuegung.</p>
-                <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;max-width:320px;">
-                    <label style="display:flex;flex-direction:column;gap:4px;">
-                        <span>Level</span>
-                        <select disabled>
-                            <option>Alle</option>
-                            <option>Info</option>
-                            <option>Warn</option>
-                            <option>Error</option>
-                        </select>
-                    </label>
-                    <label style="display:flex;flex-direction:column;gap:4px;">
-                        <span>Modul</span>
-                        <select disabled>
-                            <option>Alle</option>
-                            <option>App</option>
-                            <option>Bambu</option>
-                            <option>Klipper</option>
-                            <option>MQTT</option>
-                        </select>
-                    </label>
-                    <label style="display:flex;flex-direction:column;gap:4px;">
-                        <span>Suche</span>
-                        <input type="text" disabled placeholder="Filter folgt" />
-                    </label>
+                <div id="panel-logs" class="debug-panel pro-only" data-mode="pro" style="display:none;">
+                    <!-- Log Viewer Header Panel -->
+                    <div class="panel" style="margin-bottom:16px;">
+                        <p class="eyebrow">Log Viewer</p>
+                        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:8px;">
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <label for="logModuleSelect" style="font-size:12px;color:var(--text-dim);min-width:50px;">Modul:</label>
+                                <select id="logModuleSelect" style="padding:8px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;min-width:120px;">
+                                    <option value="app" selected>app</option>
+                                    <option value="mqtt">mqtt (Status)</option>
+                                    <option value="3d_drucker">3D-Drucker</option>
+                                    <option value="klipper">klipper</option>
+                                    <option value="errors">errors</option>
+                                </select>
+                                <label for="logLimitSelect" style="font-size:12px;color:var(--text-dim);min-width:40px;margin-left:8px;">Limit:</label>
+                                <select id="logLimitSelect" style="padding:8px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;min-width:80px;">
+                                    <option value="50" selected>50</option>
+                                    <option value="100">100</option>
+                                    <option value="200">200</option>
+                                </select>
+                                <button id="logReloadBtn" class="btn ghost" style="padding:8px 14px;font-size:14px;margin-left:8px;">🔄 Neu laden</button>
+                                <button id="logPauseBtn" class="btn ghost" style="padding:8px 14px;font-size:14px;">⏸ Pause</button>
+                                <button id="logClearBtn" class="btn ghost" style="padding:8px 14px;font-size:14px;">🗑 Löschen</button>
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <select id="logLevelFilter" style="padding:8px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;">
+                                    <option value="">Level: Alle</option>
+                                    <option value="ERROR">ERROR</option>
+                                    <option value="WARNING">WARNING</option>
+                                    <option value="INFO">INFO</option>
+                                    <option value="DEBUG">DEBUG</option>
+                                </select>
+                                <input id="logSearchInput" type="text" placeholder="Suche..." style="padding:8px 12px;background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;min-width:200px;" />
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Bestätigungs-Popup (Modal) für Löschen -->
+                    <div id="logDeleteModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(2px);z-index:9998;align-items:center;justify-content:center;">
+                        <div class="panel" style="width:420px;max-width:90vw;background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);">
+                            <p class="eyebrow">Bestätigung</p>
+                            <h3 style="margin:6px 0 4px;">Logs löschen?</h3>
+                            <p class="subtitle" id="logDeleteModalText" style="margin-top:4px;color:var(--text-dim)">Die Log-Datei des gewählten Moduls wird gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.</p>
+                            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+                                <button id="logDeleteCancel" class="btn btn-secondary">Abbrechen</button>
+                                <button id="logDeleteConfirm" class="btn btn-primary">Ja, löschen</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Log Stats Grid -->
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;">
+                        <div class="panel">
+                            <p class="eyebrow">Gesamt</p>
+                            <div style="font-size:24px;font-weight:700;margin:4px 0;" id="logTotalCount">0</div>
+                            <div class="subtitle">Log-Einträge</div>
+                        </div>
+                        <div class="panel">
+                            <p class="eyebrow">Errors</p>
+                            <div style="font-size:24px;font-weight:700;margin:4px 0;color:var(--error);" id="logErrorCount">0</div>
+                            <div class="subtitle">Fehler</div>
+                        </div>
+                        <div class="panel">
+                            <p class="eyebrow">Warnings</p>
+                            <div style="font-size:24px;font-weight:700;margin:4px 0;color:var(--accent);" id="logWarningCount">0</div>
+                            <div class="subtitle">Warnungen</div>
+                        </div>
+                        <div class="panel">
+                            <p class="eyebrow">Status</p>
+                            <div style="margin:4px 0;"><span id="logStatusBadge" class="status-badge status-ok">Live</span></div>
+                            <div class="subtitle"><span style="color:var(--text-dim);">Letzter Log:</span> <span id="logLastUpdate">Nie aktualisiert</span></div>
+                        </div>
+                    </div>
+                <div id="logEntries" class="log-entries"></div>
+            <script>
+                // Tab-Status-Klasse auf <body> setzen (zusaetzlicher Sichtbarkeits-Schutz)
+                (function bindTabClass(){
+                    const tabs = document.querySelectorAll('.debug-tab');
+                    const panels = {
+                        system: document.getElementById('panel-system'),
+                        performance: document.getElementById('panel-performance'),
+                        scanner: document.getElementById('panel-scanner'),
+                        mqtt: document.getElementById('panel-mqtt'),
+                        json: document.getElementById('panel-json'),
+                        logs: document.getElementById('panel-logs'),
+                        config: document.getElementById('panel-config')
+                    };
+                    const switchPanel = (name) => {
+                        Object.values(panels).forEach(p => { if (p) { p.style.display = 'none'; p.classList.remove('active-panel'); } });
+                        const target = panels[name];
+                        if (target) { target.style.display = 'block'; target.classList.add('active-panel'); }
+                        // Tab UI active-state
+                        document.querySelectorAll('.debug-tab').forEach(t => t.classList.remove('active'));
+                        const currentTab = Array.from(document.querySelectorAll('.debug-tab')).find(t => t.getAttribute('data-tab') === name);
+                        if (currentTab) currentTab.classList.add('active');
+                    };
+                    const setBodyTab = (name) => {
+                        const b = document.body;
+                        // Entferne alte Klassen
+                        ['system','performance','scanner','mqtt','json','logs','config'].forEach(t => b.classList.remove('tab-' + t));
+                        // Setze neue
+                        if (name) b.classList.add('tab-' + name);
+                    };
+                    tabs.forEach(tab => {
+                        tab.addEventListener('click', () => {
+                            const name = tab.getAttribute('data-tab');
+                            switchPanel(name);
+                            setBodyTab(name);
+                        });
+                    });
+                    // Initial setzen basierend auf aktivem Tab
+                    const active = document.querySelector('.debug-tab.active');
+                    const initial = active ? active.getAttribute('data-tab') : 'system';
+                    setBodyTab(initial);
+                    switchPanel(initial);
+                })();
+                // Pro/Lite Mode Umschalter: toggelt .pro-mode auf <body>
+                (function bindDebugModeToggle(){
+                    const btnLite = document.getElementById('debugModeLite');
+                    const btnPro = document.getElementById('debugModePro');
+                    const label = document.getElementById('debugModeLabel');
+                    const setMode = (mode) => {
+                        const b = document.body;
+                        if (mode === 'pro') {
+                            b.classList.add('pro-mode');
+                            if (btnPro) btnPro.classList.add('active');
+                            if (btnLite) btnLite.classList.remove('active');
+                            if (label) label.textContent = 'Mode: Pro';
+                        } else {
+                            b.classList.remove('pro-mode');
+                            if (btnLite) btnLite.classList.add('active');
+                            if (btnPro) btnPro.classList.remove('active');
+                            if (label) label.textContent = 'Mode: Lite';
+                        }
+                    };
+                    btnLite?.addEventListener('click', () => setMode('lite'));
+                    btnPro?.addEventListener('click', () => setMode('pro'));
+                    // Initial: Lite
+                    setMode('lite');
+                })();
+                // Einfacher Hinweis-Toast
+                (function(){
+                    const ensureToastHost = () => {
+                        let host = document.getElementById('toastHost');
+                        if (!host) {
+                            host = document.createElement('div');
+                            host.id = 'toastHost';
+                            host.style.position = 'fixed';
+                            host.style.top = '16px';
+                            host.style.right = '16px';
+                            host.style.zIndex = '9999';
+                            host.style.display = 'flex';
+                            host.style.flexDirection = 'column';
+                            host.style.gap = '8px';
+                            document.body.appendChild(host);
+                        }
+                        return host;
+                    };
+                    window.showToast = function(message, type = 'info') {
+                        const host = ensureToastHost();
+                        const el = document.createElement('div');
+                        el.textContent = message;
+                        el.style.padding = '10px 14px';
+                        el.style.borderRadius = '8px';
+                        el.style.boxShadow = '0 6px 18px rgba(0,0,0,0.35)';
+                        el.style.border = '1px solid var(--border)';
+                        el.style.background = 'var(--panel-2)';
+                        el.style.color = 'var(--text)';
+                        if (type === 'success') {
+                            el.style.borderColor = 'rgba(46,204,113,0.4)';
+                            el.style.background = 'rgba(46,204,113,0.15)';
+                        } else if (type === 'error') {
+                            el.style.borderColor = 'rgba(231,76,60,0.4)';
+                            el.style.background = 'rgba(231,76,60,0.15)';
+                        } else if (type === 'warning') {
+                            el.style.borderColor = 'rgba(241,196,15,0.4)';
+                            el.style.background = 'rgba(241,196,15,0.15)';
+                        }
+                        host.appendChild(el);
+                        setTimeout(() => {
+                            el.style.transition = 'opacity 220ms ease, transform 220ms ease';
+                            el.style.opacity = '0';
+                            el.style.transform = 'translateY(-6px)';
+                            setTimeout(() => host.removeChild(el), 250);
+                        }, 2200);
+                    };
+                })();
+                // Logs laden und rendern
+                async function loadLogs(module = 'app', limit = 50) {
+                    const statusBadge = document.getElementById('logStatusBadge');
+                    const lastUpdateEl = document.getElementById('logLastUpdate');
+                    statusBadge.classList.remove('status-error');
+                    statusBadge.classList.add('status-ok');
+                    statusBadge.textContent = 'Lade...';
+                    try {
+                        const resp = await fetch(`/api/debug/logs?module=${encodeURIComponent(module)}&limit=${encodeURIComponent(limit)}`);
+                        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                        const data = await resp.json();
+                        const entries = data?.entries || [];
+                        renderLogs(entries);
+                        // Zeige die Zeit des letzten Eintrags (falls vorhanden)
+                        const lastEntryTs = entries.length > 0 ? entries[entries.length - 1]?.timestamp : null;
+                        if (lastEntryTs && typeof lastEntryTs === 'string') {
+                            lastUpdateEl.textContent = lastEntryTs;
+                        } else {
+                            const now = new Date();
+                            lastUpdateEl.textContent = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+                        }
+                        statusBadge.textContent = 'Live';
+                        statusBadge.classList.remove('status-error');
+                        statusBadge.classList.add('status-ok');
+                    } catch (e) {
+                        statusBadge.textContent = 'Fehler';
+                        statusBadge.classList.remove('status-ok');
+                        statusBadge.classList.add('status-error');
+                        console.error('Fehler beim Laden der Logs', e);
+                    }
+                }
+
+                function renderLogs(entries) {
+                    const container = document.getElementById('log-entries') || document.getElementById('logEntries');
+                    container.innerHTML = '';
+                    let errors = 0, warnings = 0;
+                    entries.forEach(entry => {
+                        const level = (entry.level || 'info').toLowerCase();
+                        if (level === 'error') errors++;
+                        if (level === 'warning' || level === 'warn') warnings++;
+                        const line = document.createElement('div');
+                        line.className = `log-line log-${level}`;
+                        line.setAttribute('data-level', (entry.level || 'INFO').toUpperCase());
+                        line.setAttribute('data-module', entry.module || 'app');
+                        const stack = entry.stacktrace && String(entry.stacktrace).trim().length > 0 ? entry.stacktrace : 'Keine weiteren Details';
+                        const msgText = escapeHtml(entry.message || '');
+                        const summary = document.createElement('div');
+                        summary.className = 'log-summary';
+                        summary.innerHTML = `
+                          <span class="log-level">${(entry.level || 'INFO').toUpperCase()}</span>
+                          <span style="opacity:0.8; margin-left:8px;">${escapeHtml(entry.timestamp || '')}</span>
+                          <span style="opacity:0.8; margin-left:8px;">${escapeHtml(entry.module || '')}</span>
+                          <span class="log-message" style="margin-left:12px; flex:1;">${msgText}</span>
+                          <button class="btn btn-sm" aria-label="Details anzeigen" style="margin-left:12px;">Details</button>
+                        `;
+                        const pre = document.createElement('pre');
+                        pre.className = 'log-stacktrace';
+                        pre.textContent = stack;
+                        line.appendChild(summary);
+                        line.appendChild(pre);
+                        const btn = summary.querySelector('button');
+                        btn.addEventListener('click', (ev) => {
+                            ev.stopPropagation();
+                            line.classList.toggle('expanded');
+                        });
+                        container.appendChild(line);
+                    });
+                    document.getElementById('logTotalCount').textContent = String(entries.length);
+                    document.getElementById('logErrorCount').textContent = String(errors);
+                    document.getElementById('logWarningCount').textContent = String(warnings);
+                }
+
+                function escapeHtml(str) {
+                    return String(str)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                }
+
+                // Toolbar-Buttons
+                const _reloadBtnA = document.getElementById('reloadLogsBtn');
+                const _reloadBtnB = document.getElementById('logReloadBtn');
+                const _bindReload = (btn) => btn?.addEventListener('click', () => {
+                    const sel = document.getElementById('logModuleSelect');
+                    const module = sel?.value || 'app';
+                    const limitSel = document.getElementById('logLimitSelect');
+                    const limit = parseInt(limitSel?.value || '50', 10);
+                    loadLogs(module, limit);
+                });
+                _bindReload(_reloadBtnA);
+                _bindReload(_reloadBtnB);
+                document.getElementById('pauseLogsBtn')?.addEventListener('click', () => {
+                    const badge = document.getElementById('logStatusBadge');
+                    badge.textContent = 'Pausiert';
+                    badge.classList.remove('status-ok');
+                    badge.classList.add('status-warning');
+                });
+                document.getElementById('clearLogsBtn')?.addEventListener('click', () => {
+                    const container = document.getElementById('logEntries');
+                    container.innerHTML = '';
+                    document.getElementById('logTotalCount').textContent = '0';
+                    document.getElementById('logErrorCount').textContent = '0';
+                    document.getElementById('logWarningCount').textContent = '0';
+                    document.getElementById('logLastUpdate').textContent = 'Gelöscht';
+                });
+
+                // Initial laden mit Modul-Auswahl
+                (function initLogs() {
+                    const sel = document.getElementById('logModuleSelect');
+                    const limitSel = document.getElementById('logLimitSelect');
+                    const initialModule = sel?.value || 'app';
+                    const initialLimit = parseInt(limitSel?.value || '50', 10);
+                    loadLogs(initialModule, initialLimit);
+                    sel?.addEventListener('change', () => {
+                        loadLogs(sel.value || 'app', parseInt(limitSel?.value || '50', 10));
+                    });
+                    limitSel?.addEventListener('change', () => {
+                        loadLogs(sel?.value || 'app', parseInt(limitSel.value || '50', 10));
+                    });
+                })();
+            </script>
+                    
+                    <!-- Log Entries Display -->
+                    <div class="panel">
+                        <p class="eyebrow" style="margin-bottom:12px;">Log-Einträge</p>
+                        <div id="log-entries" style="background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:12px;max-height:600px;overflow-y:auto;font-family:'Consolas','Monaco',monospace;font-size:13px;line-height:1.6;">
+                            <div style="color:var(--text-dim);text-align:center;padding:20px;">
+                                Keine Logs verfügbar. Klicke auf "Neu laden" um Logs zu laden.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+        <div id="panel-mqtt" class="debug-panel" style="display:none;">
+            <!-- MQTT – ÜBERSICHT bleibt oben, immer sichtbar -->
+            <div class="section-title">MQTT – ÜBERSICHT</div>
+            <div class="mqtt-overview-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:18px;">
+                <div class="panel">
+                    <div class="kv">
+                        <div class="k">Status</div>
+                        <div class="v"><span id="mqttStatusBadge" class="status-badge status-idle">Disconnected</span></div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="kv">
+                        <div class="k">Broker</div>
+                        <div class="v" id="mqttBrokerValue">-</div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="kv">
+                        <div class="k">Client ID</div>
+                        <div class="v" id="mqttClientIdValue">-</div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="kv">
+                        <div class="k">Subscriptions</div>
+                        <div class="v" id="mqttSubscriptionsCount">-</div>
+                    </div>
                 </div>
             </div>
-            <div class="panel pro-only" style="margin-top:10px;">
-                <p class="eyebrow">Log Details</p>
-                <p class="subtitle">Waehle einen Log-Eintrag aus, um Details anzuzeigen.</p>
-                <div id="log-detail" style="color:var(--text-dim); margin-top:6px;">Noch kein Eintrag ausgewaehlt.</div>
+
+            <!-- MQTT PRO Cards: Nebeneinander unter der Übersicht -->
+            <div class="pro-only mqtt-pro-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
+                <div class="panel mqtt-only" data-mode="pro">
+                    <div class="card-header">
+                        <h3>MQTT Detail</h3>
+                        <span class="pro-badge">PRO</span>
+                    </div>
+                    
+                    <div class="info-grid">
+                        <div>
+                            <div class="info-label">Status</div>
+                            <div class="info-value" id="mqttDetailStatus">-</div>
+                        </div>
+                        
+                        <div>
+                            <div class="info-label">Broker</div>
+                            <div class="info-value" id="mqttDetailBroker">-</div>
+                        </div>
+                        
+                        <div>
+                            <div class="info-label">Clients</div>
+                            <div class="info-value" id="mqttDetailClients">-</div>
+                        </div>
+                        
+                        <div>
+                            <div class="info-label">Protocol</div>
+                            <div class="info-value" id="mqttDetailProtocol">-</div>
+                        </div>
+                        
+                        <div>
+                            <div class="info-label">Connected Since</div>
+                            <div class="info-value" id="mqttDetailSince">-</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="panel mqtt-only" data-mode="pro">
+                    <div class="card-header">
+                        <h3>Health & Statistik</h3>
+                        <span class="pro-badge">PRO</span>
+                    </div>
+                    
+                    <div class="info-grid">
+                        <div>
+                            <div class="info-label">Messages/sec</div>
+                            <div class="info-value" id="mqttHealthMsgSec">-</div>
+                        </div>
+                        
+                        <div>
+                            <div class="info-label">Errors</div>
+                            <div class="info-value" id="mqttHealthErrors">-</div>
+                        </div>
+                        
+                        <div>
+                            <div class="info-label">QoS Avg</div>
+                            <div class="info-value" id="mqttHealthQosAvg">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mqtt-overview-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:18px;">
+                <div class="panel">
+                    <div class="kv">
+                        <div class="k">Nachrichten empfangen</div>
+                        <div class="v" id="mqttMsgCount">-</div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="kv">
+                        <div class="k">Letzte Nachricht</div>
+                        <div class="v" id="mqttLastMsgTime">-</div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="kv">
+                        <div class="k">QoS Level</div>
+                        <div class="v" id="mqttQos">-</div>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="kv">
+                        <div class="k">Verbindungsdauer</div>
+                        <div class="v" id="mqttUptime">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pro-Modus: Zwei-Spalten-Layout für Pro-Features -->
+            <div class="pro-only" data-mode="pro">
+                <div class="config-layout">
+                    <!-- Linke Spalte: Connection Card -->
+                    <div class="config-left">
+                        <div class="section-title">MQTT Connection</div>
+                        <div class="panel mqtt-connection-card" style="margin-bottom:22px;">
+                            <div class="mqtt-conn-header">
+                                <div class="mqtt-conn-title">MQTT Connection</div>
+                                <div class="mqtt-conn-desc">Verbinde manuell mit deinem 3D-Drucker via MQTT</div>
+                            </div>
+                            <div class="status-indicator">
+                                <div class="status-dot" id="mqttConnDot"></div>
+                                <span class="status-badge status-idle" id="mqttConnBadge">Nicht verbunden</span>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Schnellauswahl (erkannte Drucker)</label>
+                                {% if printers and printers|length > 0 %}
+                                <div class="printer-select" id="mqttPrinterSelect">
+                                    <select id="mqttPrinterDropdown" class="form-input">
+                                        <option value="">Drucker wählen...</option>
+                                        {% for p in printers %}
+                                        <option value="{{ p.id }}" data-ip="{{ p.ip_address or '' }}" data-port="{{ p.port or '' }}" data-type="{{ p.printer_type or '' }}" data-serial="{{ p.cloud_serial or '' }}" data-model="{{ p.model or '' }}" data-apikey="{{ p.api_key or '' }}">{{ p.name }} ({{ p.ip_address or p.cloud_serial or '-' }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                {% else %}
+                                <div class="printer-select" id="mqttPrinterSelect">
+                                    <div class="printer-chip-loading">Lade Drucker...</div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Broker Address</label>
+                                <input type="text" class="form-input" id="mqttBroker" value="localhost" placeholder="192.168.1.100">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Port</label>
+                                    <input type="number" class="form-input" id="mqttPort" value="8883" min="1" max="65535">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Client ID</label>
+                                    <input type="text" class="form-input" id="mqttClientId" value="filamenthub_debug">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">TLS</label>
+                                    <label style="display:flex;align-items:center;gap:8px;">
+                                        <input type="checkbox" id="mqttTls" checked>
+                                        <span style="font-size:13px;color:var(--text-dim);">aktiv</span>
+                                    </label>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Protocol</label>
+                                    <select class="form-input" id="mqttProtocol">
+                                        <option value="311" selected>311</option>
+                                        <option value="5">5</option>
+                                        <option value="31">31</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Username (optional)</label>
+                                    <input type="text" class="form-input" id="mqttUsername" placeholder="bblp">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Password (optional)</label>
+                                    <input type="password" class="form-input" id="mqttPassword" placeholder="••••••••">
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:8px;margin-top:8px;">
+                                <button type="button" class="btn btn-connect-success" id="mqttConnectBtn">Connect</button>
+                                <button type="button" class="btn btn-disconnect-danger" id="mqttDisconnectBtn" disabled>Disconnect</button>
+                                <button type="button" class="btn btn-secondary" id="mqttTopicsBtn">Bambu-Topics</button>
+                            </div>
+                            <div class="info-box" style="margin-top:12px;">
+                                <span style="font-size:18px;margin-right:8px;">💡</span>
+                                <strong>Tipp:</strong> Für Bambu Lab Drucker verwende Port 8883 mit Username "bblp" und dem Access Code als Passwort. Der Access Code befindet sich auf dem Drucker-Display unter Einstellungen → Netzwerk → MQTT.
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Rechte Spalte: Pro-Feature Cards -->
+                    <div class="config-right">
+                        <div class="section-title">Abonnierte Topics und Status</div>
+                        <div class="panel" style="margin-bottom:18px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                                <div class="eyebrow">MQTT TOPICS</div>
+                                <span class="status-badge status-ok pro-badge">PRO</span>
+                            </div>
+                            <div id="mqttTopicsContainer">
+                            <div class="empty-state" id="topicsEmpty">
+                                <div style="text-align:center;padding:30px 20px;">
+                                    <div style="font-size:56px;margin-bottom:16px;opacity:0.25;">📡</div>
+                                    <div style="font-size:18px;font-weight:600;color:#fff;margin-bottom:8px;">Keine Topics (noch keine MQTT-Nachrichten empfangen).</div>
+                                    <div style="font-size:14px;color:#888;margin-bottom:20px;line-height:1.5;">
+                                        <span id="mqttTopicsHint">Keine Daten</span>
+                                    </div>
+                                    <div style="padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;font-size:13px;color:#aaa;">
+                                        <strong>MQTT Status:</strong> 
+                                        <span id="mqttStatusInline" class="status-badge status-idle">Nicht verbunden</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="topics-list" id="topicsList" style="display:none;">
+                                <!-- Topics hier -->
+                            </div>
+                            </div>
+                        </div>
+                        <div class="panel" style="margin-bottom:18px;">
+                            <div class="card-title" style="font-weight:600;">Live Messages</div>
+                            <div id="mqttLiveMessages" style="max-height:400px;overflow-y:auto;margin-top:10px;">
+                                <div style="padding: 20px; text-align: center; color: #888;">Warte auf Nachrichten...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                            </div>
+                        </div>
+                        <!-- Entfernt: MQTT Detail und Health & Statistik Karten (siehe Backup) -->
+                        <div class="panel pro-only">
+                            <div class="card-title">Weitere Pro-Funktionen</div>
+                            <div style="color:var(--text-dim);margin-top:8px;">Pro-Funktion – folgt in Kürze</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ========================================
+// MQTT CONNECTION - FRONTEND INTEGRATION (angepasst)
+// ========================================
+
+// Helper: safe query inside panel to avoid duplicate IDs elsewhere
+function qsConfig(selector) {
+    return document.querySelector('#panel-mqtt ' + selector);
+}
+
+// Lade Drucker in Dropdown (erstellt ein <select> in #mqttPrinterSelect)
+async function loadMQTTPrinterDropdown() {
+    const container = document.getElementById('mqttPrinterSelect');
+    if (!container) return;
+
+    // Ersetze Loading-Placeholder durch <select>
+    // If a server-rendered select already exists (e.g. template fallback), reuse it to preserve data-apikey
+    let dropdown = container.querySelector('select#mqttPrinterDropdown');
+    if (dropdown && dropdown.options && dropdown.options.length > 0) {
+        dropdown.className = 'form-input';
+        console.log('MQTT: using existing server-rendered printer select');
+        // attach change listener if not already present
+        if (!dropdown._mqttInitAttached) {
+            dropdown.addEventListener('change', async (e) => {
+                const id = e.target.value;
+                if (id) await handlePrinterChange(id);
+                else clearConnectionForm();
+            });
+            dropdown._mqttInitAttached = true;
+        }
+        // If no selection yet, pick the first real printer option and trigger handler
+        try {
+            if (!dropdown.value) {
+                const firstOpt = Array.from(dropdown.options).find(o => o.value && o.value.trim() !== '');
+                if (firstOpt) {
+                    dropdown.value = firstOpt.value;
+                    console.log('MQTT: setting select to first printer', firstOpt.value);
+                    await handlePrinterChange(firstOpt.value);
+                }
+            } else {
+                await handlePrinterChange(dropdown.value);
+            }
+        } catch (e) { console.warn('MQTT: error running handler on existing select', e); }
+        return;
+    }
+
+    container.innerHTML = '';
+    dropdown = document.createElement('select');
+    dropdown.id = 'mqttPrinterDropdown';
+    dropdown.className = 'form-input';
+    dropdown.innerHTML = '<option value="">Drucker wählen...</option>';
+    container.appendChild(dropdown);
+
+    try {
+        console.log('MQTT: loading printers for dropdown...');
+        const resp = await fetch('/api/printers/');
+        if (!resp.ok) {
+            console.error('MQTT: /api/printers/ returned', resp.status, resp.statusText);
+            container.innerHTML = '<div class="printer-chip-loading">Fehler beim Laden (HTTP ' + resp.status + ')</div>';
+            return;
+        }
+        let printersRaw;
+        try {
+            printersRaw = await resp.json();
+        } catch (jsonErr) {
+            console.error('MQTT: Fehler beim Parsen der /api/printers/ Antwort', jsonErr);
+            container.innerHTML = '<div class="printer-chip-loading">Fehler: ungültige API-Antwort</div>';
+            return;
+        }
+
+        // Normalize possible API shapes: array, { value: [...] }, { printers: [...] }
+        let printers = printersRaw;
+        if (!Array.isArray(printers)) {
+            if (printers && Array.isArray(printers.value)) printers = printers.value;
+            else if (printers && Array.isArray(printers.printers)) printers = printers.printers;
+            else if (printers && Array.isArray(printers.items)) printers = printers.items;
+            else printers = [];
+        }
+
+        if (!Array.isArray(printers) || printers.length === 0) {
+            dropdown.innerHTML = '<option value="">Keine Drucker gefunden</option>';
+            console.warn('MQTT: Keine Drucker in DB or response shape unexpected', printersRaw);
+            container.innerHTML = '<div class="printer-chip-loading">Keine Drucker gefunden</div>';
+            return;
+        }
+
+        console.log(`MQTT: loaded ${printers.length} printers`, printers);
+
+        printers.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = `${p.name} (${p.ip_address || p.cloud_serial || '-'})`;
+            opt.dataset.ip = p.ip_address || '';
+            opt.dataset.port = p.port || '';
+            opt.dataset.type = p.printer_type || '';
+            opt.dataset.serial = p.cloud_serial || '';
+            opt.dataset.model = p.model || '';
+            dropdown.appendChild(opt);
+        });
+
+        // Auto-select ersten
+        if (printers[0]) {
+            dropdown.value = printers[0].id;
+            await handlePrinterChange(printers[0].id);
+        }
+
+        dropdown.addEventListener('change', async (e) => {
+            const id = e.target.value;
+            if (id) await handlePrinterChange(id);
+            else clearConnectionForm();
+        });
+
+        console.log(`MQTT: ${printers.length} Drucker geladen`);
+    } catch (err) {
+        console.error('Fehler beim Laden der Drucker:', err);
+        container.innerHTML = '<div class="printer-chip-loading">Fehler beim Laden</div>';
+    }
+}
+
+async function handlePrinterChange(printerId) {
+    const dropdown = document.getElementById('mqttPrinterDropdown');
+    const selected = dropdown?.options[dropdown.selectedIndex];
+    if (!selected) return;
+
+    const ip = selected.dataset.ip;
+    const port = selected.dataset.port;
+    const type = selected.dataset.type;
+    const model = selected.dataset.model || 'debug';
+
+    // Broker / Port / Username / ClientId - map to template IDs
+    const brokerField = document.getElementById('mqttBroker');
+    const portField = document.getElementById('mqttPort');
+    const usernameField = qsConfig('input[id="mqttUsername"]') || document.getElementById('mqttUsername');
+    const clientIdInput = qsConfig('input[id="mqttClientId"]') || document.getElementById('mqttClientId');
+
+    if (brokerField) brokerField.value = ip || '';
+    if (portField) portField.value = (type === 'bambu') ? '8883' : (port || '1883');
+
+    const cid = `filamenthub_${model.toLowerCase().replace(/\s+/g, '_')}`;
+    if (clientIdInput) clientIdInput.value = cid;
+
+    // Defaults for runtime connect
+    const tlsField = document.getElementById('mqttTls');
+    const protoField = document.getElementById('mqttProtocol');
+    if (tlsField) tlsField.checked = true;
+    if (protoField && (!protoField.value || protoField.value === '')) protoField.value = '311';
+
+    if (type === 'bambu') {
+        if (usernameField) usernameField.value = 'bblp';
+    } else {
+        if (usernameField) usernameField.value = '';
+    }
+
+    // If the server-rendered option included the API key, use it directly (faster, avoids extra fetch)
+    const passwordField = document.getElementById('mqttPassword');
+    if (passwordField && selected.dataset && selected.dataset.apikey) {
+        if (selected.dataset.apikey.length > 0) {
+            passwordField.value = selected.dataset.apikey;
+            passwordField.style.borderColor = 'rgba(102, 187, 106, 0.8)';
+            passwordField.style.boxShadow = '0 0 0 3px rgba(102, 187, 106, 0.15)';
+            setTimeout(() => { passwordField.style.borderColor = ''; passwordField.style.boxShadow = ''; }, 1500);
+            console.log('API Key aus server-rendered Option gesetzt');
+        } else {
+            // fallback to fetch if no apikey embedded
+            await loadPrinterApiKey(printerId);
+        }
+    } else {
+        await loadPrinterApiKey(printerId);
+    }
+
+    // Update overview values (sichtbar oben)
+    const ovBroker = document.getElementById('mqttBrokerValue');
+    const ovClient = document.getElementById('mqttClientIdValue');
+    if (ovBroker) {
+        const b = brokerField?.value || '';
+        const p = portField?.value ? String(portField.value) : '';
+        ovBroker.textContent = b ? (p ? `${b}:${p}` : b) : '-';
+    }
+    if (ovClient) ovClient.textContent = cid || '-';
+}
+
+async function loadPrinterApiKey(printerId) {
+    const passwordField = document.getElementById('mqttPassword');
+    if (!passwordField) return;
+    try {
+        const resp = await fetch(`/api/printers/${printerId}/credentials`);
+        // Log raw status for easier debugging in browser console
+        console.log('MQTT: credentials fetch', printerId, 'status', resp.status);
+        const raw = await resp.text();
+        try {
+            const data = JSON.parse(raw);
+            console.log('MQTT: credentials response', data);
+            if (data && data.success && data.api_key) {
+                passwordField.value = data.api_key;
+                passwordField.style.borderColor = 'rgba(102, 187, 106, 0.8)';
+                passwordField.style.boxShadow = '0 0 0 3px rgba(102, 187, 106, 0.15)';
+                passwordField.title = `API Key aus DB geladen: ${data.api_key.substring(0,4)}...`;
+                setTimeout(() => { passwordField.style.borderColor = ''; passwordField.style.boxShadow = ''; passwordField.title = ''; }, 2000);
+                console.log('API Key geladen');
+            } else {
+                passwordField.value = '';
+                passwordField.placeholder = 'Kein API Key in DB - manuell eingeben';
+            }
+        } catch (jsonErr) {
+            console.warn('MQTT: unable to parse credentials response as JSON', jsonErr, raw);
+            passwordField.value = '';
+            passwordField.placeholder = 'Fehler beim Laden';
+        }
+    } catch (err) {
+        console.error('Fehler beim Laden des API Keys', err);
+        passwordField.value = '';
+        passwordField.placeholder = 'Fehler beim Laden';
+    }
+}
+
+function clearConnectionForm() {
+    const brokerField = document.getElementById('mqttBroker');
+    const portField = document.getElementById('mqttPort');
+    const clientIdInput = qsConfig('input[id="mqttClientId"]') || document.getElementById('mqttClientId');
+    const usernameField = document.getElementById('mqttUsername');
+    const passwordField = document.getElementById('mqttPassword');
+    if (brokerField) brokerField.value = '';
+    if (portField) portField.value = '8883';
+    if (clientIdInput) clientIdInput.value = 'filamenthub_debug';
+    if (usernameField) usernameField.value = '';
+    if (passwordField) passwordField.value = '';
+}
+
+let _mqttStatusPollTimer = null;
+// _mqttTopicsPollTimer moved to debug.js
+window._mqttLastConnected = false;  // Global so mqtt-connect-handler can access it
+let _mqttTabActive = false;
+
+function _setBadge(el, text, clsToAdd) {
+    if (!el) return;
+    el.textContent = text;
+    el.classList.remove('status-ok', 'status-idle', 'status-error', 'status-warn');
+    if (clsToAdd) el.classList.add(clsToAdd);
+}
+
+function _setStatusUI({ connected, broker, port, client_id, protocol, connected_since, error, connecting }) {
+    // MQTT Overview Badge oben
+    const badge = document.getElementById('mqttStatusBadge');
+    const badgeInline = document.getElementById('mqttStatusInline');
+    // MQTT Connection Card
+    const badgeConn = document.getElementById('mqttConnBadge');
+    const dot = document.getElementById('mqttConnDot');
+    const statusText = document.getElementById('mqttConnText');
+
+    const connectBtn = document.getElementById('mqttConnectBtn');
+    const disconnectBtn = document.getElementById('mqttDisconnectBtn');
+
+    const brokerValue = document.getElementById('mqttBrokerValue');
+    const clientIdValue = document.getElementById('mqttClientIdValue');
+    // Detail Card (MQTT Tab)
+    const detStatus = document.getElementById('mqttDetailStatus');
+    const detBroker = document.getElementById('mqttDetailBroker');
+    const detClients = document.getElementById('mqttDetailClients');
+    const detProtocol = document.getElementById('mqttDetailProtocol');
+    const detSince = document.getElementById('mqttDetailSince');
+
+    // Helper: Dot-Status setzen
+    function setDot(dotEl, state) {
+        if (!dotEl) return;
+        dotEl.classList.remove('dot-ok', 'dot-error', 'dot-warn', 'dot-idle', 'connected', 'disconnected');
+        if (state === 'ok') dotEl.classList.add('dot-ok');
+        else if (state === 'error') dotEl.classList.add('dot-error');
+        else if (state === 'warn') dotEl.classList.add('dot-warn');
+        else dotEl.classList.add('dot-idle');
+    }
+
+    if (connecting) {
+        _setBadge(badge, 'Connecting…', 'status-warn');
+        _setBadge(badgeInline, 'Verbinde…', 'status-warn');
+        _setBadge(badgeConn, 'Verbinde…', 'status-warn');
+        setDot(dot, 'warn');
+        if (statusText) statusText.textContent = 'Verbinde…';
+        if (connectBtn) connectBtn.disabled = true;
+        if (disconnectBtn) disconnectBtn.disabled = true;
+        return;
+    }
+
+    if (connected) {
+        _setBadge(badge, 'Connected', 'status-ok');
+        _setBadge(badgeInline, 'Verbunden', 'status-ok');
+        _setBadge(badgeConn, 'Verbunden', 'status-ok');
+        setDot(dot, 'ok');
+        const detail = `Verbunden mit ${broker}:${port}`;
+        const since = connected_since ? ` (seit ${connected_since})` : '';
+        if (statusText) statusText.textContent = detail + since;
+        if (brokerValue) brokerValue.textContent = `${broker}:${port}`;
+        if (clientIdValue) clientIdValue.textContent = client_id || '-';
+        if (detStatus) detStatus.textContent = 'Verbunden';
+        if (detBroker) detBroker.textContent = `${broker}:${port}`;
+        if (detClients) detClients.textContent = client_id ? '1' : '-';
+        if (detProtocol) detProtocol.textContent = protocol || '-';
+        if (detSince) detSince.textContent = connected_since || '-';
+        if (connectBtn) connectBtn.disabled = true;
+        if (disconnectBtn) disconnectBtn.disabled = false;
+        return;
+    }
+
+    _setBadge(badge, 'Disconnected', 'status-error');
+    _setBadge(badgeInline, 'Nicht verbunden', 'status-error');
+    _setBadge(badgeConn, 'Nicht verbunden', 'status-error');
+    setDot(dot, 'error');
+    if (statusText) statusText.textContent = error ? `Fehler: ${error}` : 'Nicht verbunden';
+    if (brokerValue) brokerValue.textContent = '-';
+    if (clientIdValue) clientIdValue.textContent = '-';
+    if (detStatus) detStatus.textContent = 'Nicht verbunden';
+    if (detBroker) detBroker.textContent = '-';
+    if (detClients) detClients.textContent = '-';
+    if (detProtocol) detProtocol.textContent = '-';
+    if (detSince) detSince.textContent = '-';
+    if (connectBtn) connectBtn.disabled = false;
+    if (disconnectBtn) disconnectBtn.disabled = true;
+}
+
+function _setMqttStatusText(message) {
+    const statusText = document.getElementById('mqttStatusText');
+    if (statusText) statusText.textContent = message;
+}
+
+function _showMqttError(httpStatus, apiErrorText) {
+    // Step 1D: Badge/buttons are driven only by GET status.
+    // Here we only adjust the status text as an error hint.
+    const msg = apiErrorText && String(apiErrorText).trim().length > 0
+        ? String(apiErrorText)
+        : `MQTT Fehler (HTTP ${httpStatus})`;
+    _setMqttStatusText(`Fehler: ${msg}`);
+}
+
+// Legacy status updater (keine Aktion standardmäßig).
+// Wird umbenannt und durch einen Wrapper ersetzt, der deaktiviert ist
+// solange `window.USE_LEGACY_MQTT_STATUS` nicht true ist.
+async function _legacy_refreshMQTTStatus() {
+    try {
+        const r = await fetch('/api/mqtt/runtime/status', { method: 'GET' });
+        const data = await r.json();
+        // Debug: log raw runtime status received from server
+        try { console.debug('MQTT runtime/status ->', data); } catch (e) {}
+        if (r.ok && data && data.connected) {
+            window._mqttLastConnected = true;
+            _setStatusUI({
+                connected: true,
+                broker: data.broker,
+                port: data.port,
+                client_id: data.client_id,
+                protocol: data.protocol,
+                connected_since: data.connected_since,
+            });
+            _startStatusPolling();
+        } else {
+            window._mqttLastConnected = false;
+            _setStatusUI({ connected: false });
+            _stopStatusPolling();
+        }
+        _syncTopicsPolling();
+    } catch (e) {
+        window._mqttLastConnected = false;
+        _setStatusUI({ connected: false, error: e?.message || String(e) });
+        _stopStatusPolling();
+        _syncTopicsPolling();
+    }
+
+    // Legacy function ends here. Modern UI should use centralized handler.
+}
+
+// Global delegator: forward refresh requests to central MQTT handler if available.
+async function refreshMQTTStatus() {
+    if (window.MQTTConnectionHandler && typeof window.MQTTConnectionHandler.refresh === 'function') {
+        return window.MQTTConnectionHandler.refresh();
+    }
+    return Promise.resolve();
+}
+
+
+function _syncTopicsPolling() {
+    const shouldRun = Boolean(window._mqttLastConnected);
+    if (!shouldRun) {
+        if (_mqttTopicsPollTimer) {
+            clearInterval(_mqttTopicsPollTimer);
+            _mqttTopicsPollTimer = null;
+        }
+        // Keep previous list, but show "Nicht verbunden" hint when disconnected.
+        const hint = document.getElementById('mqttTopicsHint');
+        if (hint) hint.textContent = 'Nicht verbunden';
+        const empty = document.getElementById('topicsEmpty');
+        const list = document.getElementById('topicsList');
+        if (empty) empty.style.display = 'block';
+        if (list) list.style.display = 'none';
+        return;
+    }
+
+    if (_mqttTopicsPollTimer) return;
+    // initial refresh
+    refreshMQTTTopics().catch(() => {});
+    _mqttTopicsPollTimer = setInterval(() => {
+        refreshMQTTTopics().catch(() => {});
+    }, 4000);
+}
+
+function _formatLastSeen(iso) {
+    if (!iso) return '';
+    try {
+        const d = new Date(iso);
+        if (!isNaN(d.getTime())) {
+            return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+    } catch (e) {}
+    return String(iso);
+}
+
+function _renderTopics(items) {
+    const list = document.getElementById('topicsList');
+    const empty = document.getElementById('topicsEmpty');
+    const hint = document.getElementById('mqttTopicsHint');
+    const countEl = document.getElementById('mqttSubscriptionsCount');
+    if (!list) return;
+
+    const safeItems = Array.isArray(items) ? items : [];
+    if (countEl) countEl.textContent = String(safeItems.length);
+
+    if (safeItems.length === 0) {
+        if (hint) hint.textContent = 'Keine Topics';
+        if (empty) empty.style.display = 'block';
+        list.style.display = 'none';
+        return;
+    }
+
+    if (empty) empty.style.display = 'none';
+    list.style.display = 'block';
+    list.innerHTML = '';
+
+    safeItems.forEach((topic) => {
+        const row = document.createElement('div');
+        row.className = 'kv';
+
+        const k = document.createElement('div');
+        k.className = 'k';
+        k.style.fontFamily = 'Consolas,monospace';
+        k.style.whiteSpace = 'nowrap';
+        k.style.overflow = 'hidden';
+        k.style.textOverflow = 'ellipsis';
+        k.title = String(topic || '');
+        k.textContent = String(topic || '');
+
+        const v = document.createElement('div');
+        v.className = 'v';
+        v.textContent = 'abonniert';
+
+        row.appendChild(k);
+        row.appendChild(v);
+        list.appendChild(row);
+    });
+}
+
+async function refreshMQTTTopics() {
+    // Always poll when connected (independent of tab state)
+    try {
+        const r = await fetch('/api/mqtt/runtime/topics', { method: 'GET' });
+        const data = await r.json();
+        if (r.ok && data && data.connected) {
+            _renderTopics(data.items || []);
+            return;
+        }
+        // disconnected or unexpected
+        _renderTopics([]);
+    } catch (e) {
+        // keep UI stable; show empty state with hint
+        const hint = document.getElementById('mqttTopicsHint');
+        if (hint) hint.textContent = 'Keine Daten';
+        _renderTopics([]);
+    }
+}
+
+function _startStatusPolling() {
+    // Polling handled centrally by mqtt-connect-handler.js; no local poller here.
+    return;
+}
+
+function _stopStatusPolling() {
+    if (_mqttStatusPollTimer) {
+        clearInterval(_mqttStatusPollTimer);
+        _mqttStatusPollTimer = null;
+    }
+}
+
+async function handleConnect() {
+    console.log('🔌 Connect geklickt!');
+    const btn = document.getElementById('mqttConnectBtn');
+    // FIX: querySelector mit Fallback für Pro-Modus Panel
+    const brokerField = document.querySelector('#panel-mqtt input[id="mqttBrokerAddress"]') 
+                     || document.getElementById('mqttBrokerAddress');
+    const portField = document.querySelector('#panel-mqtt select[id="mqttBrokerPort"]')
+                   || document.getElementById('mqttBrokerPort');
+    const clientField = document.querySelector('#panel-mqtt input[id="mqttClientId"]')
+                     || document.getElementById('mqttClientId');
+    const userField = document.querySelector('#panel-mqtt input[id="mqttUsername"]')
+                   || document.getElementById('mqttUsername');
+    const passField = document.querySelector('#panel-mqtt input[id="mqttPassword"]')
+                   || document.getElementById('mqttPassword');
+    const dropdown = document.getElementById('mqttPrinterDropdown');
+
+    const data = {
+        broker: brokerField?.value || 'localhost',
+        port: parseInt(portField?.value || '1883'),
+        client_id: clientField?.value || 'filamenthub_debug',
+        username: userField?.value || null,
+        password: passField?.value || null,
+        printer_id: dropdown?.value || null,
+        auto_subscribe: true
+    };
+
+    console.log('📊 Connect Data:', data);
+
+    if (!data.broker || !data.port) {
+        alert('❌ Bitte Broker und Port eingeben!');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Verbinde...';
+    }
+
+    try {
+        const response = await fetch('/api/mqtt/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        console.log('📦 Response:', result);
+        if (result.success) {
+            console.log('✅ Verbunden!');
+            // Update Status
+            const statusDot = document.getElementById('mqttConnDot');
+            const statusText = document.getElementById('mqttConnText');
+            const statusDetail = document.getElementById('mqttConnDetail');
+            if (statusDot) statusDot.classList.add('connected');
+            if (statusText) statusText.textContent = 'Verbunden';
+            if (statusDetail) statusDetail.textContent = `${data.broker}:${data.port}`;
+            // Update Overview Cards (oben sichtbar)
+            const ovStatus = document.getElementById('mqttStatus');
+            const ovBroker = document.getElementById('mqttBroker');
+            const ovClientId = document.getElementById('mqttClientId');
+            // Use centralized updater for top-level mqttStatus badge
+            if (window.MQTTConnectionHandler && typeof window.MQTTConnectionHandler.updateStatus === 'function') {
+                try { window.MQTTConnectionHandler.updateStatus('connected', 'Verbunden', `${data.broker}:${data.port}`); } catch(e){}
+            }
+            if (ovBroker) ovBroker.textContent = `${data.broker}:${data.port}`;
+            if (ovClientId) ovClientId.textContent = data.client_id;
+            // Topics anzeigen
+            if (result.subscribed_topics && result.subscribed_topics.length > 0) {
+                console.log('📡 Zeige Topics:', result.subscribed_topics);
+                showTopics(result.subscribed_topics);
+                // Update Subscriptions Count
+                const subsCount = document.getElementById('mqttSubscriptionsCount');
+                if (subsCount) subsCount.textContent = result.subscribed_topics.length;
+            }
+            // Buttons
+            if (btn) btn.disabled = true;
+            const discBtn = document.getElementById('mqttDisconnectBtn');
+            if (discBtn) discBtn.disabled = false;
+            alert(`✅ Verbunden!\n${result.subscribed_topics?.length || 0} Topics abonniert`);
+        } else {
+            console.error('❌ Fehler:', result.error || result.message);
+            alert('❌ Verbindung fehlgeschlagen:\n' + (result.error || result.message || 'Unbekannter Fehler'));
+            // Update Status auf Error
+            const statusDot = document.getElementById('mqttConnDot');
+            const statusText = document.getElementById('mqttConnText');
+            if (statusDot) statusDot.classList.add('status-error');
+            if (statusText) statusText.textContent = 'Fehler';
+        }
+    } catch (error) {
+        console.error('❌ Connect Error:', error);
+        alert('❌ Fehler: ' + error.message);
+    } finally {
+        if (btn) {
+            btn.textContent = 'CONNECT';
+            btn.disabled = false;
+        }
+    }
+}
+
+async function handleMQTTDisconnect() {
+    const btn = document.getElementById('mqttDisconnectBtn');
+    if (!btn) return;
+    btn.disabled = true; btn.textContent = 'Trenne...';
+    try {
+        const r = await fetch('/api/mqtt/runtime/disconnect', { method: 'POST' });
+        let res = null;
+        try { res = await r.json(); } catch (e) { res = null; }
+
+            // Step 1D: Always re-read authoritative status and derive UI from central handler.
+        if (window.MQTTConnectionHandler && typeof window.MQTTConnectionHandler.refresh === 'function') {
+            await window.MQTTConnectionHandler.refresh();
+        } else {
+            await refreshMQTTStatus();
+        }
+
+        if (!(r.ok && res && res.success)) {
+            const apiErr = (res && res.error) ? String(res.error) : null;
+            _showMqttError(r.status, apiErr);
+        }
+        // If still connected, keep polling; otherwise stop.
+        // (refreshMQTTStatus already updated UI)
+    } catch (err) {
+        console.error('Disconnect error', err);
+        if (window.MQTTConnectionHandler && typeof window.MQTTConnectionHandler.refresh === 'function') {
+            window.MQTTConnectionHandler.refresh().catch(() => {});
+        } else {
+            refreshMQTTStatus().catch(() => {});
+        }
+        _showMqttError(0, err?.message || String(err));
+    } finally {
+        btn.textContent = 'DISCONNECT';
+        // Button state is controlled by _setStatusUI via refreshMQTTStatus()
+    }
+}
+
+function showSubscribedTopics(topics) {
+    const topicsList = document.getElementById('topicsList');
+    const topicsEmpty = document.getElementById('topicsEmpty');
+    if (!topicsList) return;
+    if (topicsEmpty) topicsEmpty.style.display = 'none';
+    topicsList.style.display = 'block';
+    topicsList.innerHTML = '';
+    topics.forEach(t => {
+        const item = document.createElement('div');
+        item.className = 'topic-item';
+        item.style.padding = '8px 10px';
+        item.style.borderBottom = '1px solid var(--border)';
+        item.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-family:Consolas,monospace;color:#6ab0f3">${t}</span><span style="font-size:12px;color:var(--text-dim)">0 msgs</span></div>`;
+        topicsList.appendChild(item);
+    });
+}
+
+function initMQTTConnection() {
+    // Initial status read (no auto-connect)
+    refreshMQTTStatus().catch(() => {});
+    // Start polling for subscribed topics after a brief delay to ensure functions are loaded
+    setTimeout(() => {
+        if (typeof _syncTopicsPolling === 'function') {
+            _syncTopicsPolling();
+        }
+    }, 100);
+    // Try to load dropdown, retrying a few times in case the element is rendered later
+    let attempts = 0;
+    const tryLoad = async () => {
+        attempts += 1;
+        const container = document.getElementById('mqttPrinterSelect');
+        if (!container) {
+            console.log('MQTT: printer select element not found (attempt ' + attempts + ')');
+            if (attempts < 6) setTimeout(tryLoad, 500);
+            else console.warn('MQTT: printer dropdown not initialized - element missing or not available in this mode.');
+            return;
+        }
+        await loadMQTTPrinterDropdown();
+    };
+    tryLoad();
+}
+
+// Robust event registration helper (separate from load logic)
+function initMQTTConnectionEvents() {
+    console.log('MQTT: initMQTTConnectionEvents');
+    try {
+        // Dropdown
+        const dropdown = document.getElementById('mqttPrinterDropdown');
+        if (dropdown) {
+            if (!dropdown._mqttEventsAttached) {
+                dropdown.addEventListener('change', async (e) => {
+                    const id = e.target.value;
+                    console.log('MQTT: dropdown change ->', id);
+                    if (id) await handlePrinterChange(id);
+                    else clearConnectionForm();
+                });
+                dropdown._mqttEventsAttached = true;
+                console.log('MQTT: dropdown change listener attached');
+            }
+        } else {
+            console.log('MQTT: dropdown not present yet');
+        }
+
+        // Connect button - handled by mqtt-connect-handler.js
+        const connectBtn = document.getElementById('mqttConnectBtn');
+        if (connectBtn) {
+            console.log('MQTT: connect button found (handler in mqtt-connect-handler.js)');
+        } else {
+            console.log('MQTT: connect button not found');
+        }
+
+        // Disconnect button
+        const disconnectBtn = document.getElementById('mqttDisconnectBtn');
+        if (disconnectBtn) {
+            if (!disconnectBtn._mqttEventsAttached) {
+                disconnectBtn.addEventListener('click', handleMQTTDisconnect);
+                disconnectBtn._mqttEventsAttached = true;
+                console.log('MQTT: disconnect button listener attached');
+            }
+        } else console.log('MQTT: disconnect button not found');
+
+        // Ensure dropdown is loaded/created
+        loadMQTTPrinterDropdown().catch(e => console.warn('MQTT: load dropdown failed', e));
+    } catch (e) {
+        console.error('MQTT: init events failed', e);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // If MQTT tab is shown later, init is triggered via tab click handler below
+    // Init anyway to create the dropdown in the connection card
+    initMQTTConnection();
+    // Also ensure event listeners are attached (handles cases where elements already present)
+    setTimeout(initMQTTConnectionEvents, 200);
+    // Determine initial tab state (best-effort)
+    try {
+        const panel = document.getElementById('tab-mqtt');
+        _mqttTabActive = !!(panel && (panel.classList.contains('active') || panel.style.display === 'block'));
+        _syncTopicsPolling();
+    } catch (e) {}
+});
+
+// Fallback polling: enforce UI reflects runtime status even if other scripts conflict.
+(function() {
+    const FALLBACK_POLL_MS = 3000;
+    async function syncRuntimeBadge() {
+        try {
+            const r = await fetch('/api/mqtt/runtime/status');
+            if (!r.ok) return;
+            const data = await r.json();
+            // Debug
+            console.debug('MQTT badge sync:', data);
+
+            const connected = !!data.connected;
+            const badgeInline = document.getElementById('mqttStatusInline');
+            const badgeTop = document.getElementById('mqttStatus');
+            const badgeConn = document.getElementById('mqttConnBadge');
+            const dot = document.getElementById('mqttConnDot');
+            const statusText = document.getElementById('mqttConnText');
+
+            if (connected) {
+                // Centralized: only updateStatus() may change the top-level badge text (#mqttStatus)
+                if (window.MQTTConnectionHandler && typeof window.MQTTConnectionHandler.updateStatus === 'function') {
+                    try { window.MQTTConnectionHandler.updateStatus('connected', 'Verbunden', data.connected_since ? `seit ${data.connected_since}` : `${data.broker}:${data.port}`); } catch(e){}
+                }
+                if (badgeInline) { badgeInline.textContent = 'Verbunden'; badgeInline.className = 'status-badge status-ok'; }
+                if (badgeConn) { badgeConn.textContent = 'Verbunden'; badgeConn.className = 'status-badge status-ok'; }
+                if (dot) { dot.classList.remove('dot-idle','dot-error'); dot.classList.add('dot-ok'); }
+                if (statusText) statusText.textContent = data.connected_since ? `Verbunden (seit ${data.connected_since})` : 'Verbunden';
+            } else {
+                if (window.MQTTConnectionHandler && typeof window.MQTTConnectionHandler.updateStatus === 'function') {
+                    try { window.MQTTConnectionHandler.updateStatus('disconnected', 'Nicht verbunden', 'Bereit zur Verbindung'); } catch(e){}
+                }
+                if (badgeInline) { badgeInline.textContent = 'Nicht verbunden'; badgeInline.className = 'status-badge status-error'; }
+                if (badgeConn) { badgeConn.textContent = 'Nicht verbunden'; badgeConn.className = 'status-badge status-error'; }
+                if (dot) { dot.classList.remove('dot-ok'); dot.classList.add('dot-idle'); }
+                if (statusText) statusText.textContent = 'Nicht verbunden';
+                // badgeTop class left to central updater; do not modify #mqttStatus here
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+    // Legacy runtime badge poller disabled — centralized handler will drive UI.
+})();
+
+const mqttTab = document.querySelector('[data-tab="mqtt"]');
+if (mqttTab) mqttTab.addEventListener('click', () => {
+    _mqttTabActive = true;
+    setTimeout(() => {
+        initMQTTConnection();
+        refreshMQTTStatus().catch(() => {});
+        _syncTopicsPolling();
+    }, 150);
+});
+
+// Mark tab inactive when other tabs are clicked (best-effort)
+document.addEventListener('click', (e) => {
+    const anyTab = e.target.closest('[data-tab]');
+    if (!anyTab) return;
+    const isMqtt = anyTab.getAttribute('data-tab') === 'mqtt';
+    _mqttTabActive = isMqtt;
+    _syncTopicsPolling();
+});
+
+// Additionally watch for any click that activates the tab (covers different click handlers)
+document.addEventListener('click', (e) => {
+    const tab = e.target.closest('[data-tab="mqtt"]');
+    if (tab) {
+        console.log('MQTT: mqtt tab clicked (document listener)');
+        _mqttTabActive = true;
+        setTimeout(() => {
+            initMQTTConnection();
+            initMQTTConnectionEvents();
+            refreshMQTTStatus().catch(() => {});
+            _syncTopicsPolling();
+        }, 120);
+    }
+});
+
+// Fallback: try loading printers even if the panel is hidden (populate the container)
+// This helps when the UI hides Pro panels and init wasn't triggered.
+setTimeout(() => {
+    try {
+        const container = document.getElementById('mqttPrinterSelect');
+        if (container && typeof loadMQTTPrinterDropdown === 'function') {
+            // don't await here to avoid blocking
+            loadMQTTPrinterDropdown().catch((e) => console.warn('MQTT: fallback load failed', e));
+        }
+    } catch (e) {
+        console.warn('MQTT: fallback loader error', e);
+    }
+}, 700);
+
+// Export functions globally - executed immediately
+(function() {
+    console.log('Exporting MQTT functions...');
+    console.log('refreshMQTTTopics:', typeof refreshMQTTTopics);
+    console.log('_renderTopics:', typeof _renderTopics);
+    console.log('_syncTopicsPolling:', typeof _syncTopicsPolling);
+    
+    window.refreshMQTTTopics = refreshMQTTTopics;
+    window._renderTopics = _renderTopics;
+    window._syncTopicsPolling = _syncTopicsPolling;
+    
+    console.log('✓ MQTT Functions exported successfully');
+})();
+
+// ===== LOG VIEWER FUNCTIONS =====
+(function() {
+    let logData = [];
+    let isPaused = false;
+    let currentFilter = { level: '', search: '' };
+    
+    function updateLogStats() {
+        const totalCount = logData.length;
+        const errorCount = logData.filter(log => log.level === 'ERROR').length;
+        const warningCount = logData.filter(log => log.level === 'WARNING').length;
+        
+        document.getElementById('logTotalCount').textContent = totalCount;
+        document.getElementById('logErrorCount').textContent = errorCount;
+        document.getElementById('logWarningCount').textContent = warningCount;
+        // Zeige die Zeit des letzten Log-Eintrags, falls vorhanden
+        const lastUpdateEl = document.getElementById('logLastUpdate');
+        const lastTs = totalCount > 0 ? logData[totalCount - 1]?.timestamp : null;
+        if (lastTs) {
+            lastUpdateEl.textContent = lastTs;
+        } else {
+            lastUpdateEl.textContent = new Date().toLocaleTimeString('de-DE');
+        }
+    }
+    
+    function renderLogs() {
+        const container = document.getElementById('log-entries');
+        if (!container) return;
+        
+        let filtered = logData;
+        
+        // Filter by level
+        if (currentFilter.level) {
+            filtered = filtered.filter(log => log.level === currentFilter.level);
+        }
+        
+        // Filter by search
+        if (currentFilter.search) {
+            const search = currentFilter.search.toLowerCase();
+            filtered = filtered.filter(log => 
+                log.message.toLowerCase().includes(search) ||
+                log.module.toLowerCase().includes(search)
+            );
+        }
+        
+        if (filtered.length === 0) {
+            container.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Keine Logs gefunden.</div>';
+            return;
+        }
+        
+        const html = filtered.map((log, index) => {
+            let levelColor = 'var(--text)';
+            let levelClass = 'log-info';
+            if (log.level === 'ERROR') {
+                levelColor = 'var(--error)';
+                levelClass = 'log-error';
+            } else if (log.level === 'WARNING') {
+                levelColor = 'var(--accent)';
+                levelClass = 'log-warning';
+            } else if (log.level === 'INFO') {
+                levelColor = 'var(--accent-3)';
+                levelClass = 'log-info';
+            } else if (log.level === 'DEBUG') {
+                levelColor = 'var(--text-dim)';
+                levelClass = 'log-debug';
+            }
+            
+            const shortMessage = log.message.length > 150 ? log.message.substring(0, 150) + '...' : log.message;
+            const hasDetails = log.message.length > 150;
+            
+            return `
+                <div class="log-line ${levelClass}" data-index="${index}" style="border-bottom:1px solid var(--border);padding:12px;margin-bottom:8px;border-radius:8px;background:rgba(0,0,0,0.2);">
+                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between;">
+                        <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;flex:1;">
+                            <span style="color:var(--text-dim);font-size:12px;white-space:nowrap;">${log.timestamp}</span>
+                            <span style="color:${levelColor};font-weight:700;min-width:70px;font-size:14px;">${log.level}</span>
+                            <span style="color:var(--accent-2);font-size:12px;">[${log.module}]</span>
+                        </div>
+                        ${hasDetails ? `<button class="btn ghost" style="padding:4px 10px;font-size:12px;" onclick="toggleLogDetails(${index})">📋 Details</button>` : ''}
+                    </div>
+                    <div class="log-message" style="margin-top:8px;color:var(--text);line-height:1.5;">${shortMessage}</div>
+                    ${hasDetails ? `<div class="log-details" id="log-details-${index}" style="display:none;margin-top:8px;padding:12px;background:rgba(0,0,0,0.3);border-radius:6px;color:var(--text-dim);font-family:monospace;font-size:13px;white-space:pre-wrap;word-break:break-all;">${log.message}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+        
+        container.innerHTML = html;
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    // Toggle-Funktion für Details (global, damit onclick funktioniert)
+    window.toggleLogDetails = function(index) {
+        const detailsEl = document.getElementById(`log-details-${index}`);
+        if (detailsEl) {
+            detailsEl.style.display = detailsEl.style.display === 'none' ? 'block' : 'none';
+        }
+    };
+    
+    function loadLogs() {
+        if (isPaused) return;
+
+        // Lese Werte aus Selektoren
+        const moduleSelect = document.getElementById('logModuleSelect');
+        const limitSelect = document.getElementById('logLimitSelect');
+        const module = moduleSelect ? moduleSelect.value : 'app';
+        const limit = limitSelect ? limitSelect.value : '50';
+
+        const statusBadge = document.getElementById('logStatusBadge');
+        if (statusBadge) {
+            statusBadge.className = 'status-badge status-ok';
+            statusBadge.textContent = 'Lade...';
+        }
+
+        // Lade echte Logs von API
+        fetch(`/api/debug/logs?module=${module}&limit=${limit}`)
+            .then(res => res.json())
+            .then(data => {
+                console.log('API Response:', data);
+                
+                // API kann "logs" oder "entries" zurückgeben
+                const logs = data.logs || data.entries;
+                if (logs && Array.isArray(logs)) {
+                    logData = logs;
+                    updateLogStats();
+                    renderLogs();
+                    
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge status-ok';
+                        statusBadge.textContent = 'Live';
+                    }
+                } else if (data.error) {
+                    console.error('Log-API Fehler:', data.error);
+                    const container = document.getElementById('log-entries');
+                    if (container) {
+                        container.innerHTML = `<div style="color:var(--error);text-align:center;padding:20px;">Fehler: ${data.error}</div>`;
+                    }
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge status-error';
+                        statusBadge.textContent = 'Fehler';
+                    }
+                } else {
+                    console.warn('Unerwartete API-Antwort:', data);
+                    const container = document.getElementById('log-entries');
+                    if (container) {
+                        container.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Keine Logs gefunden.</div>';
+                    }
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge status-idle';
+                        statusBadge.textContent = 'Leer';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Fehler beim Laden der Logs:', err);
+                const container = document.getElementById('log-entries');
+                if (container) {
+                    container.innerHTML = '<div style="color:var(--error);text-align:center;padding:20px;">Fehler beim Laden der Logs</div>';
+                }
+                if (statusBadge) {
+                    statusBadge.className = 'status-badge status-error';
+                    statusBadge.textContent = 'Fehler';
+                }
+            });
+    }
+    
+    function clearLogs() {
+        logData = [];
+        updateLogStats();
+        const container = document.getElementById('log-entries');
+        if (container) {
+            container.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Keine Logs verfügbar.</div>';
+        }
+    }
+    
+    function togglePause() {
+        isPaused = !isPaused;
+        const btn = document.getElementById('logPauseBtn');
+        const statusBadge = document.getElementById('logStatusBadge');
+        
+        if (isPaused) {
+            btn.textContent = '▶ Fortsetzen';
+            if (statusBadge) {
+                statusBadge.className = 'status-badge status-idle';
+                statusBadge.textContent = 'Pausiert';
+            }
+        } else {
+            btn.textContent = '⏸ Pause';
+            if (statusBadge) {
+                statusBadge.className = 'status-badge status-ok';
+                statusBadge.textContent = 'Live';
+            }
+        }
+    }
+    
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        const reloadBtn = document.getElementById('logReloadBtn');
+        const pauseBtn = document.getElementById('logPauseBtn');
+        const clearBtn = document.getElementById('logClearBtn');
+        const levelFilter = document.getElementById('logLevelFilter');
+        const searchInput = document.getElementById('logSearchInput');
+        
+        if (reloadBtn) reloadBtn.addEventListener('click', loadLogs);
+        if (pauseBtn) pauseBtn.addEventListener('click', togglePause);
+        if (clearBtn) clearBtn.addEventListener('click', function() {
+            // Öffne Modal
+            const modal = document.getElementById('logDeleteModal');
+            const moduleSelect = document.getElementById('logModuleSelect');
+            const module = moduleSelect ? moduleSelect.value : 'app';
+            const modalText = document.getElementById('logDeleteModalText');
+            if (modalText) modalText.textContent = `Die Log-Datei für Modul "${module}" wird gelöscht.`;
+            modal.style.display = 'flex';
+            // Button-Handler
+            const cancelBtn = document.getElementById('logDeleteCancel');
+            const confirmBtn = document.getElementById('logDeleteConfirm');
+            const closeModal = () => { modal.style.display = 'none'; };
+            cancelBtn.onclick = closeModal;
+            confirmBtn.onclick = async function() {
+                try {
+                    const resp = await fetch(`/api/debug/logs?module=${module}`, { method: 'DELETE' });
+                    const data = await resp.json().catch(() => ({}));
+                    clearLogs();
+                    const statusBadge = document.getElementById('logStatusBadge');
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge status-idle';
+                        statusBadge.textContent = 'Gelöscht';
+                    }
+                    if (typeof showToast === 'function') {
+                        showToast('Logs gelöscht', 'success');
+                    }
+                    // Auto-Reload nach 2s: lädt aktuelle Modul-/Limit-Auswahl neu
+                    setTimeout(() => {
+                        const sel = document.getElementById('logModuleSelect');
+                        const limitSel = document.getElementById('logLimitSelect');
+                        const m = sel ? sel.value : 'app';
+                        const l = limitSel ? parseInt(limitSel.value || '50', 10) : 50;
+                        // Badge vor dem Laden auf "Lade..."
+                        const badge = document.getElementById('logStatusBadge');
+                        if (badge) {
+                            badge.className = 'status-badge status-ok';
+                            badge.textContent = 'Lade...';
+                        }
+                        // Nutze die oben definierte loadLogs(module, limit)
+                        if (typeof loadLogs === 'function') {
+                            loadLogs(m, l);
+                        }
+                    }, 2000);
+                } catch (e) {
+                    console.error('Löschen fehlgeschlagen:', e);
+                    const statusBadge = document.getElementById('logStatusBadge');
+                    if (statusBadge) {
+                        statusBadge.className = 'status-badge status-error';
+                        statusBadge.textContent = 'Fehler beim Löschen';
+                    }
+                    if (typeof showToast === 'function') {
+                        showToast('Fehler beim Löschen der Logs', 'error');
+                    }
+                } finally {
+                    closeModal();
+                }
+            };
+        });
+        
+        if (levelFilter) {
+            levelFilter.addEventListener('change', function() {
+                currentFilter.level = this.value;
+                renderLogs();
+            });
+        }
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                currentFilter.search = this.value;
+                renderLogs();
+            });
+        }
+        
+        console.log('✓ Log Viewer initialized');
+    });
+})();
+
+// <script src="/static/js/mqtt_connect.js">
+</script>
+<!-- Cache-Buster: 2025-12-16 21:42 -->
+{% endblock %}
+{% block extra_scripts %}
+<!-- MQTT Connect Panel-Handler: debug.js wird bereits in layout.html geladen -->
+<script src="/static/js/mqtt-connect-handler.js"></script>
+<script>
+// Export MQTT functions globally (they are defined in the page's main script block)
+// This runs after all other scripts are loaded
+setTimeout(function() {
+    console.log('Attempting to export MQTT functions...');
+    
+    // Check if functions exist in global scope
+    if (typeof refreshMQTTTopics !== 'undefined') {
+        window.refreshMQTTTopics = refreshMQTTTopics;
+        console.log('✓ refreshMQTTTopics exported');
+    } else {
+        console.warn('✗ refreshMQTTTopics not found');
+    }
+    
+    if (typeof _renderTopics !== 'undefined') {
+        window._renderTopics = _renderTopics;
+        console.log('✓ _renderTopics exported');
+    } else {
+        console.warn('✗ _renderTopics not found');
+    }
+    
+    if (typeof _syncTopicsPolling !== 'undefined') {
+        window._syncTopicsPolling = _syncTopicsPolling;
+        console.log('✓ _syncTopicsPolling exported');
+    } else {
+        console.warn('✗ _syncTopicsPolling not found');
+    }
+    
+    // Start polling if connected
+    if (window._mqttLastConnected && typeof _syncTopicsPolling === 'function') {
+        console.log('Starting topics polling...');
+        _syncTopicsPolling();
+    }
+}, 500);
+</script>
+<script>
+// Backend/DB Detail Polling (zeigt Type und Response Latency)
+(function backendDetailPoller(){
+    const apiLatencyEl = document.getElementById('proApiLatency');
+    const apiStatusEl = document.getElementById('proApiStatus');
+    const dbTypeEl = document.getElementById('proDbType');
+    const dbStatusEl = document.getElementById('proDbStatus');
+
+    const toMs = (val) => {
+        const n = Number(val);
+        return Number.isFinite(n) ? `${n} ms` : '-';
+    };
+
+    const applyData = (data) => {
+        const runtime = data?.runtime || {};
+        const apiLatency = data?.api?.latency_ms ?? data?.api?.response_time_ms ?? data?.api?.response_ms ?? runtime?.avg_response_ms;
+
+        if (apiStatusEl) apiStatusEl.textContent = data?.api?.state || data?.api?.status || '-';
+        if (apiLatencyEl) apiLatencyEl.textContent = toMs(apiLatency);
+        if (dbStatusEl) dbStatusEl.textContent = data?.db?.state || data?.db?.status || '-';
+        if (dbTypeEl) dbTypeEl.textContent = data?.db?.type || data?.db?.engine || data?.db?.dialect || (data?.db ? 'unknown' : '-');
+    };
+
+    const applyError = () => {
+        if (apiStatusEl) apiStatusEl.textContent = '-';
+        if (apiLatencyEl) apiLatencyEl.textContent = '-';
+        if (dbStatusEl) dbStatusEl.textContent = '-';
+        if (dbTypeEl) dbTypeEl.textContent = '-';
+    };
+
+    const refresh = async () => {
+        try {
+            const res = await fetch('/api/debug/system_status', { cache: 'no-store' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            applyData(data);
+        } catch (e) {
+            console.warn('Backend detail fetch failed', e);
+            applyError();
+        }
+    };
+
+    refresh();
+    const iv = setInterval(refresh, 6000);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) refresh();
+    });
+    window.addEventListener('beforeunload', () => clearInterval(iv));
+})();
+</script>
+<script>
+// Pro: JSON Inspector – ohne neue Render-Logik, nutzt vorhandene Renderer-Funktionen falls verfügbar
+(function jsonInspector(){
+    const panel = document.getElementById('panel-json');
+    const statusEl = document.getElementById('json-status');
+    const countEl = document.getElementById('json-msg-count');
+    const handlerEl = document.getElementById('json-handler-count');
+    const treeEl = document.getElementById('json-inspector-tree');
+    const uploadInput = document.getElementById('json-upload');
+
+    // Hilfsfunktion: Verfügbare Renderer-Funktion ermitteln
+    function getRenderer(){
+        // Versuche mehrere bekannte Namen ohne neue Implementierung
+        if (typeof window.renderJsonTree === 'function') return window.renderJsonTree;
+        if (window.JSONRenderer && typeof window.JSONRenderer.render === 'function') return window.JSONRenderer.render;
+        if (window.JSONTreeRenderer && typeof window.JSONTreeRenderer.render === 'function') return window.JSONTreeRenderer.render;
+        if (typeof window.renderJSONTree === 'function') return window.renderJSONTree;
+        return null;
+    }
+
+    // Hilfsfunktion: Render-Aufruf kapseln
+    function renderJSON(data){
+        const renderFn = getRenderer();
+        if (!renderFn){
+            treeEl.textContent = 'JSON-Renderer nicht gefunden. Bitte bestehenden Renderer einbinden.';
+            return;
+        }
+        try {
+            renderFn(data, treeEl);
+        } catch (e){
+            console.warn('Renderer-Fehler:', e);
+            treeEl.textContent = 'Fehler beim Rendern mit vorhandenem Renderer.';
+        }
+    }
+
+    // Datei-Upload: nur JSON.parse, keine neue Render-Logik
+    uploadInput?.addEventListener('change', () => {
+        const file = uploadInput.files?.[0];
+        if (!file){
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const text = String(reader.result || '');
+                const obj = JSON.parse(text);
+                statusEl.className = 'status-badge status-ok';
+                statusEl.textContent = 'File';
+                renderJSON(obj);
+            } catch (e){
+                statusEl.className = 'status-badge status-error';
+                statusEl.textContent = 'Fehler';
+            }
+        };
+        reader.readAsText(file, 'utf-8');
+    });
+
+    // Logs lesen: nutzt bestehendes Logs-API; erkennt JSON-Payloads heuristisch, ohne eigene Baum-Logik
+    async function loadLatestMqttJson(){
+        try {
+            const resp = await fetch('/api/debug/logs?module=mqtt&limit=100');
+            const data = await resp.json();
+            const entries = data?.entries || data?.logs || [];
+            // Finde die letzte Nachricht, die wie JSON aussieht (flache Heuristik ohne Parser-Implementierung)
+            let found = null;
+            for (let i = entries.length - 1; i >= 0; i--){
+                const msg = String(entries[i]?.message ?? '');
+                const trimmed = msg.trim();
+                if (trimmed.startsWith('{') || trimmed.startsWith('[')){
+                    found = { payload: trimmed, topic: entries[i]?.module || 'mqtt', ts: entries[i]?.timestamp };
+                    break;
+                }
+            }
+            if (!found){
+                statusEl.className = 'status-badge status-idle';
+                statusEl.textContent = 'Idle';
+                treeEl.textContent = 'Keine JSON-Payload im MQTT-Log gefunden.';
+                return;
+            }
+            // Nur JSON.parse; Rendering über vorhandene Funktion
+            let obj = null;
+            try { obj = JSON.parse(found.payload); } catch { obj = null; }
+            if (!obj){
+                statusEl.className = 'status-badge status-error';
+                statusEl.textContent = 'Fehler';
+                treeEl.textContent = 'Ungültige JSON-Payload in Log.';
+                return;
+            }
+            statusEl.className = 'status-badge status-ok';
+            statusEl.textContent = 'Live';
+            countEl.textContent = String(entries.length);
+            handlerEl.textContent = getRenderer() ? '1' : '0';
+            renderJSON(obj);
+        } catch (e){
+            statusEl.className = 'status-badge status-error';
+            statusEl.textContent = 'Fehler';
+            treeEl.textContent = 'Fehler beim Laden der Logs.';
+        }
+    }
+
+    // Beobachte Panel-Sichtbarkeit und lade bei Anzeige
+    if (panel){
+        const obs = new MutationObserver(() => {
+            if (panel.style.display !== 'none') {
+                loadLatestMqttJson();
+            }
+        });
+        obs.observe(panel, { attributes: true, attributeFilter: ['style'] });
+    }
+
+    // Steuer-Buttons: leiten an vorhandene Renderer-Funktionen weiter, falls verfügbar
+    // Steuer-Buttons sind nicht Teil der Card-Spezifikation und entfallen
+})();
+</script>
 {% endblock %}

@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.Python
+
+# Test / coverage caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# App runtime output
+logs/
+
+# Local backups folder
+Backup/
+
+# Local / temporary scripts and notes
+scripts/_tmp_*
+
+# Backup / scratch files (generated during debugging)
+*.bak
+*.bak*
+*.backup
+*.backup*
+
+# Catch backups anywhere in tree
+**/*.bak*
+**/*.backup*

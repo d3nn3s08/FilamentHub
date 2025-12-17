@@ -1,8 +1,8 @@
-
 import os
 import sqlite3
 import subprocess
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from typing import List, Dict, Any
 from pathlib import Path
 
@@ -11,20 +11,29 @@ router = APIRouter(prefix="/api/database", tags=["Database"])
 DB_PATH = os.environ.get("FILAMENTHUB_DB_PATH", "data/filamenthub.db")
 
 # -----------------------------
+# DB EDITOR REQUEST MODEL
+# -----------------------------
+class SQLEditorRequest(BaseModel):
+    sql: str
+
+# -----------------------------
 # DB EDITOR ENDPOINT
 # -----------------------------
 @router.post("/editor")
-async def execute_editor_query(request: Request):
+async def execute_editor_query(payload: SQLEditorRequest):
     """Führt beliebige SQL-Befehle aus (INSERT, UPDATE, DELETE, CREATE, ALTER, DROP)"""
-    data = await request.json()
-    sql = data.get("sql", "").strip()
+
+    sql = payload.sql.strip()
     if not sql:
         raise HTTPException(status_code=400, detail="Kein SQL-Befehl übergeben")
 
     # Sicherheitsabfrage: Nur bestimmte Befehle zulassen
     allowed = ("INSERT", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP")
     if not any(sql.upper().startswith(cmd) for cmd in allowed):
-        raise HTTPException(status_code=403, detail="Nur INSERT, UPDATE, DELETE, CREATE, ALTER, DROP erlaubt")
+        raise HTTPException(
+            status_code=403,
+            detail="Nur INSERT, UPDATE, DELETE, CREATE, ALTER, DROP erlaubt"
+        )
 
     if not os.path.exists(DB_PATH):
         raise HTTPException(status_code=404, detail="Datenbank nicht gefunden")
@@ -38,7 +47,6 @@ async def execute_editor_query(request: Request):
         return {"success": True, "message": "Befehl erfolgreich ausgeführt"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Query Fehler: {str(e)}")
-
 
 # -----------------------------
 # DATABASE INFO
