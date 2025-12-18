@@ -28,3 +28,7 @@ server:
   host: 0.0.0.0
   port: 8085
   reload: true
+json_inspector:
+  max_size_mb: 5  # Maximale JSON-Dateigröße beim Upload in MB
+  max_depth: 50   # Maximale Verschachtelungstiefe
+  allow_override: false  # Erlaube Nutzer-Override der Limits

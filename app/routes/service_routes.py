@@ -8,6 +8,7 @@ import subprocess
 import psutil
 import zipfile
 from datetime import datetime
+import tempfile
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -38,15 +39,38 @@ def get_python_executable():
     return sys.executable
 
 
-def run_command(command: str, cwd: Optional[str] = None, shell: bool = True) -> CommandResult:
-    """Führt einen Command aus und gibt das Ergebnis zurück"""
+def make_test_db_path() -> str:
+    """Erstellt einen eindeutigen Pfad für die Test-DB im System-Temp-Ordner.
+
+    Vermeidet Locks auf gemeinsam genutzten Volumes (z.B. SMB/NFS) indem
+    temporäre DB-Dateien pro Testlauf im OS-Temp-Verzeichnis angelegt werden.
+    """
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    return os.path.join(tempfile.gettempdir(), f"filamenthub_test_{ts}.db")
+
+
+def run_command(command: str, cwd: Optional[str] = None, shell: bool = True, env: Optional[dict] = None) -> CommandResult:
+    """Führt einen Command aus und gibt das Ergebnis zurück
+    
+    Args:
+        command: Der auszuführende Befehl
+        cwd: Working directory
+        shell: Shell-Modus aktivieren
+        env: Optionale Umgebungsvariablen (werden mit os.environ gemerged)
+    """
     try:
+        # Merge custom env with system env
+        run_env = os.environ.copy()
+        if env:
+            run_env.update(env)
+        
         result = subprocess.run(
             command,
             shell=shell,
             capture_output=True,
             text=True,
             cwd=cwd or get_project_root(),
+            env=run_env,
             timeout=60
         )
         
@@ -68,6 +92,27 @@ def run_command(command: str, cwd: Optional[str] = None, shell: bool = True) -> 
             message=f"Fehler: {str(e)}",
             output=None
         )
+
+
+def create_test_response(status: str, message: str, details: Optional[str] = None) -> dict:
+    """Erstellt standardisiertes Test-Response-Format
+    
+    Args:
+        status: 'ok', 'fail', oder 'blocked'
+        message: Menschlich lesbare Kurzmeldung
+        details: Optionale technische Details
+    
+    Returns:
+        Standardisiertes Response-Dict
+    """
+    response = {
+        "status": status,
+        "message": message,
+        "timestamp": datetime.now().isoformat()
+    }
+    if details:
+        response["details"] = details
+    return response
 
 
 # -----------------------------
@@ -216,71 +261,230 @@ async def update_all_dependencies():
 # -----------------------------
 # TESTS
 # -----------------------------
+# Mini-Test-Status-API
+# Alle Test-Endpunkte liefern ein standardisiertes Response-Format:
+# {
+#   "status": "ok" | "fail" | "blocked",
+#   "message": "Menschlich lesbare Kurzmeldung",
+#   "details": "Optionale technische Details (max 500 Zeichen)",
+#   "timestamp": "ISO-8601 Zeitstempel"
+# }
+# 
+# HTTP-Status ist IMMER 200 OK
+# Status-Logik erfolgt über das JSON-Feld "status"
+# -----------------------------
+
 @router.post("/tests/run")
 async def run_tests():
     """Führt pytest aus"""
-    python = get_python_executable()
-    command = f'"{python}" -m pytest -v'
+    try:
+        python = get_python_executable()
+        command = f'"{python}" -m pytest -v'
+        result = run_command(command)
+        
+        if result.success:
+            return create_test_response(
+                status="ok",
+                message="Tests erfolgreich"
+            )
+        else:
+            return create_test_response(
+                status="fail",
+                message="Tests fehlgeschlagen",
+                details=result.output[:500] if result.output else "Keine Details verfügbar"
+            )
+    except Exception as e:
+        return create_test_response(
+            status="blocked",
+            message="Tests konnten nicht ausgeführt werden",
+            details=str(e)
+        )
 
-    result = run_command(command)
-    return result
 
-
-@router.get("/tests/coverage")
+@router.post("/tests/coverage")
 async def run_tests_with_coverage():
-    """Führt pytest mit Coverage aus"""
-    python = get_python_executable()
-    cmd = (
-        'set "FILAMENTHUB_DB_PATH=data\\test.db" '
-        '&& set "PYTHONPATH=%cd%" '
-        '&& del /f /q data\\test.db 2>nul '
-        f'&& "{python}" -c "from app.database import init_db; init_db()" '
+    """Führt pytest mit Coverage aus - Plattformunabhängig"""
+    try:
+        python = get_python_executable()
+        # Use a unique test DB in the system temp directory to avoid locks
+        test_db_path = make_test_db_path()
+        # Umgebungsvariablen für Test-DB
+        test_env = {
+            "FILAMENTHUB_DB_PATH": test_db_path,
+            "PYTHONPATH": os.getcwd()
+        }
+        
+        # DB initialisieren
+        init_result = run_command(
+            f'"{python}" -c "from app.database import init_db; init_db()"',
+            env=test_env
+        )
+        
+        if not init_result.success:
+            return create_test_response(
+                status="blocked",
+                message="Fehler beim Initialisieren der Test-DB",
+                details=init_result.output[:500] if init_result.output else None
+            )
+        
         # Coverage nur über Smoke-Tests, um gelockte Prod-DB zu vermeiden
-        f'&& "{python}" -m pytest --cov=app --cov-report=term TEST_PY_datem/test_smoke_crud.py'
-    )
-    return run_command(cmd)
+        result = run_command(
+            f'"{python}" -m pytest --cov=app --cov-report=term tests/test_smoke_crud.py',
+            env=test_env
+        )
+        
+        if result.success:
+            return create_test_response(
+                status="ok",
+                message="Coverage-Test erfolgreich"
+            )
+        else:
+            return create_test_response(
+                status="fail",
+                message="Coverage-Test fehlgeschlagen",
+                details=result.output[:500] if result.output else "Keine Details verfügbar"
+            )
+    except Exception as e:
+        return create_test_response(
+            status="blocked",
+            message="Coverage-Test konnte nicht ausgeführt werden",
+            details=str(e)
+        )
 
 
 def _test_command(py_args: str) -> CommandResult:
     """
     Führt Tests gegen eine eigene Test-DB aus, damit die laufende Prod-DB nicht gelockt wird.
-    Nutzt FILAMENTHUB_DB_PATH=data/test.db und löscht die Datei vor dem Lauf.
+    Plattformunabhängig: Funktioniert auf Windows, Linux (Unraid), Raspberry Pi.
     """
     python = get_python_executable()
-    cmd = (
-        'set "FILAMENTHUB_DB_PATH=data\\test.db" '
-        '&& set "PYTHONPATH=%cd%" '
-        '&& del /f /q data\\test.db 2>nul '
-        f'&& "{python}" -c "from app.database import init_db; init_db()" '
-        f'&& "{python}" -m pytest {py_args}'
+    # Use unique temp DB path to prevent collisions/locks
+    test_db_path = make_test_db_path()
+
+    # Umgebungsvariablen für Test-DB
+    test_env = {
+        "FILAMENTHUB_DB_PATH": test_db_path,
+        "PYTHONPATH": os.getcwd()
+    }
+    
+    # DB initialisieren
+    init_result = run_command(
+        f'"{python}" -c "from app.database import init_db; init_db()"',
+        env=test_env
     )
-    return run_command(cmd)
+    
+    if not init_result.success:
+        return CommandResult(
+            success=False,
+            message="Fehler beim Initialisieren der Test-DB",
+            output=init_result.output
+        )
+    
+    # Tests ausführen
+    return run_command(
+        f'"{python}" -m pytest {py_args}',
+        env=test_env
+    )
 
 
 @router.post("/tests/smoke")
 async def run_smoke_tests():
-    """Smoke-CRUD-Tests gegen Test-DB"""
-    return _test_command("TEST_PY_datem/test_smoke_crud.py -q")
+    """Smoke-CRUD-Tests gegen Test-DB - Plattformunabhängig"""
+    try:
+        result = _test_command("tests/test_smoke_crud.py -q")
+        
+        if result.success:
+            return create_test_response(
+                status="ok",
+                message="Smoke CRUD Test erfolgreich"
+            )
+        else:
+            return create_test_response(
+                status="fail",
+                message="Smoke CRUD Test fehlgeschlagen",
+                details=result.output[:500] if result.output else "Keine Details verfügbar"
+            )
+    except Exception as e:
+        return create_test_response(
+            status="blocked",
+            message="Test konnte nicht ausgeführt werden",
+            details=str(e)
+        )
 
 
 @router.post("/tests/db")
 async def run_db_tests():
-    """DB-CRUD-Testskript gegen Test-DB (kein pytest-Wrapper)"""
-    python = get_python_executable()
-    cmd = (
-        'set "FILAMENTHUB_DB_PATH=data\\test.db" '
-        '&& set "PYTHONPATH=%cd%" '
-        '&& del /f /q data\\test.db 2>nul '
-        f'&& "{python}" -c "from app.database import init_db; init_db()" '
-        f'&& "{python}" TEST_PY_datem/test_db_crud.py'
-    )
-    return run_command(cmd)
+    """DB-CRUD-Testskript gegen Test-DB (kein pytest-Wrapper) - Plattformunabhängig"""
+    try:
+        python = get_python_executable()
+        test_db_path = make_test_db_path()
+        # Umgebungsvariablen für Test-DB
+        test_env = {
+            "FILAMENTHUB_DB_PATH": test_db_path,
+            "PYTHONPATH": os.getcwd()
+        }
+        
+        # DB initialisieren
+        init_result = run_command(
+            f'"{python}" -c "from app.database import init_db; init_db()"',
+            env=test_env
+        )
+        
+        if not init_result.success:
+            return create_test_response(
+                status="blocked",
+                message="Fehler beim Initialisieren der Test-DB",
+                details=init_result.output[:500] if init_result.output else None
+            )
+        
+        # Test-Skript ausführen
+        result = run_command(
+            f'"{python}" tests/test_db_crud.py',
+            env=test_env
+        )
+        
+        if result.success:
+            return create_test_response(
+                status="ok",
+                message="DB CRUD Test erfolgreich"
+            )
+        else:
+            return create_test_response(
+                status="fail",
+                message="DB CRUD Test fehlgeschlagen",
+                details=result.output[:500] if result.output else "Keine Details verfügbar"
+            )
+    except Exception as e:
+        return create_test_response(
+            status="blocked",
+            message="Test konnte nicht ausgeführt werden",
+            details=str(e)
+        )
 
 
 @router.post("/tests/all")
 async def run_all_tests():
     """Alle Tests gegen Test-DB"""
-    return _test_command("-q")
+    try:
+        result = _test_command("-q")
+        
+        if result.success:
+            return create_test_response(
+                status="ok",
+                message="Alle Tests erfolgreich"
+            )
+        else:
+            return create_test_response(
+                status="fail",
+                message="Einige Tests fehlgeschlagen",
+                details=result.output[:500] if result.output else "Keine Details verfügbar"
+            )
+    except Exception as e:
+        return create_test_response(
+            status="blocked",
+            message="Tests konnten nicht ausgeführt werden",
+            details=str(e)
+        )
 
 
 # -----------------------------

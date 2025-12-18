@@ -42,6 +42,11 @@ DEFAULT_CONFIG = {
         "ports": [8883, 6000, 7125],
         "timeout_ms": 1500,
     },
+    "json_inspector": {
+        "max_size_mb": 5,
+        "max_depth": 50,
+        "allow_override": False,
+    },
 }
 
 
@@ -118,6 +123,7 @@ def _ensure_settings_seed(session: Session, merged: dict) -> None:
     fp = merged.get("fingerprint", {})
     log_cfg = merged.get("logging", {})
     health_cfg = merged.get("debug", {}).get("system_health", {})
+    json_inspector = merged.get("json_inspector", {})
     seeds = {
         "debug.system_health.enabled": "true" if health_cfg.get("enabled", True) else "false",
         "debug.system_health.warn_latency_ms": str(health_cfg.get("warn_latency_ms", 600)),
@@ -131,6 +137,9 @@ def _ensure_settings_seed(session: Session, merged: dict) -> None:
         "fingerprint.ports": json.dumps(fp.get("ports", DEFAULT_CONFIG["fingerprint"]["ports"])),
         "logging.level": log_cfg.get("level", DEFAULT_CONFIG["logging"]["level"]),
         "logging.file_enabled": "true" if log_cfg.get("file_enabled", False) else "false",
+        "json_inspector.max_size_mb": str(json_inspector.get("max_size_mb", DEFAULT_CONFIG["json_inspector"]["max_size_mb"])),
+        "json_inspector.max_depth": str(json_inspector.get("max_depth", DEFAULT_CONFIG["json_inspector"]["max_depth"])),
+        "json_inspector.allow_override": "true" if json_inspector.get("allow_override", False) else "false",
     }
     for k, v in seeds.items():
         _persist_setting(session, k, v, overwrite=False)
@@ -221,6 +230,23 @@ def _validate_config(raw: dict) -> dict:
         "enabled": fp_enabled,
         "ports": ports_valid,
         "timeout_ms": timeout_ms,
+    }
+
+    # JSON Inspector
+    json_cfg = cfg.get("json_inspector", {})
+    max_size_mb = _to_int(json_cfg.get("max_size_mb"), DEFAULT_CONFIG["json_inspector"]["max_size_mb"], "json_inspector.max_size_mb")
+    if max_size_mb < 1 or max_size_mb > 100:
+        logger.warning("Config fallback applied for json_inspector.max_size_mb")
+        max_size_mb = DEFAULT_CONFIG["json_inspector"]["max_size_mb"]
+    max_depth = _to_int(json_cfg.get("max_depth"), DEFAULT_CONFIG["json_inspector"]["max_depth"], "json_inspector.max_depth")
+    if max_depth < 1 or max_depth > 500:
+        logger.warning("Config fallback applied for json_inspector.max_depth")
+        max_depth = DEFAULT_CONFIG["json_inspector"]["max_depth"]
+    allow_override = _to_bool(json_cfg.get("allow_override"), DEFAULT_CONFIG["json_inspector"]["allow_override"], "json_inspector.allow_override")
+    cfg["json_inspector"] = {
+        "max_size_mb": max_size_mb,
+        "max_depth": max_depth,
+        "allow_override": allow_override,
     }
 
     # Derived block for UI (back-compat, read-only)
@@ -328,6 +354,32 @@ def _load_config(session: Session | None = None) -> dict:
                     file_setting_raw, merged["logging"]["file_enabled"], "logging.file_enabled"
                 )
 
+            # JSON Inspector overlay
+            json_max_size = _to_int(
+                settings.get("json_inspector.max_size_mb"),
+                merged["json_inspector"]["max_size_mb"],
+                "json_inspector.max_size_mb"
+            )
+            if json_max_size < 1 or json_max_size > 100:
+                json_max_size = merged["json_inspector"]["max_size_mb"]
+            json_max_depth = _to_int(
+                settings.get("json_inspector.max_depth"),
+                merged["json_inspector"]["max_depth"],
+                "json_inspector.max_depth"
+            )
+            if json_max_depth < 1 or json_max_depth > 500:
+                json_max_depth = merged["json_inspector"]["max_depth"]
+            json_allow_override = _to_bool(
+                settings.get("json_inspector.allow_override"),
+                merged["json_inspector"]["allow_override"],
+                "json_inspector.allow_override"
+            )
+            merged["json_inspector"] = {
+                "max_size_mb": json_max_size,
+                "max_depth": json_max_depth,
+                "allow_override": json_allow_override,
+            }
+
             merged["config_manager"] = {
                 "health_enabled": merged["debug"]["system_health"]["enabled"],
                 "health_latency_warn_ms": merged["debug"]["system_health"]["warn_latency_ms"],
@@ -433,6 +485,20 @@ def _validate_payload(payload: dict) -> dict:
         if not ports:
             ports = DEFAULT_CONFIG["fingerprint"]["ports"]
         out["fingerprint.ports"] = ports
+
+    if "json_inspector.max_size_mb" in data:
+        size_val = _to_int(data.get("json_inspector.max_size_mb"), DEFAULT_CONFIG["json_inspector"]["max_size_mb"], "json_inspector.max_size_mb")
+        if size_val < 1 or size_val > 100:
+            size_val = DEFAULT_CONFIG["json_inspector"]["max_size_mb"]
+        out["json_inspector.max_size_mb"] = size_val
+    if "json_inspector.max_depth" in data:
+        depth_val = _to_int(data.get("json_inspector.max_depth"), DEFAULT_CONFIG["json_inspector"]["max_depth"], "json_inspector.max_depth")
+        if depth_val < 1 or depth_val > 500:
+            depth_val = DEFAULT_CONFIG["json_inspector"]["max_depth"]
+        out["json_inspector.max_depth"] = depth_val
+    if "json_inspector.allow_override" in data:
+        out["json_inspector.allow_override"] = _to_bool(data.get("json_inspector.allow_override"), False, "json_inspector.allow_override")
+
     return out
 
 

@@ -151,3 +151,18 @@
 - MQTT: Connect Handler vereinheitlicht (ein Endpoint, eine Funktion)
 - MQTT Status-Farblogik korrigiert (Disconnected=rot)
 - MQTT Connect: Schnellauswahl priorisiert, Passwort aus DB
+
+## Recent work (2025-12-18)
+- [x] Backend: Standardisierte Test-Response-Factory (`create_test_response`) eingeführt
+- [x] Tests: `tests/test_service_routes_api.py` erweitert (success, command-error, exception cases + docker/compose/up tests)
+- [x] Tests: `tests/test_database_routes_api.py` neu hinzugefügt (isolated tmp sqlite DB, CRUD + error case)
+- [x] Refactor: Payload-Processing aus `app/routes/mqtt_routes.py` extrahiert nach `app/services/mqtt_payload_processor.py` (no side-effects)
+- [x] DB: Alembic-Migration `20231202_add_spool_usage_fields` angepasst (missing `first_seen`); `init_db()`-based test init used
+- [x] Test infra: Test runs use unique temp DB paths via `FILAMENTHUB_DB_PATH` and `init_db()` before pytest
+- [x] Full test-suite executed with coverage; `htmlcov/` generated
+
+## Next steps (short)
+- [ ] Increase `app/routes/service_routes.py` coverage by adding focused tests for low-coverage endpoints (suggestions: `/tests/*`, `/docker/*`, `/backup`)
+- [ ] Add tests for `database_routes` edge cases (vacuum, backup, backups/list)
+- [ ] Optional: Add unit-tests for `mqtt_payload_processor` mapping behavior (pure function)
+

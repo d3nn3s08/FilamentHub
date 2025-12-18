@@ -59,6 +59,7 @@
         <div class="debug-tab pro-only" data-tab="json" data-mode="pro">JSON Inspector</div>
         <div class="debug-tab pro-only" data-tab="logs" data-mode="pro" style="display:none;">Log Viewer</div>
         <div class="debug-tab pro-only" data-tab="config" data-mode="pro" style="display:none;">Config Manager</div>
+        <div class="debug-tab pro-only" data-tab="services" data-mode="pro" style="display:none;">Services</div>
     </div>
     <div class="debug-mode-toggle">
         <div class="debug-mode-pill">
@@ -170,6 +171,23 @@
                 </div>
             </div>
         </div>
+        <div id="panel-live-payload" class="debug-panel" style="display:none;">
+            <div class="panel">
+                <p class="eyebrow">Live Payload</p>
+                <p class="subtitle">Aktueller Status des ausgewählten Druckers (Live)</p>
+                <div id="livePayloadCard" class="live-payload-card" style="padding:8px;">
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <select id="liveDeviceSelect" style="min-width:160px;"></select>
+                        <div><strong id="liveDeviceName">-</strong></div>
+                    </div>
+                    <div id="liveStatus" style="margin-top:6px;color:var(--text-dim);">Status: -</div>
+                    <div id="liveLastUpdate" style="margin-top:4px;color:var(--text-dim);">Letztes Update: -</div>
+                    <div id="liveJobName" style="margin-top:4px;color:var(--text-dim);">Job: -</div>
+                    <div id="liveProgress" style="margin-top:6px;"><progress id="liveProgressBar" value="0" max="100" style="width:100%"></progress></div>
+                    <div id="liveAmsInfo" style="margin-top:6px;color:var(--text-dim);">AMS: -</div>
+                </div>
+            </div>
+        </div>
 
         <div id="panel-performance" class="debug-panel" style="display:none;">
             <div class="panel">
@@ -215,48 +233,34 @@
         
         <!-- Pro: JSON Inspector Panel -->
         <div id="panel-json" class="debug-panel pro-only" data-mode="pro" style="display:none;">
-            <div class="system-grid">
-                <!-- Status & Meta -->
-                <div class="panel">
-                    <div class="card-header">
-                        <h3>JSON Inspector</h3>
-                        <span class="status-badge status-error" id="json-status">Disconnected</span>
-                    </div>
-                    <div class="info-grid">
-                        <div>
-                            <div class="info-label">Messages Received</div>
-                            <div class="info-value" id="json-msg-count">0</div>
-                        </div>
-                        <div>
-                            <div class="info-label">Handler aktiv</div>
-                            <div class="info-value" id="json-handler-count">0</div>
-                        </div>
-                        <div>
-                            <div class="info-label">Source</div>
-                            <div class="info-value">logs/mqtt/mqtt_messages.log</div>
-                        </div>
-                    </div>
+            <div class="panel">
+                <div class="card-header">
+                    <h3>JSON Inspector</h3>
+                    <span id="json-inspector-status" class="status-badge status-ok">Ready</span>
                 </div>
 
-                <!-- Datei-Upload -->
-                <div class="panel">
-                    <div class="card-header">
-                        <h3>JSON Datei analysieren</h3>
+                <div class="info-grid">
+                    <div>
+                        <div class="info-label">Max Size</div>
+                        <div class="info-value" id="json-limit-size">–</div>
                     </div>
                     <div>
-                        <input type="file" id="json-upload" accept=".json,.log,.txt">
+                        <div class="info-label">Max Depth</div>
+                        <div class="info-value" id="json-limit-depth">–</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Override Allowed</div>
+                        <div class="info-value" id="json-limit-override">–</div>
                     </div>
                 </div>
 
-                <!-- JSON Baum Ansicht -->
-                <div class="panel">
-                    <div class="card-header">
-                        <h3>JSON Struktur</h3>
-                    </div>
-                    <div id="json-inspector-tree" class="json-tree">
-                        <div class="info-label">Waiting for JSON data…</div>
-                    </div>
+                <div id="json-inspector-warning" class="info-label" style="display:none;"></div>
+
+                <div>
+                    <input type="file" id="json-upload" accept=".json,.log,.txt">
                 </div>
+
+                <div id="json-inspector-tree"></div>
             </div>
         </div>
         <div id="panel-pro-placeholder" class="debug-panel" data-mode="pro" style="display:none;">
@@ -434,8 +438,130 @@
                         <button class="btn btn-primary" id="cfg_fingerprint_save" disabled>Speichern</button>
                     </div>
                 </div>
+                <div class="panel">
+                    <p class="eyebrow">JSON Inspector Limits</p>
+                    <label style="display:flex;flex-direction:column;gap:4px;margin:6px 0;">
+                        <span>Max JSON Size (MB)</span>
+                        <input type="number" id="cfg_json_max_size" placeholder="5" disabled>
+                    </label>
+                    <label style="display:flex;flex-direction:column;gap:4px;margin:6px 0;">
+                        <span>Max JSON Depth</span>
+                        <input type="number" id="cfg_json_max_depth" placeholder="50" disabled>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;margin:6px 0;">
+                        <input type="checkbox" id="cfg_json_allow_override" disabled>
+                        <span>Allow override in JSON Inspector</span>
+                    </label>
+                    <small style="color:var(--text-dim);">Schutzmechanismen für JSON-Upload und -Analyse im JSON Inspector.</small>
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button class="btn btn-secondary" id="cfg_json_cancel" disabled>Abbrechen</button>
+                        <button class="btn btn-primary" id="cfg_json_save" disabled>Speichern</button>
+                    </div>
+                </div>
             </div>
             <p class="subtitle" style="margin-top:10px;">Änderungen speichern – folgt in späterer Pro-Version</p>
+        </div>
+        <div id="panel-services" class="debug-panel pro-only" data-mode="pro" style="display:none;">
+            <div class="system-grid">
+                <!-- Panel 1: Runtime & Process -->
+                <div class="panel">
+                    <div class="card-header">
+                        <h3>Runtime & Process</h3>
+                        <span id="service-runtime-status" class="status-badge status-ok">Running</span>
+                    </div>
+                    <div class="info-grid">
+                        <div>
+                            <div class="info-label">PID</div>
+                            <div class="info-value" id="service-pid">–</div>
+                        </div>
+                        <div>
+                            <div class="info-label">CPU</div>
+                            <div class="info-value" id="service-cpu">–</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Memory</div>
+                            <div class="info-value" id="service-memory">–</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Threads</div>
+                            <div class="info-value" id="service-threads">–</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 2: Server & Environment -->
+                <div class="panel">
+                    <div class="card-header">
+                        <h3>Server & Environment</h3>
+                    </div>
+                    <div class="info-grid">
+                        <div>
+                            <div class="info-label">Started At</div>
+                            <div class="info-value" id="service-started">–</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Uptime</div>
+                            <div class="info-value" id="service-uptime">–</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Platform</div>
+                            <div class="info-value" id="service-platform">–</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Hostname</div>
+                            <div class="info-value" id="service-hostname">–</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Python Version</div>
+                            <div class="info-value" id="service-python">–</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Server Port</div>
+                            <div class="info-value" id="service-port">–</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 3: Service Control -->
+                <div class="panel">
+                    <div class="card-header">
+                        <h3>Service Control</h3>
+                    </div>
+                    <div class="info-grid">
+                        <div>
+                            <div class="info-label">Docker Status</div>
+                            <div class="info-value"><span id="service-docker-status" class="status-badge status-idle">Not available</span></div>
+                        </div>
+                    </div>
+                    <div>
+                        <button id="service-restart-btn" class="btn btn-secondary">Restart Backend</button>
+                        <button id="service-docker-up-btn" class="btn btn-secondary">Docker Up</button>
+                        <button id="service-docker-down-btn" class="btn btn-secondary">Docker Down</button>
+                        <button id="service-docker-status-btn" class="btn btn-secondary">Docker Status</button>
+                    </div>
+                </div>
+
+                <!-- Panel 4: Maintenance & Diagnostics -->
+                <div class="panel">
+                    <div class="card-header">
+                        <h3>Maintenance & Diagnostics</h3>
+                    </div>
+                    <div class="info-label">Tests</div>
+                    <div>
+                        <button id="service-test-smoke-btn" class="btn btn-secondary" title="Testet grundlegende API-Endpunkte und Kernfunktionen. Erfordert einen laufenden Server. Keine Daten werden dauerhaft verändert.">Smoke CRUD</button>
+                        <button id="service-test-db-btn" class="btn btn-secondary" title="Testet direkte Datenbankoperationen (Create, Read, Update, Delete). Nutzt eine separate Test-DB um die Integrität zu testen, deine Haupt-Datenbank bleibt unberührt.">DB CRUD</button>
+                        <button id="service-test-all-btn" class="btn btn-secondary" title="Führt alle verfügbaren Tests aus. Kombiniert Smoke-, DB- und weitere Tests. Kann einige Minuten dauern.">All Tests</button>
+                        <button id="service-test-coverage-btn" class="btn btn-secondary" title="Erzeugt eine Code-Coverage-Auswertung basierend auf den vorhandenen Tests. Sollte erst nach erfolgreichen Tests ausgeführt werden.">Coverage</button>
+                    </div>
+                    <div class="info-label">Dependencies</div>
+                    <div>
+                        <button id="service-deps-install-btn" class="btn btn-secondary">Install Requirements</button>
+                        <button id="service-deps-update-btn" class="btn btn-secondary">Update Packages</button>
+                        <button id="service-deps-list-btn" class="btn btn-secondary">List Packages</button>
+                        <button id="service-deps-outdated-btn" class="btn btn-secondary">Outdated Packages</button>
+                    </div>
+                </div>
+            </div>
         </div>
                 <div id="panel-logs" class="debug-panel pro-only" data-mode="pro" style="display:none;">
                     <!-- Log Viewer Header Panel -->

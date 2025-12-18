@@ -57473,3 +57473,416 @@ starlette.routing.NoMatchFound: No route exists for name "static" and params "fi
 2025-12-17 20:03:18,751 [INFO] 3D_drucker - connect host=192.168.178.41 port=8883 tls=True client_id=filamenthub_X1C_a8a51f
 2025-12-17 20:03:23,757 [ERROR] 3D_drucker - connect error: timed out
 2025-12-17 20:14:30,753 [INFO] admin.audit - {"ts": "2025-12-17T19:14:30Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-17 22:10:21,394 [INFO] uvicorn.error - Started server process [38808]
+2025-12-17 22:10:21,394 [INFO] uvicorn.error - Started server process [38808]
+2025-12-17 22:10:21,394 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 22:10:21,394 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 22:10:21,394 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 22:10:21,394 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 22:10:21,395 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-17 22:10:21,395 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-17 22:10:21,819 [WARNING] app.routes.config_routes - Config fallback applied for json_inspector.max_size_mb
+2025-12-17 22:10:21,819 [WARNING] app.routes.config_routes - Config fallback applied for json_inspector.max_depth
+2025-12-17 22:10:21,819 [WARNING] app.routes.config_routes - Config fallback applied for json_inspector.allow_override
+2025-12-17 22:26:47,919 [INFO] uvicorn.error - Started server process [38428]
+2025-12-17 22:26:47,919 [INFO] uvicorn.error - Started server process [38428]
+2025-12-17 22:26:47,919 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 22:26:47,919 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 22:26:47,919 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 22:26:47,919 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 22:26:47,920 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-17 22:26:47,920 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-17 22:36:22,286 [INFO] uvicorn.error - Started server process [36008]
+2025-12-17 22:36:22,286 [INFO] uvicorn.error - Started server process [36008]
+2025-12-17 22:36:22,287 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 22:36:22,287 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 22:36:22,287 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 22:36:22,287 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 22:36:22,288 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-17 22:36:22,288 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-17 22:39:14,541 [INFO] uvicorn.error - Started server process [26488]
+2025-12-17 22:39:14,541 [INFO] uvicorn.error - Started server process [26488]
+2025-12-17 22:39:14,542 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 22:39:14,542 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 22:39:14,542 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 22:39:14,542 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 22:39:14,543 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-17 22:39:14,543 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-17 22:57:49,656 [INFO] admin.audit - {"ts": "2025-12-17T21:57:49Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
+2025-12-17 22:57:49,668 [INFO] admin.audit - {"ts": "2025-12-17T21:57:49Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-17 22:57:49,727 [INFO] admin.audit - {"ts": "2025-12-17T21:57:49Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
+2025-12-17 22:57:51,614 [INFO] admin.audit - {"ts": "2025-12-17T21:57:51Z", "event": "admin_access", "details": {"path": "/admin/notifications", "ip": "127.0.0.1"}}
+2025-12-17 22:57:51,962 [INFO] uvicorn.error - 127.0.0.1:51853 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-17 22:57:51,962 [INFO] uvicorn.error - 127.0.0.1:51853 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-17 22:57:51,963 [INFO] uvicorn.error - connection open
+2025-12-17 22:57:51,963 [INFO] uvicorn.error - connection open
+2025-12-17 23:28:10,925 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:28:10,950 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:28:10,955 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/969c5c9f-cc6a-4611-851d-ce46b6a53a4f "HTTP/1.1 200 OK"
+2025-12-17 23:28:10,958 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:28:10,962 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-17 23:28:10,972 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/969c5c9f-cc6a-4611-851d-ce46b6a53a4f "HTTP/1.1 200 OK"
+2025-12-17 23:28:10,980 [INFO] httpx - HTTP Request: DELETE http://testserver/api/materials/969c5c9f-cc6a-4611-851d-ce46b6a53a4f "HTTP/1.1 204 No Content"
+2025-12-17 23:28:10,984 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/969c5c9f-cc6a-4611-851d-ce46b6a53a4f "HTTP/1.1 404 Not Found"
+2025-12-17 23:28:10,988 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:28:10,996 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:28:10,998 [INFO] httpx - HTTP Request: POST http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:43:38,671 [INFO] uvicorn.error - Started server process [42592]
+2025-12-17 23:43:38,671 [INFO] uvicorn.error - Started server process [42592]
+2025-12-17 23:43:38,672 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 23:43:38,672 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 23:43:38,672 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 23:43:38,672 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 23:43:38,673 [ERROR] uvicorn.error - [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8085): [winerror 10048] normalerweise darf jede socketadresse (protokoll, netzwerkadresse oder anschluss) nur jeweils einmal verwendet werden
+2025-12-17 23:43:38,673 [ERROR] uvicorn.error - [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8085): [winerror 10048] normalerweise darf jede socketadresse (protokoll, netzwerkadresse oder anschluss) nur jeweils einmal verwendet werden
+2025-12-17 23:43:38,673 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-17 23:43:38,673 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-17 23:43:38,673 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-17 23:43:38,673 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-17 23:43:44,583 [INFO] uvicorn.error - Started server process [18200]
+2025-12-17 23:43:44,583 [INFO] uvicorn.error - Started server process [18200]
+2025-12-17 23:43:44,584 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 23:43:44,584 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 23:43:44,584 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 23:43:44,584 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 23:43:44,584 [ERROR] uvicorn.error - [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8085): [winerror 10048] normalerweise darf jede socketadresse (protokoll, netzwerkadresse oder anschluss) nur jeweils einmal verwendet werden
+2025-12-17 23:43:44,584 [ERROR] uvicorn.error - [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8085): [winerror 10048] normalerweise darf jede socketadresse (protokoll, netzwerkadresse oder anschluss) nur jeweils einmal verwendet werden
+2025-12-17 23:43:44,585 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-17 23:43:44,585 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-17 23:43:44,585 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-17 23:43:44,585 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-17 23:45:55,824 [INFO] uvicorn.error - Started server process [1608]
+2025-12-17 23:45:55,824 [INFO] uvicorn.error - Started server process [1608]
+2025-12-17 23:45:55,825 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 23:45:55,825 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-17 23:45:55,825 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 23:45:55,825 [INFO] uvicorn.error - Application startup complete.
+2025-12-17 23:45:55,826 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-17 23:45:55,826 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-17 23:45:56,019 [INFO] uvicorn.error - 127.0.0.1:65452 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-17 23:45:56,019 [INFO] uvicorn.error - 127.0.0.1:65452 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-17 23:45:56,020 [INFO] uvicorn.error - connection open
+2025-12-17 23:45:56,020 [INFO] uvicorn.error - connection open
+2025-12-17 23:48:01,134 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:48:01,153 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:48:01,158 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/30c8325b-9e65-4598-8f08-fddf0689b691 "HTTP/1.1 200 OK"
+2025-12-17 23:48:01,160 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:48:01,164 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-17 23:48:01,172 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/30c8325b-9e65-4598-8f08-fddf0689b691 "HTTP/1.1 200 OK"
+2025-12-17 23:48:01,179 [INFO] httpx - HTTP Request: DELETE http://testserver/api/materials/30c8325b-9e65-4598-8f08-fddf0689b691 "HTTP/1.1 204 No Content"
+2025-12-17 23:48:01,183 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/30c8325b-9e65-4598-8f08-fddf0689b691 "HTTP/1.1 404 Not Found"
+2025-12-17 23:48:01,187 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:48:01,195 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:48:01,197 [INFO] httpx - HTTP Request: POST http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:48:18,616 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:48:18,641 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:48:18,645 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/7fdab09d-27b9-411b-98e3-23917f6befa2 "HTTP/1.1 200 OK"
+2025-12-17 23:48:18,647 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:48:18,651 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-17 23:48:18,659 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/7fdab09d-27b9-411b-98e3-23917f6befa2 "HTTP/1.1 200 OK"
+2025-12-17 23:48:18,666 [INFO] httpx - HTTP Request: DELETE http://testserver/api/materials/7fdab09d-27b9-411b-98e3-23917f6befa2 "HTTP/1.1 204 No Content"
+2025-12-17 23:48:18,670 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/7fdab09d-27b9-411b-98e3-23917f6befa2 "HTTP/1.1 404 Not Found"
+2025-12-17 23:48:18,674 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:48:18,683 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:48:18,686 [INFO] httpx - HTTP Request: POST http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:49:11,516 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:49:12,154 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:49:32,345 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:49:32,364 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:49:32,370 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/75b6dee8-41e3-4e88-b42d-48b19750edfb "HTTP/1.1 200 OK"
+2025-12-17 23:49:32,373 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:49:32,377 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-17 23:49:32,387 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/75b6dee8-41e3-4e88-b42d-48b19750edfb "HTTP/1.1 200 OK"
+2025-12-17 23:49:32,395 [INFO] httpx - HTTP Request: DELETE http://testserver/api/materials/75b6dee8-41e3-4e88-b42d-48b19750edfb "HTTP/1.1 204 No Content"
+2025-12-17 23:49:32,398 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/75b6dee8-41e3-4e88-b42d-48b19750edfb "HTTP/1.1 404 Not Found"
+2025-12-17 23:49:32,402 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:49:32,412 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:49:32,414 [INFO] httpx - HTTP Request: POST http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:51:54,774 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:51:54,824 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:51:54,843 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/3023ae9f-2c7c-4d81-8a4c-dc922f23855d "HTTP/1.1 200 OK"
+2025-12-17 23:51:54,846 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:51:54,852 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-17 23:51:54,875 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/3023ae9f-2c7c-4d81-8a4c-dc922f23855d "HTTP/1.1 200 OK"
+2025-12-17 23:51:54,887 [INFO] httpx - HTTP Request: DELETE http://testserver/api/materials/3023ae9f-2c7c-4d81-8a4c-dc922f23855d "HTTP/1.1 204 No Content"
+2025-12-17 23:51:54,892 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/3023ae9f-2c7c-4d81-8a4c-dc922f23855d "HTTP/1.1 404 Not Found"
+2025-12-17 23:51:54,896 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:51:54,907 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:51:54,909 [INFO] httpx - HTTP Request: POST http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:51:54,921 [INFO] httpx - HTTP Request: POST http://testserver/api/spools/ "HTTP/1.1 201 Created"
+2025-12-17 23:51:54,928 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/14861683-04d4-4c19-8567-bed930eaecd3 "HTTP/1.1 200 OK"
+2025-12-17 23:51:54,930 [INFO] httpx - HTTP Request: GET http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:51:54,935 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/ "HTTP/1.1 200 OK"
+2025-12-17 23:51:54,942 [INFO] httpx - HTTP Request: PUT http://testserver/api/spools/14861683-04d4-4c19-8567-bed930eaecd3 "HTTP/1.1 200 OK"
+2025-12-17 23:51:54,949 [INFO] httpx - HTTP Request: DELETE http://testserver/api/spools/14861683-04d4-4c19-8567-bed930eaecd3 "HTTP/1.1 204 No Content"
+2025-12-17 23:51:54,953 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/14861683-04d4-4c19-8567-bed930eaecd3 "HTTP/1.1 404 Not Found"
+2025-12-17 23:52:01,308 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:52:01,327 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:52:01,333 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/a818c180-8227-463f-abf1-8dc1bd4d4adf "HTTP/1.1 200 OK"
+2025-12-17 23:52:01,336 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:52:01,339 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-17 23:52:01,347 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/a818c180-8227-463f-abf1-8dc1bd4d4adf "HTTP/1.1 200 OK"
+2025-12-17 23:52:01,355 [INFO] httpx - HTTP Request: DELETE http://testserver/api/materials/a818c180-8227-463f-abf1-8dc1bd4d4adf "HTTP/1.1 204 No Content"
+2025-12-17 23:52:01,359 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/a818c180-8227-463f-abf1-8dc1bd4d4adf "HTTP/1.1 404 Not Found"
+2025-12-17 23:52:01,362 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:52:01,371 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:52:01,374 [INFO] httpx - HTTP Request: POST http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:52:01,385 [INFO] httpx - HTTP Request: POST http://testserver/api/spools/ "HTTP/1.1 201 Created"
+2025-12-17 23:52:01,394 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/97ba4cb3-b99b-4031-ae8f-17368128dfa6 "HTTP/1.1 200 OK"
+2025-12-17 23:52:01,396 [INFO] httpx - HTTP Request: GET http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:52:01,401 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/ "HTTP/1.1 200 OK"
+2025-12-17 23:52:01,410 [INFO] httpx - HTTP Request: PUT http://testserver/api/spools/97ba4cb3-b99b-4031-ae8f-17368128dfa6 "HTTP/1.1 200 OK"
+2025-12-17 23:52:01,417 [INFO] httpx - HTTP Request: DELETE http://testserver/api/spools/97ba4cb3-b99b-4031-ae8f-17368128dfa6 "HTTP/1.1 204 No Content"
+2025-12-17 23:52:01,421 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/97ba4cb3-b99b-4031-ae8f-17368128dfa6 "HTTP/1.1 404 Not Found"
+2025-12-17 23:57:13,439 [INFO] httpx - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-12-17 23:57:13,446 [INFO] httpx - HTTP Request: GET http://testserver/docs "HTTP/1.1 200 OK"
+2025-12-17 23:57:13,451 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:57:14,538 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:57:15,551 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:58:05,913 [INFO] httpx - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-12-17 23:58:05,919 [INFO] httpx - HTTP Request: GET http://testserver/docs "HTTP/1.1 200 OK"
+2025-12-17 23:58:05,923 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:58:05,930 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-17 23:58:05,954 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:58:05,967 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:58:05,974 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/9b5bb283-ec73-41e4-9407-92e60775afe8 "HTTP/1.1 200 OK"
+2025-12-17 23:58:05,978 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:58:05,984 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-17 23:58:05,996 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/9b5bb283-ec73-41e4-9407-92e60775afe8 "HTTP/1.1 200 OK"
+2025-12-17 23:58:06,005 [INFO] httpx - HTTP Request: DELETE http://testserver/api/materials/9b5bb283-ec73-41e4-9407-92e60775afe8 "HTTP/1.1 204 No Content"
+2025-12-17 23:58:06,010 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/9b5bb283-ec73-41e4-9407-92e60775afe8 "HTTP/1.1 404 Not Found"
+2025-12-17 23:58:06,016 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:58:06,026 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-17 23:58:06,029 [INFO] httpx - HTTP Request: POST http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:58:06,041 [INFO] httpx - HTTP Request: POST http://testserver/api/spools/ "HTTP/1.1 201 Created"
+2025-12-17 23:58:06,048 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/92fbaff2-0105-4ddf-af54-956fe395c744 "HTTP/1.1 200 OK"
+2025-12-17 23:58:06,051 [INFO] httpx - HTTP Request: GET http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-17 23:58:06,057 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/ "HTTP/1.1 200 OK"
+2025-12-17 23:58:06,068 [INFO] httpx - HTTP Request: PUT http://testserver/api/spools/92fbaff2-0105-4ddf-af54-956fe395c744 "HTTP/1.1 200 OK"
+2025-12-17 23:58:06,077 [INFO] httpx - HTTP Request: DELETE http://testserver/api/spools/92fbaff2-0105-4ddf-af54-956fe395c744 "HTTP/1.1 204 No Content"
+2025-12-17 23:58:06,083 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/92fbaff2-0105-4ddf-af54-956fe395c744 "HTTP/1.1 404 Not Found"
+2025-12-18 00:07:46,144 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 00:07:46,740 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 00:10:03,538 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 00:10:03,561 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-18 00:10:03,566 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/94e4e2ce-58b3-49f9-8db7-03e6e78c5937 "HTTP/1.1 200 OK"
+2025-12-18 00:10:03,569 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 00:10:03,573 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-18 00:10:03,581 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/94e4e2ce-58b3-49f9-8db7-03e6e78c5937 "HTTP/1.1 200 OK"
+2025-12-18 00:10:03,588 [INFO] httpx - HTTP Request: DELETE http://testserver/api/materials/94e4e2ce-58b3-49f9-8db7-03e6e78c5937 "HTTP/1.1 204 No Content"
+2025-12-18 00:10:03,591 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/94e4e2ce-58b3-49f9-8db7-03e6e78c5937 "HTTP/1.1 404 Not Found"
+2025-12-18 00:10:03,595 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 00:10:03,603 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-18 00:10:03,606 [INFO] httpx - HTTP Request: POST http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 00:10:03,616 [INFO] httpx - HTTP Request: POST http://testserver/api/spools/ "HTTP/1.1 201 Created"
+2025-12-18 00:10:03,624 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/754a64c6-e93a-4829-92d5-9ba92306090c "HTTP/1.1 200 OK"
+2025-12-18 00:10:03,626 [INFO] httpx - HTTP Request: GET http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 00:10:03,630 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/ "HTTP/1.1 200 OK"
+2025-12-18 00:10:03,637 [INFO] httpx - HTTP Request: PUT http://testserver/api/spools/754a64c6-e93a-4829-92d5-9ba92306090c "HTTP/1.1 200 OK"
+2025-12-18 00:10:03,644 [INFO] httpx - HTTP Request: DELETE http://testserver/api/spools/754a64c6-e93a-4829-92d5-9ba92306090c "HTTP/1.1 204 No Content"
+2025-12-18 00:10:03,647 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/754a64c6-e93a-4829-92d5-9ba92306090c "HTTP/1.1 404 Not Found"
+2025-12-18 00:10:48,266 [INFO] httpx - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-12-18 00:10:48,272 [INFO] httpx - HTTP Request: GET http://testserver/docs "HTTP/1.1 200 OK"
+2025-12-18 00:10:48,277 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 00:10:48,284 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-18 00:10:48,308 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 00:10:48,321 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-18 00:10:48,328 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/c4129f88-21d8-4008-a81a-ef97676dfa7a "HTTP/1.1 200 OK"
+2025-12-18 00:10:48,332 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 00:10:48,337 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-18 00:10:48,346 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/c4129f88-21d8-4008-a81a-ef97676dfa7a "HTTP/1.1 200 OK"
+2025-12-18 00:10:48,355 [INFO] httpx - HTTP Request: DELETE http://testserver/api/materials/c4129f88-21d8-4008-a81a-ef97676dfa7a "HTTP/1.1 204 No Content"
+2025-12-18 00:10:48,360 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/c4129f88-21d8-4008-a81a-ef97676dfa7a "HTTP/1.1 404 Not Found"
+2025-12-18 00:10:48,364 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 00:10:48,375 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-18 00:10:48,378 [INFO] httpx - HTTP Request: POST http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 00:10:48,390 [INFO] httpx - HTTP Request: POST http://testserver/api/spools/ "HTTP/1.1 201 Created"
+2025-12-18 00:10:48,396 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/cc9d7536-c052-4e9a-9ec7-379fa31ac077 "HTTP/1.1 200 OK"
+2025-12-18 00:10:48,400 [INFO] httpx - HTTP Request: GET http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 00:10:48,407 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/ "HTTP/1.1 200 OK"
+2025-12-18 00:10:48,418 [INFO] httpx - HTTP Request: PUT http://testserver/api/spools/cc9d7536-c052-4e9a-9ec7-379fa31ac077 "HTTP/1.1 200 OK"
+2025-12-18 00:10:48,426 [INFO] httpx - HTTP Request: DELETE http://testserver/api/spools/cc9d7536-c052-4e9a-9ec7-379fa31ac077 "HTTP/1.1 204 No Content"
+2025-12-18 00:10:48,430 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/cc9d7536-c052-4e9a-9ec7-379fa31ac077 "HTTP/1.1 404 Not Found"
+2025-12-18 09:00:35,719 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:04:35,704 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:04:36,123 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:04:51,849 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:04:51,856 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:07:55,736 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:07:55,743 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:07:55,746 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:07:55,749 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:08:56,551 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:08:56,564 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:08:56,571 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:08:56,578 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,670 [INFO] httpx - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,676 [INFO] httpx - HTTP Request: GET http://testserver/docs "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,680 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:11:04,687 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,715 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,725 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,730 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,735 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,747 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:11:04,758 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-18 09:11:04,765 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/44e38965-c2b2-4420-9a76-0940307c436c "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,768 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:11:04,773 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,783 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/44e38965-c2b2-4420-9a76-0940307c436c "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,791 [INFO] httpx - HTTP Request: DELETE http://testserver/api/materials/44e38965-c2b2-4420-9a76-0940307c436c "HTTP/1.1 204 No Content"
+2025-12-18 09:11:04,796 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/44e38965-c2b2-4420-9a76-0940307c436c "HTTP/1.1 404 Not Found"
+2025-12-18 09:11:04,800 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:11:04,809 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-18 09:11:04,812 [INFO] httpx - HTTP Request: POST http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:11:04,823 [INFO] httpx - HTTP Request: POST http://testserver/api/spools/ "HTTP/1.1 201 Created"
+2025-12-18 09:11:04,830 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/583a1c03-f3e8-438b-a125-a5886cd7421e "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,833 [INFO] httpx - HTTP Request: GET http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:11:04,839 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/ "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,849 [INFO] httpx - HTTP Request: PUT http://testserver/api/spools/583a1c03-f3e8-438b-a125-a5886cd7421e "HTTP/1.1 200 OK"
+2025-12-18 09:11:04,857 [INFO] httpx - HTTP Request: DELETE http://testserver/api/spools/583a1c03-f3e8-438b-a125-a5886cd7421e "HTTP/1.1 204 No Content"
+2025-12-18 09:11:04,862 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/583a1c03-f3e8-438b-a125-a5886cd7421e "HTTP/1.1 404 Not Found"
+2025-12-18 09:19:14,501 [INFO] httpx - HTTP Request: GET http://testserver/api/database/info "HTTP/1.1 200 OK"
+2025-12-18 09:19:14,515 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 200 OK"
+2025-12-18 09:19:14,519 [INFO] httpx - HTTP Request: GET http://testserver/api/database/query?sql=SELECT+%2A+FROM+material+WHERE+id%3D%27m2%27 "HTTP/1.1 200 OK"
+2025-12-18 09:19:14,533 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 200 OK"
+2025-12-18 09:19:14,537 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 404 Not Found"
+2025-12-18 09:19:14,547 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 400 Bad Request"
+2025-12-18 09:21:18,421 [INFO] httpx - HTTP Request: GET http://testserver/api/database/info "HTTP/1.1 200 OK"
+2025-12-18 09:21:18,439 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 200 OK"
+2025-12-18 09:21:18,445 [INFO] httpx - HTTP Request: GET http://testserver/api/database/query?sql=SELECT+%2A+FROM+material+WHERE+id%3D%27m2%27 "HTTP/1.1 200 OK"
+2025-12-18 09:21:18,463 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 200 OK"
+2025-12-18 09:21:18,468 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 404 Not Found"
+2025-12-18 09:21:18,481 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 400 Bad Request"
+2025-12-18 09:21:18,504 [INFO] httpx - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-12-18 09:21:18,510 [INFO] httpx - HTTP Request: GET http://testserver/docs "HTTP/1.1 200 OK"
+2025-12-18 09:21:18,515 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:21:18,521 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-18 09:21:18,549 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:21:18,558 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:21:18,564 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:21:18,568 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:21:18,581 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:21:18,587 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 409 Conflict"
+2025-12-18 09:21:18,676 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:21:18,681 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 409 Conflict"
+2025-12-18 09:22:01,825 [INFO] httpx - HTTP Request: GET http://testserver/api/database/info "HTTP/1.1 200 OK"
+2025-12-18 09:22:01,849 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 200 OK"
+2025-12-18 09:22:01,855 [INFO] httpx - HTTP Request: GET http://testserver/api/database/query?sql=SELECT+%2A+FROM+material+WHERE+id%3D%27m2%27 "HTTP/1.1 200 OK"
+2025-12-18 09:22:01,872 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 200 OK"
+2025-12-18 09:22:01,877 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 404 Not Found"
+2025-12-18 09:22:01,890 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 400 Bad Request"
+2025-12-18 09:22:01,912 [INFO] httpx - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-12-18 09:22:01,917 [INFO] httpx - HTTP Request: GET http://testserver/docs "HTTP/1.1 200 OK"
+2025-12-18 09:22:01,922 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:22:01,928 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-18 09:22:01,956 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:22:01,966 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:22:01,970 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:22:01,975 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:22:01,987 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:22:01,998 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-18 09:22:02,004 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/10947ee2-7868-4d6b-9931-882ae739c2fd "HTTP/1.1 200 OK"
+2025-12-18 09:22:02,007 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:22:02,011 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-18 09:22:02,021 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/10947ee2-7868-4d6b-9931-882ae739c2fd "HTTP/1.1 200 OK"
+2025-12-18 09:22:02,029 [INFO] httpx - HTTP Request: DELETE http://testserver/api/materials/10947ee2-7868-4d6b-9931-882ae739c2fd "HTTP/1.1 204 No Content"
+2025-12-18 09:22:02,033 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/10947ee2-7868-4d6b-9931-882ae739c2fd "HTTP/1.1 404 Not Found"
+2025-12-18 09:22:02,038 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:22:02,047 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-18 09:22:02,050 [INFO] httpx - HTTP Request: POST http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:22:02,062 [INFO] httpx - HTTP Request: POST http://testserver/api/spools/ "HTTP/1.1 201 Created"
+2025-12-18 09:22:02,068 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/025fc22b-e398-4711-97ce-16a6a469c5fb "HTTP/1.1 200 OK"
+2025-12-18 09:22:02,071 [INFO] httpx - HTTP Request: GET http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:22:02,077 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/ "HTTP/1.1 200 OK"
+2025-12-18 09:22:02,088 [INFO] httpx - HTTP Request: PUT http://testserver/api/spools/025fc22b-e398-4711-97ce-16a6a469c5fb "HTTP/1.1 200 OK"
+2025-12-18 09:22:02,097 [INFO] httpx - HTTP Request: DELETE http://testserver/api/spools/025fc22b-e398-4711-97ce-16a6a469c5fb "HTTP/1.1 204 No Content"
+2025-12-18 09:22:02,101 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/025fc22b-e398-4711-97ce-16a6a469c5fb "HTTP/1.1 404 Not Found"
+2025-12-18 09:44:48,024 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:44:48,030 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:44:48,033 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:44:48,036 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,686 [INFO] httpx - HTTP Request: GET http://testserver/api/database/info "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,702 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,707 [INFO] httpx - HTTP Request: GET http://testserver/api/database/query?sql=SELECT+%2A+FROM+material+WHERE+id%3D%27m2%27 "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,721 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,725 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 404 Not Found"
+2025-12-18 09:46:20,735 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 400 Bad Request"
+2025-12-18 09:46:20,750 [INFO] httpx - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,753 [INFO] httpx - HTTP Request: GET http://testserver/docs "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,757 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:46:20,762 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,780 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,786 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,789 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,792 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,800 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:46:20,808 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-18 09:46:20,813 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/1963ab29-7d9a-4105-8708-95ad2ce8036d "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,815 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:46:20,818 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,826 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/1963ab29-7d9a-4105-8708-95ad2ce8036d "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,834 [INFO] httpx - HTTP Request: DELETE http://testserver/api/materials/1963ab29-7d9a-4105-8708-95ad2ce8036d "HTTP/1.1 204 No Content"
+2025-12-18 09:46:20,837 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/1963ab29-7d9a-4105-8708-95ad2ce8036d "HTTP/1.1 404 Not Found"
+2025-12-18 09:46:20,841 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:46:20,848 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-18 09:46:20,850 [INFO] httpx - HTTP Request: POST http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:46:20,859 [INFO] httpx - HTTP Request: POST http://testserver/api/spools/ "HTTP/1.1 201 Created"
+2025-12-18 09:46:20,864 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/0f7b5408-688c-4f6b-be6a-c6f586b68aa2 "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,866 [INFO] httpx - HTTP Request: GET http://testserver/api/spools "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:46:20,869 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/ "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,877 [INFO] httpx - HTTP Request: PUT http://testserver/api/spools/0f7b5408-688c-4f6b-be6a-c6f586b68aa2 "HTTP/1.1 200 OK"
+2025-12-18 09:46:20,884 [INFO] httpx - HTTP Request: DELETE http://testserver/api/spools/0f7b5408-688c-4f6b-be6a-c6f586b68aa2 "HTTP/1.1 204 No Content"
+2025-12-18 09:46:20,887 [INFO] httpx - HTTP Request: GET http://testserver/api/spools/0f7b5408-688c-4f6b-be6a-c6f586b68aa2 "HTTP/1.1 404 Not Found"
+2025-12-18 09:54:21,087 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:54:21,096 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:54:21,099 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:54:21,104 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:55:55,295 [INFO] httpx - HTTP Request: GET http://testserver/api/database/info "HTTP/1.1 200 OK"
+2025-12-18 09:55:55,311 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 200 OK"
+2025-12-18 09:55:55,316 [INFO] httpx - HTTP Request: GET http://testserver/api/database/query?sql=SELECT+%2A+FROM+material+WHERE+id%3D%27m2%27 "HTTP/1.1 200 OK"
+2025-12-18 09:55:55,331 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 200 OK"
+2025-12-18 09:55:55,337 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 404 Not Found"
+2025-12-18 09:55:55,347 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 400 Bad Request"
+2025-12-18 09:55:55,361 [INFO] httpx - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-12-18 09:55:55,364 [INFO] httpx - HTTP Request: GET http://testserver/docs "HTTP/1.1 200 OK"
+2025-12-18 09:55:55,369 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:55:55,373 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-18 09:55:55,391 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:55:55,397 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:55:55,402 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:55:55,405 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:55:55,413 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:55:55,417 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 409 Conflict"
+2025-12-18 09:55:55,543 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:55:55,546 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 409 Conflict"
+2025-12-18 09:56:11,595 [INFO] httpx - HTTP Request: GET http://testserver/api/database/info "HTTP/1.1 200 OK"
+2025-12-18 09:56:11,612 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 200 OK"
+2025-12-18 09:56:11,619 [INFO] httpx - HTTP Request: GET http://testserver/api/database/query?sql=SELECT+%2A+FROM+material+WHERE+id%3D%27m2%27 "HTTP/1.1 200 OK"
+2025-12-18 09:56:11,637 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 200 OK"
+2025-12-18 09:56:11,641 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 404 Not Found"
+2025-12-18 09:56:11,654 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 400 Bad Request"
+2025-12-18 09:56:11,671 [INFO] httpx - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-12-18 09:56:11,675 [INFO] httpx - HTTP Request: GET http://testserver/docs "HTTP/1.1 200 OK"
+2025-12-18 09:56:11,677 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:56:11,683 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-18 09:56:11,704 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:56:11,711 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-18 09:56:11,715 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:56:11,720 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-18 09:56:11,729 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:56:11,735 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 409 Conflict"
+2025-12-18 09:56:11,870 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-18 09:56:11,874 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 409 Conflict"
+2025-12-18 10:10:41,191 [INFO] uvicorn.error - Started server process [22692]
+2025-12-18 10:10:41,191 [INFO] uvicorn.error - Started server process [22692]
+2025-12-18 10:10:41,192 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-18 10:10:41,192 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-18 10:10:41,192 [INFO] uvicorn.error - Application startup complete.
+2025-12-18 10:10:41,192 [INFO] uvicorn.error - Application startup complete.
+2025-12-18 10:10:41,193 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-18 10:10:41,193 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-18 10:17:03,078 [INFO] 3D_drucker - connect host=192.168.178.41 port=8883 tls=True client_id=filamenthub_X1C_a8a51f
+2025-12-18 10:17:03,255 [INFO] 3D_drucker - connected host=192.168.178.41 client_id=filamenthub_X1C_a8a51f
+2025-12-18 10:19:15,994 [INFO] 3D_drucker - disconnect
+2025-12-18 10:19:15,994 [INFO] 3D_drucker - disconnect

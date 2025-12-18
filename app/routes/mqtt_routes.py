@@ -169,6 +169,8 @@ from app.services.ams_sync import sync_ams_slots
 from app.services.universal_mapper import UniversalMapper
 
 from app.services.printer_auto_detector import PrinterAutoDetector
+from app.services.mqtt_payload_processor import process_mqtt_payload
+from app.services.live_state import set_live_state
 
 from services.mqtt_protocol_detector import MQTTProtocolDetector
 
@@ -472,18 +474,30 @@ def on_message(client, userdata, msg):
     """Callback when message received"""
 
     try:
-
-        payload = msg.payload.decode('utf-8', errors='replace')
-
-        ams_data = []
-
-        job_data = {}
-
+        # Ensure variables are always defined for static analysis
         serial_from_topic = None
-
-        printer_model_for_mapper = "X1C"
-
-        printer_name_for_service: Optional[str] = None
+        printer_model_for_mapper = None
+        printer_name_for_service = None
+        # raw payload text
+        payload = msg.payload.decode('utf-8', errors='replace')
+        # Delegate payload parsing and mapping to dedicated processor
+        try:
+            proc = process_mqtt_payload(msg.topic, payload, printer_service_ref)
+            parsed_json = proc.get("raw")
+            ams_data = proc.get("ams") or []
+            job_data = proc.get("job") or {}
+            mapped_obj = proc.get("mapped")
+            mapped_dict = proc.get("mapped_dict")
+            caps = proc.get("capabilities")
+            if proc.get("serial"):
+                serial_from_topic = proc.get("serial")
+        except Exception:
+            parsed_json = None
+            ams_data = []
+            job_data = {}
+            mapped_obj = None
+            mapped_dict = None
+            caps = None
 
         mapped_dict: Optional[Dict[str, Any]] = None
 
@@ -510,6 +524,13 @@ def on_message(client, userdata, msg):
                 ams_data = parse_ams(parsed_json)
 
                 job_data = parse_job(parsed_json) or {}
+
+                # Update in-memory live-state for this device if we have a serial
+                try:
+                    if serial_from_topic:
+                        set_live_state(serial_from_topic, parsed_json)
+                except Exception:
+                    pass
 
         except Exception:
 

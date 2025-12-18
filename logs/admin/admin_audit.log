@@ -1,1 +1,5 @@
 {"ts": "2025-12-17T19:14:30Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-17T21:57:49Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-17T21:57:49Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-17T21:57:49Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-17T21:57:51Z", "event": "admin_access", "details": {"path": "/admin/notifications", "ip": "127.0.0.1"}}

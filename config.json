@@ -22,5 +22,10 @@
       7125
     ],
     "timeout_ms": 1500
+  },
+  "json_inspector": {
+    "max_size_mb": 5,
+    "max_depth": 50,
+    "allow_override": false
   }
 }

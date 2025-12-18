@@ -4,7 +4,7 @@ import ssl
 
 broker = "192.168.178.41"
 
-port = 8883
+port = 8885
 # Thema nach Vorgabe, Seriennummer bitte ersetzen:
 serial_number = "00M09A372601070"  # <-- hier echte Seriennummer eintragen
 # englisches Thema zum Testen:

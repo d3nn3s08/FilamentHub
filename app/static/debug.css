@@ -1131,6 +1131,40 @@ small {
     transform: none;
 }
 
+.btn-error {
+    background: var(--error);
+    color: white;
+}
+
+.btn-error:hover {
+    background: #e74c3c;
+    transform: translateY(-2px);
+}
+
+.btn-error:disabled {
+    background: var(--border);
+    color: var(--text-dim);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-warning {
+    background: var(--accent);
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #f39c12;
+    transform: translateY(-2px);
+}
+
+.btn-warning:disabled {
+    background: var(--border);
+    color: var(--text-dim);
+    cursor: not-allowed;
+    transform: none;
+}
+
 .btn:disabled:hover {
     transform: none;
 }

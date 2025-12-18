@@ -65,3 +65,15 @@ Ende: Modal „Druckauftrag fertig – bitte Spule zuweisen“, Auswahl aus Spul
 Damit haben wir virtuelle IDs, QR/Barcode, Spule-neu-Logik, sauberes Matching und den „Unbekannt → nachträglich zuweisen“-Flow. Wenn das so passt, setze ich es um.
 
 
+## Recent work (2025-12-18)
+- [x] Tests: API-Tests für `service_routes` ergänzt (Success/Error/Exception + Docker endpoint mocks)
+- [x] Tests: `database_routes` API-tests hinzugefügt (isolated tmp sqlite DB, CRUD + error case)
+- [x] Refactor: MQTT payload processing extracted to `app/services/mqtt_payload_processor.py` (keeps `on_message()` lean)
+- [x] Test infra: Per-run temporary test DBs and `init_db()` flow established to avoid locking issues
+
+## Next steps (short)
+- [ ] Add lightweight unit tests for payload processing and AMS/job parsing logic (pure functions)
+- [ ] Harden spool assignment edge-cases exposed by tests (unknown spools, virtual IDs)
+
+
+

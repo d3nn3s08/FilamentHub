@@ -67,6 +67,15 @@ function applyConfigEnableStates() {
     const el = document.getElementById(id);
     if (el) el.disabled = !fpEnabled;
   });
+
+  // JSON Inspector gate: Buttons immer aktiv wenn Felder gesetzt
+  const jsonMaxSize = document.getElementById('cfg_json_max_size')?.value;
+  const jsonMaxDepth = document.getElementById('cfg_json_max_depth')?.value;
+  const jsonEnabled = !!(jsonMaxSize || jsonMaxDepth);
+  ['cfg_json_cancel', 'cfg_json_save'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !jsonEnabled;
+  });
 }
 
 function renderLogViewer(data) {
@@ -136,6 +145,12 @@ function setActiveTab(target) {
   }
   if (activeTab === 'config') {
     loadConfigData();
+  }
+  if (activeTab === 'json' && window.DEBUG_MODE === 'pro') {
+    loadJsonInspectorLimits();
+  }
+  if (activeTab === 'services' && window.DEBUG_MODE === 'pro') {
+    loadServicesData();
   }
   if (activeTab === 'logs' && window.DEBUG_MODE === 'pro') {
     loadLogViewer();
@@ -283,6 +298,7 @@ function populateConfigFields(data) {
   const scanner = cfg.scanner && typeof cfg.scanner === 'object' ? cfg.scanner : {};
   const scannerPro = scanner.pro && typeof scanner.pro === 'object' ? scanner.pro : {};
   const fp = cfg.fingerprint && typeof cfg.fingerprint === 'object' ? cfg.fingerprint : {};
+  const jsonInspector = cfg.json_inspector && typeof cfg.json_inspector === 'object' ? cfg.json_inspector : {};
 
   setCheckbox('cfg_health_enabled', systemHealth.enabled ?? cm.health_enabled);
   setInputValue('cfg_health_warn_latency', systemHealth.warn_latency_ms ?? cm.health_latency_warn_ms);
@@ -307,6 +323,10 @@ function populateConfigFields(data) {
   setInputValue('cfg_fingerprint_ports', portsVal);
   setInputValue('cfg_fingerprint_timeout', fp.timeout_ms);
 
+  setInputValue('cfg_json_max_size', jsonInspector.max_size_mb);
+  setInputValue('cfg_json_max_depth', jsonInspector.max_depth);
+  setCheckbox('cfg_json_allow_override', jsonInspector.allow_override);
+
   configSnapshot = {
     health_enabled: systemHealth.enabled ?? cm.health_enabled,
     health_warn_latency: systemHealth.warn_latency_ms ?? cm.health_latency_warn_ms,
@@ -320,6 +340,9 @@ function populateConfigFields(data) {
     fingerprint_enabled: fp.enabled,
     fingerprint_ports: Array.isArray(fp.ports) ? fp.ports.join(', ') : '',
     fingerprint_timeout: fp.timeout_ms,
+    json_max_size: jsonInspector.max_size_mb,
+    json_max_depth: jsonInspector.max_depth,
+    json_allow_override: jsonInspector.allow_override,
   };
   setConfigEditable(true);
   applyConfigEnableStates();
@@ -348,6 +371,11 @@ function resetConfigCard(card) {
     setCheckbox('cfg_fingerprint_enabled', configSnapshot.fingerprint_enabled);
     setInputValue('cfg_fingerprint_ports', configSnapshot.fingerprint_ports);
     setInputValue('cfg_fingerprint_timeout', configSnapshot.fingerprint_timeout);
+  }
+  if (card === 'json' || card === 'all') {
+    setInputValue('cfg_json_max_size', configSnapshot.json_max_size);
+    setInputValue('cfg_json_max_depth', configSnapshot.json_max_depth);
+    setCheckbox('cfg_json_allow_override', configSnapshot.json_allow_override);
   }
 }
 
@@ -380,6 +408,11 @@ async function saveConfigSection(section) {
     payload['fingerprint.enabled'] = document.getElementById('cfg_fingerprint_enabled').checked;
     payload['fingerprint.ports'] = parsePortsInput(document.getElementById('cfg_fingerprint_ports').value);
     payload['fingerprint.timeout_ms'] = parseInt(document.getElementById('cfg_fingerprint_timeout').value, 10);
+  }
+  if (section === 'json') {
+    payload['json_inspector.max_size_mb'] = parseInt(document.getElementById('cfg_json_max_size').value, 10);
+    payload['json_inspector.max_depth'] = parseInt(document.getElementById('cfg_json_max_depth').value, 10);
+    payload['json_inspector.allow_override'] = document.getElementById('cfg_json_allow_override').checked;
   }
   try {
     const res = await fetch('/api/config', {
@@ -478,6 +511,8 @@ function initConfigActions() {
   bind('cfg_scanner_save', 'scanner', saveConfigSection);
   bind('cfg_fingerprint_cancel', 'fingerprint', () => resetConfigCard('fingerprint'));
   bind('cfg_fingerprint_save', 'fingerprint', saveConfigSection);
+  bind('cfg_json_cancel', 'json', () => resetConfigCard('json'));
+  bind('cfg_json_save', 'json', saveConfigSection);
   watch('cfg_health_enabled');
   watch('cfg_runtime_enabled');
   watch('cfg_scanner_deep_probe');
@@ -811,7 +846,7 @@ function updateProbeUI(data) {
   const errEl = document.getElementById('proProbeError');
   const httpEl = document.getElementById('proProbeHttp');
   const badgeEl = document.getElementById('proProbeBadge');
-  const statusText = data?.status || 'Unbekannt';
+  const statusText = (data?.status || 'Unbekannt').toString();
   if (statusEl) statusEl.textContent = 'Status: ' + statusText;
   const latencyText = Number.isFinite(data?.latency_ms) ? 'Antwortzeit: ' + data.latency_ms + ' ms' : 'Antwortzeit: -';
   if (latencyEl) latencyEl.textContent = latencyText;
@@ -965,6 +1000,20 @@ function updateFingerprintUI(data) {
       });
     }
   }
+  // badge styling
+  try {
+    const badgeEl = document.querySelector('.scanner-pro-head .status-badge');
+    if (badgeEl) {
+      badgeEl.classList.remove('status-ok', 'status-warn', 'status-error', 'status-idle');
+      const normalized = statusText.toUpperCase();
+      if (normalized === 'OK') badgeEl.classList.add('status-ok');
+      else if (normalized === 'FEHLER' || normalized === 'ERROR') badgeEl.classList.add('status-error');
+      else if (normalized === 'NICHT_VERFUEGBAR' || normalized === 'UNBEKANNT') badgeEl.classList.add('status-idle');
+      else badgeEl.classList.add('status-warn');
+    }
+  } catch (e) {
+    // ignore
+  }
 }
 
 async function handleFingerprint(btn) {
@@ -996,7 +1045,26 @@ async function handleFingerprint(btn) {
       return;
     }
     const data = await res.json();
-    updateFingerprintUI(data);
+    // Determine whether a usable fingerprint was found
+    const hasFingerprint =
+      data &&
+      (data.detected_type ||
+       data.confidence != null ||
+       (data.ports && Object.keys(data.ports).some(
+         k => data.ports[k]?.reachable === true
+       )));
+
+    if (hasFingerprint) {
+      updateFingerprintUI({ ...data, status: 'OK' });
+    } else {
+      updateFingerprintUI({
+        status: 'NICHT_VERFUEGBAR',
+        detected_type: '-',
+        confidence: null,
+        ports: data?.ports || {},
+        message: 'Fingerprint technisch nicht moeglich oder keine verwertbaren Daten'
+      });
+    }
   } catch (err) {
     updateFingerprintUI({ status: 'FEHLER', detected_type: '-', confidence: null, ports: {}, message: 'Fingerprint fehlgeschlagen' });
   } finally {
@@ -1315,6 +1383,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (activeTab === 'scanner' && typeof initScannerTab === 'function') {
       initScannerTab();
     }
+  }
+
+  if (typeof initJsonInspector === 'function') {
+    initJsonInspector();
+  }
+
+  if (typeof initServicesButtons === 'function') {
+    initServicesButtons();
   }
 });
 
@@ -1685,3 +1761,496 @@ window._updateMQTTDetails = _updateMQTTDetails;
 window._syncDetailsPoll = _syncDetailsPoll;
 
 console.log('✓ MQTT Topics & Messages functions exported from debug.js');
+
+// ============================================
+// JSON INSPECTOR FUNCTIONS
+// ============================================
+
+let jsonInspectorLimits = {
+    max_size_mb: 5,
+    max_depth: 50,
+    allow_override: false
+};
+
+async function loadJsonInspectorLimits() {
+    try {
+        const res = await fetch('/api/config/current');
+        if (!res.ok) return;
+        const data = await res.json();
+        const limits = data?.json_inspector;
+        if (limits && typeof limits === 'object') {
+            jsonInspectorLimits = {
+                max_size_mb: limits.max_size_mb || 5,
+                max_depth: limits.max_depth || 50,
+                allow_override: limits.allow_override || false
+            };
+            updateJsonInspectorLimitDisplay();
+        }
+    } catch (err) {
+        console.warn('[json-inspector] Failed to load limits', err);
+    }
+}
+
+function updateJsonInspectorLimitDisplay() {
+    const sizeEl = document.getElementById('json-limit-size');
+    const depthEl = document.getElementById('json-limit-depth');
+    const overrideEl = document.getElementById('json-limit-override');
+
+    if (sizeEl) sizeEl.textContent = `${jsonInspectorLimits.max_size_mb} MB`;
+    if (depthEl) depthEl.textContent = jsonInspectorLimits.max_depth.toString();
+    if (overrideEl) overrideEl.textContent = jsonInspectorLimits.allow_override ? 'Yes' : 'No';
+}
+
+function calculateJsonDepth(obj, currentDepth = 0) {
+    if (typeof obj !== 'object' || obj === null) return currentDepth;
+    let maxDepth = currentDepth;
+    for (const key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            const depth = calculateJsonDepth(obj[key], currentDepth + 1);
+            maxDepth = Math.max(maxDepth, depth);
+        }
+    }
+    return maxDepth;
+}
+
+function validateJsonData(jsonData, jsonString) {
+    const statusBadge = document.getElementById('json-inspector-status');
+    const warningEl = document.getElementById('json-inspector-warning');
+
+    if (!statusBadge || !warningEl) return { allowed: true, reason: null };
+
+    const sizeMB = (new Blob([jsonString]).size) / (1024 * 1024);
+    const depth = calculateJsonDepth(jsonData);
+
+    let sizeExceeded = false;
+    let depthExceeded = false;
+
+    if (sizeMB > jsonInspectorLimits.max_size_mb) {
+        sizeExceeded = true;
+    }
+
+    if (depth > jsonInspectorLimits.max_depth) {
+        depthExceeded = true;
+    }
+
+    if (!sizeExceeded && !depthExceeded) {
+        statusBadge.className = 'status-badge status-ok';
+        statusBadge.textContent = 'Ready';
+        warningEl.style.display = 'none';
+        warningEl.textContent = '';
+        return { allowed: true, reason: null };
+    }
+
+    const reasons = [];
+    if (sizeExceeded) {
+        reasons.push(`JSON size (${sizeMB.toFixed(2)} MB) exceeds configured limit (${jsonInspectorLimits.max_size_mb} MB)`);
+    }
+    if (depthExceeded) {
+        reasons.push(`JSON depth (${depth}) exceeds configured limit (${jsonInspectorLimits.max_depth})`);
+    }
+
+    const reasonText = reasons.join('. ');
+
+    if (jsonInspectorLimits.allow_override) {
+        statusBadge.className = 'status-badge status-warn';
+        statusBadge.textContent = 'Limit exceeded';
+        warningEl.textContent = reasonText + '. Rendering continued.';
+        warningEl.style.display = '';
+        return { allowed: true, reason: reasonText };
+    } else {
+        statusBadge.className = 'status-badge status-error';
+        statusBadge.textContent = 'Rendering blocked';
+        warningEl.textContent = reasonText + '. Rendering blocked. Enable override in Config Manager to proceed.';
+        warningEl.style.display = '';
+        return { allowed: false, reason: reasonText };
+    }
+}
+
+function renderJsonTree(jsonData) {
+    const treeEl = document.getElementById('json-inspector-tree');
+    if (!treeEl) return;
+
+    treeEl.innerHTML = '';
+    const pre = document.createElement('pre');
+    pre.textContent = JSON.stringify(jsonData, null, 2);
+    treeEl.appendChild(pre);
+}
+
+function initJsonInspector() {
+    const uploadEl = document.getElementById('json-upload');
+    if (!uploadEl) return;
+
+    uploadEl.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const text = await file.text();
+            const jsonData = JSON.parse(text);
+
+            const validation = validateJsonData(jsonData, text);
+
+            if (validation.allowed) {
+                renderJsonTree(jsonData);
+            } else {
+                const treeEl = document.getElementById('json-inspector-tree');
+                if (treeEl) {
+                    treeEl.innerHTML = '<div class="info-label">Rendering blocked due to limit violation.</div>';
+                }
+            }
+        } catch (err) {
+            const statusBadge = document.getElementById('json-inspector-status');
+            const warningEl = document.getElementById('json-inspector-warning');
+            const treeEl = document.getElementById('json-inspector-tree');
+
+            if (statusBadge) {
+                statusBadge.className = 'status-badge status-error';
+                statusBadge.textContent = 'Parse error';
+            }
+            if (warningEl) {
+                warningEl.textContent = 'Invalid JSON file: ' + err.message;
+                warningEl.style.display = '';
+            }
+            if (treeEl) {
+                treeEl.innerHTML = '<div class="info-label">Failed to parse JSON file.</div>';
+            }
+        }
+    });
+}
+
+window.loadJsonInspectorLimits = loadJsonInspectorLimits;
+window.initJsonInspector = initJsonInspector;
+
+// ============================================
+// Live Payload - Frontend polling + rendering
+// ============================================
+
+let liveStatePollInterval = null;
+let lastLiveState = null;
+
+function updateLivePayloadUI(state) {
+  if (!state) {
+    setText('liveDeviceName', '-');
+    setText('liveStatus', 'Status: -');
+    setText('liveLastUpdate', 'Letztes Update: -');
+    setText('liveJobName', 'Job: -');
+    const pb = document.getElementById('liveProgressBar'); if (pb) pb.value = 0;
+    setText('liveAmsInfo', 'AMS: -');
+    return;
+  }
+  const device = state.device || '-';
+  const ts = state.ts || null;
+  const payload = state.payload || {};
+  setText('liveDeviceName', device);
+  // determine status
+  const lastTs = ts ? Date.parse(ts) : null;
+  const now = Date.now();
+  let status = 'offline';
+  if (lastTs && (now - lastTs) < 30000) {
+    // within 30s, consider active
+    const gstate = (payload?.print?.gcode_state || payload?.gcode_state || '').toString().toLowerCase();
+    if (gstate && (gstate === 'running' || gstate === 'printing' || gstate === 'start')) status = 'printing';
+    else status = 'idle';
+  }
+  const statusText = `Status: ${status}`;
+  setText('liveStatus', statusText);
+  setText('liveLastUpdate', ts ? `Letztes Update: ${new Date(ts).toLocaleString()}` : 'Letztes Update: -');
+  const jobname = (payload?.job?.name) || (payload?.print?.file?.name) || payload?.subtask_name || '-';
+  setText('liveJobName', `Job: ${jobname}`);
+  const progress = Number(payload?.print?.progress || payload?.progress || 0);
+  const pb = document.getElementById('liveProgressBar'); if (pb) pb.value = (Number.isFinite(progress) ? progress : 0);
+  // AMS short info
+  const ams = payload?.ams || null;
+  if (ams && Array.isArray(ams) && ams.length) {
+    const first = ams[0];
+    const slot = first?.trays?.[0]?.tray_id || first?.slot || '-';
+    const material = first?.trays?.[0]?.material || first?.trays?.[0]?.tray_type || '-';
+    const color = first?.trays?.[0]?.tray_color || first?.trays?.[0]?.color || '-';
+    setText('liveAmsInfo', `AMS: slot=${slot}, material=${material}, color=${color}`);
+  } else {
+    setText('liveAmsInfo', 'AMS: -');
+  }
+  // also update JSON inspector tree to show live payload by default
+  try {
+    const jsonData = payload;
+    const jsonString = JSON.stringify(jsonData);
+    const validation = validateJsonData(jsonData, jsonString);
+    if (validation.allowed) renderJsonTree(jsonData);
+  } catch (e) {
+    // ignore
+  }
+}
+
+async function refreshLiveStateAll() {
+  try {
+    const res = await fetch('/api/live-state');
+    if (!res.ok) return;
+    const data = await res.json();
+    const keys = Object.keys(data || {});
+    if (!keys.length) {
+      updateLivePayloadUI(null);
+      return;
+    }
+    // pick first device for now
+    const first = data[keys[0]];
+    if (!first) return;
+    lastLiveState = first;
+    updateLivePayloadUI(first);
+  } catch (err) {
+    console.warn('[live-state] refresh failed', err);
+  }
+}
+
+function startLiveStatePolling() {
+  if (liveStatePollInterval) clearInterval(liveStatePollInterval);
+  refreshLiveStateAll();
+  liveStatePollInterval = setInterval(refreshLiveStateAll, 2500);
+}
+
+// start polling when JSON inspector initialized so user sees live data
+const _origInitJsonInspector = typeof initJsonInspector === 'function' ? initJsonInspector : null;
+function _wrappedInitJsonInspector() {
+  if (_origInitJsonInspector) _origInitJsonInspector();
+  startLiveStatePolling();
+}
+window.initJsonInspector = _wrappedInitJsonInspector;
+
+async function populateLiveDeviceSelector() {
+  try {
+    const res = await fetch('/api/live-state');
+    if (!res.ok) return;
+    const data = await res.json();
+    const sel = document.getElementById('liveDeviceSelect');
+    if (!sel) return;
+    sel.innerHTML = '';
+    const keys = Object.keys(data || {});
+    keys.forEach(k => {
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = k;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', () => {
+      const v = sel.value;
+      if (v && data[v]) updateLivePayloadUI(data[v]);
+    });
+    // select first if none selected
+    if (keys.length) {
+      if (!sel.value) sel.value = keys[0];
+      const selected = sel.value;
+      if (selected && data[selected]) updateLivePayloadUI(data[selected]);
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+// enhance polling to refresh selector list
+function startLiveStatePollingWithSelector() {
+  startLiveStatePolling();
+  if (liveStatePollInterval) clearInterval(liveStatePollInterval);
+  refreshLiveStateAll();
+  populateLiveDeviceSelector();
+  liveStatePollInterval = setInterval(async () => {
+    await refreshLiveStateAll();
+    await populateLiveDeviceSelector();
+  }, 2500);
+}
+
+// replace init wrapper to use selector-aware polling
+function _wrappedInitJsonInspector() {
+  if (_origInitJsonInspector) _origInitJsonInspector();
+  startLiveStatePollingWithSelector();
+}
+window.initJsonInspector = _wrappedInitJsonInspector;
+
+console.log('✓ JSON Inspector functions registered');
+
+// ============================================
+// SERVICES TAB FUNCTIONS
+// ============================================
+
+async function loadServicesData() {
+    try {
+        const [perfRes, sysRes] = await Promise.all([
+            fetch('/api/debug/performance'),
+            fetch('/api/debug/system_status')
+        ]);
+
+        if (!perfRes.ok || !sysRes.ok) {
+            console.warn('[services] Failed to load data');
+            return;
+        }
+
+        const perfData = await perfRes.json();
+        const sysData = await sysRes.json();
+
+        updateServicesDisplay(perfData, sysData);
+    } catch (err) {
+        console.error('[services] Error loading data', err);
+    }
+}
+
+function updateServicesDisplay(perf, sys) {
+    // Runtime & Process
+    const pidEl = document.getElementById('service-pid');
+    const cpuEl = document.getElementById('service-cpu');
+    const memoryEl = document.getElementById('service-memory');
+    const threadsEl = document.getElementById('service-threads');
+    const runtimeStatusEl = document.getElementById('service-runtime-status');
+
+    if (pidEl) pidEl.textContent = 'N/A';
+    if (cpuEl && perf?.cpu_percent) cpuEl.textContent = `${perf.cpu_percent}%`;
+    if (memoryEl && perf?.ram_used_mb && perf?.ram_total_mb) {
+        const percent = ((perf.ram_used_mb / perf.ram_total_mb) * 100).toFixed(1);
+        memoryEl.textContent = `${percent}% (${perf.ram_used_mb} MB / ${perf.ram_total_mb} MB)`;
+    }
+    if (threadsEl) threadsEl.textContent = 'N/A';
+
+    if (runtimeStatusEl) {
+        runtimeStatusEl.className = 'status-badge status-ok';
+        runtimeStatusEl.textContent = 'Running';
+    }
+
+    // Server & Environment
+    const startedEl = document.getElementById('service-started');
+    const uptimeEl = document.getElementById('service-uptime');
+    const platformEl = document.getElementById('service-platform');
+    const hostnameEl = document.getElementById('service-hostname');
+    const pythonEl = document.getElementById('service-python');
+    const portEl = document.getElementById('service-port');
+
+    if (startedEl) startedEl.textContent = 'N/A';
+    if (uptimeEl && perf?.backend_uptime_s) {
+        const hours = Math.floor(perf.backend_uptime_s / 3600);
+        const minutes = Math.floor((perf.backend_uptime_s % 3600) / 60);
+        const seconds = perf.backend_uptime_s % 60;
+        uptimeEl.textContent = `${hours}h ${minutes}m ${seconds}s`;
+    }
+    if (platformEl) platformEl.textContent = 'Windows';
+    if (hostnameEl) hostnameEl.textContent = 'localhost';
+    if (pythonEl) pythonEl.textContent = 'Python 3.x';
+    if (portEl) portEl.textContent = '8085';
+}
+
+function initServicesButtons() {
+    const restartBtn = document.getElementById('service-restart-btn');
+    if (restartBtn) {
+        restartBtn.addEventListener('click', () => {
+            alert('Backend restart functionality not implemented yet.');
+        });
+    }
+
+    const dockerUpBtn = document.getElementById('service-docker-up-btn');
+    if (dockerUpBtn) {
+        dockerUpBtn.addEventListener('click', async () => {
+            alert('Docker up functionality not implemented yet.');
+        });
+    }
+
+    const dockerDownBtn = document.getElementById('service-docker-down-btn');
+    if (dockerDownBtn) {
+        dockerDownBtn.addEventListener('click', async () => {
+            alert('Docker down functionality not implemented yet.');
+        });
+    }
+
+    const dockerStatusBtn = document.getElementById('service-docker-status-btn');
+    if (dockerStatusBtn) {
+        dockerStatusBtn.addEventListener('click', async () => {
+            alert('Docker status functionality not implemented yet.');
+        });
+    }
+
+    // Test buttons with locked state management
+    const testButtons = [
+        { id: 'service-test-smoke-btn', name: 'Smoke CRUD', endpoint: '/api/services/tests/smoke' },
+        { id: 'service-test-db-btn', name: 'DB CRUD', endpoint: '/api/services/tests/db' },
+        { id: 'service-test-all-btn', name: 'All Tests', endpoint: '/api/services/tests/all' },
+        { id: 'service-test-coverage-btn', name: 'Coverage', endpoint: '/api/services/tests/coverage' }
+    ];
+    
+    testButtons.forEach(config => {
+        const btn = document.getElementById(config.id);
+        if (btn) {
+            // Store original label
+            btn.setAttribute('data-original-label', btn.textContent);
+            btn.setAttribute('data-test-name', config.name);
+            
+            btn.addEventListener('click', async () => {
+                // Only allow click if button is not disabled
+                if (btn.disabled) return;
+                
+                // Set to running state
+                btn.disabled = true;
+                btn.textContent = 'Running…';
+                btn.className = 'btn btn-secondary';
+                
+                try {
+                    const response = await fetch(config.endpoint, { method: 'POST' });
+                    const data = await response.json();
+                    
+                    // Evaluate result and lock button in final state
+                    if (data.status === 'ok') {
+                        btn.className = 'btn btn-success';
+                        btn.textContent = 'Success';
+                        if (window.showToast) {
+                            window.showToast(`${config.name} erfolgreich`, 'success');
+                        }
+                    } else if (data.status === 'fail') {
+                        btn.className = 'btn btn-error';
+                        btn.textContent = 'Failed';
+                        if (window.showToast) {
+                            window.showToast(`${config.name} fehlgeschlagen`, 'error');
+                        }
+                    } else if (data.status === 'blocked') {
+                        btn.className = 'btn btn-warning';
+                        btn.textContent = 'Blocked';
+                        if (window.showToast) {
+                            window.showToast('Test konnte nicht ausgeführt werden', 'warning');
+                        }
+                    } else {
+                        // Unknown status, treat as fail
+                        btn.className = 'btn btn-error';
+                        btn.textContent = 'Failed';
+                        if (window.showToast) {
+                            window.showToast(`${config.name} fehlgeschlagen`, 'error');
+                        }
+                    }
+                    
+                    // Button stays disabled (locked)
+                } catch (error) {
+                    // Network or other error - lock as blocked
+                    btn.className = 'btn btn-warning';
+                    btn.textContent = 'Blocked';
+                    if (window.showToast) {
+                        window.showToast('Test konnte nicht ausgeführt werden', 'warning');
+                    }
+                    // Button stays disabled (locked)
+                    console.error('Test execution error:', error);
+                }
+            });
+        }
+    });
+
+    // Dependency buttons
+    const depsButtons = [
+        'service-deps-install-btn',
+        'service-deps-update-btn',
+        'service-deps-list-btn',
+        'service-deps-outdated-btn'
+    ];
+    depsButtons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.addEventListener('click', () => {
+                alert('Dependency functionality not implemented yet.');
+            });
+        }
+    });
+}
+
+window.loadServicesData = loadServicesData;
+window.initServicesButtons = initServicesButtons;
+
+console.log('✓ Services tab functions registered');
