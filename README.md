@@ -146,10 +146,10 @@ Der Name ist geblieben – das Projekt ist weitergewachsen.
 </p>
   ---
 
-# 🧱 Systemarchitektur
+# 🧱 AMS Übersicht
 
 <p align="center">
-  <img src="docs/images/system_architecture.png" width="720" alt="Systemarchitektur von FilamentHub">
+  <img src="data/screenshots/AMS_übersicht.png" width="720" alt="Systemarchitektur von FilamentHub">
 </p>
 
 
