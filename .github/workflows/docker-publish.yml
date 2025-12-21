@@ -1,0 +1,217 @@
+name: Build & Publish FilamentHub
+
+on:
+  push:
+    branches:
+      - main
+      - beta
+    paths:
+      - "app/**"
+      - "services/**"
+      - "backend/**"
+      - "scripts/**"
+      - "frontend/**"
+      - "alembic.ini"
+      - "requirements.txt"
+      - "Dockerfile"
+      - "entrypoint.sh"
+      - "run.py"
+      - "config.yaml"
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # ------------------------------------------------------------
+    # 1. Checkout
+    # ------------------------------------------------------------
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    # ------------------------------------------------------------
+    # 2. Version aus config.yaml lesen
+    # ------------------------------------------------------------
+    - name: Read current version
+      id: version
+      run: |
+        ver=$(python - << 'EOF'
+        import yaml
+        with open("config.yaml") as f:
+            print(yaml.safe_load(f)["app"]["version"])
+        EOF
+        )
+        echo "version=$ver" >> $GITHUB_OUTPUT
+
+    # ------------------------------------------------------------
+    # 3. Channel bestimmen (main = stable, beta = prerelease)
+    # ------------------------------------------------------------
+    - name: Detect channel
+      id: channel
+      run: |
+        if [ "${GITHUB_REF##*/}" = "beta" ]; then
+          echo "channel=beta" >> $GITHUB_OUTPUT
+          echo "docker_main_tag=beta" >> $GITHUB_OUTPUT
+          echo "docker_version_tag=${{ steps.version.outputs.version }}-beta" >> $GITHUB_OUTPUT
+          echo "suffix=-beta" >> $GITHUB_OUTPUT
+          echo "prerelease=true" >> $GITHUB_OUTPUT
+        else
+          echo "channel=stable" >> $GITHUB_OUTPUT
+          echo "docker_main_tag=latest" >> $GITHUB_OUTPUT
+          echo "docker_version_tag=${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "suffix=" >> $GITHUB_OUTPUT
+          echo "prerelease=false" >> $GITHUB_OUTPUT
+        fi
+
+    # ------------------------------------------------------------
+    # 4. Versionsvergleich (NUR stable)
+    # ------------------------------------------------------------
+    - name: Read previous version from main
+      if: ${{ steps.channel.outputs.channel == 'stable' }}
+      id: oldversion
+      run: |
+        old_ver=$(git show origin/main:config.yaml | python - << 'EOF'
+        import sys, yaml
+        print(yaml.safe_load(sys.stdin)["app"]["version"])
+        EOF
+        )
+        echo "old=$old_ver" >> $GITHUB_OUTPUT
+
+    - name: Check version change (stable only)
+      if: ${{ steps.channel.outputs.channel == 'stable' }}
+      id: version_changed
+      run: |
+        if [ "${{ steps.version.outputs.version }}" = "${{ steps.oldversion.outputs.old }}" ]; then
+          echo "changed=false" >> $GITHUB_OUTPUT
+        else
+          echo "changed=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Skip if no version bump (stable only)
+      if: ${{ steps.channel.outputs.channel == 'stable' && steps.version_changed.outputs.changed == 'false' }}
+      run: |
+        echo "Kein Versionssprung – Stable Build übersprungen."
+        exit 0
+
+    # ------------------------------------------------------------
+    # 5. Git Tag (NUR stable)
+    # ------------------------------------------------------------
+    - name: Create Git tag (stable only)
+      if: ${{ steps.channel.outputs.channel == 'stable' }}
+      run: |
+        git tag v${{ steps.version.outputs.version }} || echo "Tag existiert bereits"
+        git push origin v${{ steps.version.outputs.version }} || true
+
+    - name: Wait for tag propagation
+      run: sleep 3
+
+    # ------------------------------------------------------------
+    # 6. Changelog DE (NUR stable)
+    # ------------------------------------------------------------
+    - name: Generate Changelog (DE)
+      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      id: changelog_de
+      uses: mikepenz/release-changelog-builder-action@v4
+      with:
+        configuration: ".github/release-config.json"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Write CHANGELOG.md
+      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      run: echo "${{ steps.changelog_de.outputs.changelog }}" > CHANGELOG.md
+
+    - name: Commit CHANGELOG.md
+      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      run: |
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git add CHANGELOG.md
+        git commit -m "Update CHANGELOG for v${{ steps.version.outputs.version }}" || echo "No changes"
+
+    - name: Push CHANGELOG.md
+      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      uses: ad-m/github-push-action@v0.8.0
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+    # ------------------------------------------------------------
+    # 7. Changelog EN (NUR stable)
+    # ------------------------------------------------------------
+    - name: Generate Changelog (EN)
+      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      id: changelog_en
+      uses: mikepenz/release-changelog-builder-action@v4
+      with:
+        configuration: ".github/release-config-en.json"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Write CHANGELOG_EN.md
+      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      run: echo "${{ steps.changelog_en.outputs.changelog }}" > CHANGELOG_EN.md
+
+    - name: Commit CHANGELOG_EN.md
+      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      run: |
+        git add CHANGELOG_EN.md
+        git commit -m "Update CHANGELOG_EN for v${{ steps.version.outputs.version }}" || echo "No changes"
+
+    - name: Push CHANGELOG_EN.md
+      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      uses: ad-m/github-push-action@v0.8.0
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+    # ------------------------------------------------------------
+    # 8. Docker Setup
+    # ------------------------------------------------------------
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    # ------------------------------------------------------------
+    # 9. Docker Build & Push
+    # ------------------------------------------------------------
+    - name: Build & Push Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: |
+          d3nn3s/filamenthub:${{ steps.channel.outputs.docker_main_tag }}
+          d3nn3s/filamenthub:${{ steps.channel.outputs.docker_version_tag }}
+          d3nn3s/filamenthub:sha-${{ github.sha }}
+
+    # ------------------------------------------------------------
+    # 10. GitHub Release (stable + beta)
+    # ------------------------------------------------------------
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.version.outputs.version }}${{ steps.channel.outputs.suffix }}
+        name: FilamentHub v${{ steps.version.outputs.version }}${{ steps.channel.outputs.suffix }}
+        prerelease: ${{ steps.channel.outputs.prerelease }}
+        body: |
+          ## 🇩🇪 Deutsch
+          ${{ steps.changelog_de.outputs.changelog || 'Beta Release – kein finaler Changelog.' }}
+
+          ---
+
+          ## 🇬🇧 English
+          ${{ steps.changelog_en.outputs.changelog || 'Beta release – no final changelog.' }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
