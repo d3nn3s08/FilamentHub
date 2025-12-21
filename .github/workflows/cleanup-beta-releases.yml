@@ -1,0 +1,53 @@
+name: Cleanup old beta releases
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - beta
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Delete old beta releases (keep last 5)
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const keep = 5;
+
+            const releases = await github.paginate(
+              github.rest.repos.listReleases,
+              { owner, repo }
+            );
+
+            const betaReleases = releases
+              .filter(r => r.prerelease)
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            const toDelete = betaReleases.slice(keep);
+
+            console.log(`Found ${betaReleases.length} beta releases`);
+            console.log(`Keeping ${keep}, deleting ${toDelete.length}`);
+
+            for (const release of toDelete) {
+              console.log(`Deleting beta release: ${release.tag_name}`);
+
+              await github.rest.repos.deleteRelease({
+                owner,
+                repo,
+                release_id: release.id,
+              });
+
+              await github.rest.git.deleteRef({
+                owner,
+                repo,
+                ref: `tags/${release.tag_name}`,
+              }).catch(() => {
+                console.log(`Tag ${release.tag_name} already removed`);
+              });
+            }
