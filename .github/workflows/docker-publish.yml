@@ -5,20 +5,18 @@ on:
     branches:
       - main
     paths:
-      # CODE der einen Build auslöst
+      # Build-relevanter Code
       - "app/**"
       - "services/**"
       - "backend/**"
       - "scripts/**"
-      - "data/**"
       - "frontend/**"
       - "alembic.ini"
       - "requirements.txt"
-      - "docker-compose.yml"
       - "Dockerfile"
       - "entrypoint.sh"
       - "run.py"
-      # Version bump soll Build + Release auslösen
+      # Version steuert Release
       - "config.yaml"
 
   workflow_dispatch:
@@ -29,68 +27,79 @@ jobs:
 
     steps:
     # ------------------------------------------------------------
-    # 1. Checkout mit kompletter Historie
+    # 1. Checkout (volle Historie für Tags & Changelog)
     # ------------------------------------------------------------
-    - name: Checkout repo
+    - name: Checkout repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+
     # ------------------------------------------------------------
-    # 2. Version aus config.yaml lesen
+    # 2. Aktuelle Version aus config.yaml lesen (Python/YAML)
     # ------------------------------------------------------------
-    - name: Extract version
+    - name: Read current version
       id: version
       run: |
-        ver=$(grep 'version:' config.yaml | awk '{print $2}')
+        ver=$(python - << 'EOF'
+        import yaml
+        with open("config.yaml") as f:
+            cfg = yaml.safe_load(f)
+        print(cfg["app"]["version"])
+        EOF
+        )
         echo "version=$ver" >> $GITHUB_OUTPUT
+
     # ------------------------------------------------------------
-    # 3. Alte Version holen für Vergleich
+    # 3. Alte Version aus main vergleichen
     # ------------------------------------------------------------
-    - name: Fetch old version
+    - name: Read previous version from main
       id: oldversion
       run: |
-        git fetch origin main --depth=1
-        old_ver=$(git show origin/main:config.yaml | grep 'version:' | awk '{print $2}')
+        old_ver=$(git show origin/main:config.yaml | python - << 'EOF'
+        import sys, yaml
+        cfg = yaml.safe_load(sys.stdin)
+        print(cfg["app"]["version"])
+        EOF
+        )
         echo "old=$old_ver" >> $GITHUB_OUTPUT
-        echo "new=${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
+
     # ------------------------------------------------------------
-    # 4. Prüfen ob Version sich geändert hat
+    # 4. Versionsänderung prüfen
     # ------------------------------------------------------------
-    - name: Version changed?
+    - name: Check version change
       id: version_changed
       run: |
-        if [ "${{ steps.oldversion.outputs.old }}" = "${{ steps.version.outputs.version }}" ]; then
+        if [ "${{ steps.version.outputs.version }}" = "${{ steps.oldversion.outputs.old }}" ]; then
           echo "changed=false" >> $GITHUB_OUTPUT
         else
           echo "changed=true" >> $GITHUB_OUTPUT
         fi
-    # ------------------------------------------------------------
-    # 5. Skip, wenn kein Versions-Bump
-    # ------------------------------------------------------------
-    - name: Skip build if not version bump
-      if: ${{ steps.version_changed.outputs.changed == 'false' }}
-      run: |
-        echo "Kein Versionssprung → Build & Release übersprungen."
-        exit 0
-    # ------------------------------------------------------------
-    # 6. Git-Tag setzen
-    # ------------------------------------------------------------
-    - name: Create tag
-      id: create_tag
-      run: |
-        git tag v${{ steps.version.outputs.version }}
-        git push origin v${{ steps.version.outputs.version }}
-    # ------------------------------------------------------------
-    # 7. Warten, bis Tag auf GitHub verfügbar ist
-    # ------------------------------------------------------------
-    - name: Wait for GitHub tag propagation
-      run: sleep 4
 
     # ------------------------------------------------------------
-    # Deutscher Changelog generieren
+    # 5. Abbruch wenn kein Versionssprung
+    # ------------------------------------------------------------
+    - name: Skip if no version bump
+      if: ${{ steps.version_changed.outputs.changed == 'false' }}
+      run: |
+        echo "Kein Versionssprung – kein Build, kein Release."
+        exit 0
+
+    # ------------------------------------------------------------
+    # 6. Git-Tag setzen (fehlertolerant)
+    # ------------------------------------------------------------
+    - name: Create Git tag
+      run: |
+        git tag v${{ steps.version.outputs.version }} || echo "Tag existiert bereits"
+        git push origin v${{ steps.version.outputs.version }} || true
+
+    - name: Wait for tag propagation
+      run: sleep 3
+
+    # ------------------------------------------------------------
+    # 7. Changelog DE
     # ------------------------------------------------------------
     - name: Generate Changelog (DE)
-      id: changelog
+      id: changelog_de
       uses: mikepenz/release-changelog-builder-action@v4
       with:
         configuration: ".github/release-config.json"
@@ -98,15 +107,14 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Write CHANGELOG.md
-      run: |
-        echo "${{ steps.changelog.outputs.changelog }}" > CHANGELOG.md
+      run: echo "${{ steps.changelog_de.outputs.changelog }}" > CHANGELOG.md
 
     - name: Commit CHANGELOG.md
       run: |
         git config user.name "github-actions"
         git config user.email "github-actions@github.com"
         git add CHANGELOG.md
-        git commit -m "Aktualisiere CHANGELOG für Version ${{ steps.version.outputs.version }}" || echo "Keine Änderungen."
+        git commit -m "Update CHANGELOG for v${{ steps.version.outputs.version }}" || echo "No changes"
 
     - name: Push CHANGELOG.md
       uses: ad-m/github-push-action@v0.8.0
@@ -114,7 +122,7 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
 
     # ------------------------------------------------------------
-    # Englischer Changelog generieren
+    # 8. Changelog EN
     # ------------------------------------------------------------
     - name: Generate Changelog (EN)
       id: changelog_en
@@ -125,15 +133,12 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Write CHANGELOG_EN.md
-      run: |
-        echo "${{ steps.changelog_en.outputs.changelog }}" > CHANGELOG_EN.md
+      run: echo "${{ steps.changelog_en.outputs.changelog }}" > CHANGELOG_EN.md
 
     - name: Commit CHANGELOG_EN.md
       run: |
-        git config user.name "github-actions"
-        git config user.email "github-actions@github.com"
         git add CHANGELOG_EN.md
-        git commit -m "Update CHANGELOG_EN for version ${{ steps.version.outputs.version }}" || echo "Keine Änderungen."
+        git commit -m "Update CHANGELOG_EN for v${{ steps.version.outputs.version }}" || echo "No changes"
 
     - name: Push CHANGELOG_EN.md
       uses: ad-m/github-push-action@v0.8.0
@@ -141,46 +146,45 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
 
     # ------------------------------------------------------------
-    # 10. Docker vorbereiten
+    # 9. Docker Build Vorbereitung
     # ------------------------------------------------------------
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
 
-    - name: Set up Buildx
+    - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-    # ------------------------------------------------------------
-    # 11. DockerHub Login
-    # ------------------------------------------------------------
+
     - name: Login to DockerHub
       uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+
     # ------------------------------------------------------------
-    # 12. Docker Image bauen & pushen
+    # 10. Docker Image bauen & pushen (Multi-Arch)
     # ------------------------------------------------------------
-    - name: Build and push multi-platform image
+    - name: Build & Push Docker Image
       uses: docker/build-push-action@v5
       with:
+        context: .
         platforms: linux/amd64,linux/arm64
         push: true
-        context: .
         tags: |
           d3nn3s/filamenthub:latest
           d3nn3s/filamenthub:${{ steps.version.outputs.version }}
           d3nn3s/filamenthub:sha-${{ github.sha }}
 
     # ------------------------------------------------------------
-    # GitHub Release DE+EN
+    # 11. GitHub Release (DE + EN)
     # ------------------------------------------------------------
-    - name: Create GitHub Release (DE + EN)
+    - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
         tag_name: v${{ steps.version.outputs.version }}
         name: FilamentHub v${{ steps.version.outputs.version }}
         body: |
           ## 🇩🇪 Deutsch
-          ${{ steps.changelog.outputs.changelog }}
+          ${{ steps.changelog_de.outputs.changelog }}
 
           ---
 
