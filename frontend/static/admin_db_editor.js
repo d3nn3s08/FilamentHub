@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const executeBtn = document.getElementById('dbEditorExecute');
     const clearBtn = document.getElementById('dbEditorClear');
     const overviewBox = document.getElementById('dbTables');
+    const exampleButtons = document.querySelectorAll('[data-sql-example]');
 
     // SQL-Editor
     if (queryInput && outputBox && executeBtn && clearBtn) {
@@ -28,6 +29,22 @@ document.addEventListener('DOMContentLoaded', () => {
             queryInput.value = '';
             outputBox.textContent = '';
         };
+    }
+
+    if (queryInput && exampleButtons.length) {
+        const SQL_EXAMPLES = {
+            update: "UPDATE material SET notes = 'Beispieltext' WHERE id = 'INSERT_UUID_HERE';",
+            insert: "INSERT INTO material (name, brand, density, diameter) VALUES ('Mustermaterial', 'Demo', 1.24, 1.75);",
+            delete: "DELETE FROM material WHERE id = 'INSERT_UUID_HERE';"
+        };
+        exampleButtons.forEach(btn => {
+            const key = btn.dataset.sqlExample;
+            btn.addEventListener('click', () => {
+                if (!key) return;
+                queryInput.value = SQL_EXAMPLES[key] || '';
+                queryInput.focus();
+            });
+        });
     }
 
     // Tables Overview

@@ -15,6 +15,9 @@ class JobBase(SQLModel):
     started_at: datetime = Field(default_factory=datetime.utcnow)
     finished_at: Optional[datetime] = None
 
+    # Status: running, completed, failed, cancelled, aborted
+    status: str = Field(default="running")
+
 
 class Job(JobBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)

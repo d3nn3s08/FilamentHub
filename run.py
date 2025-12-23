@@ -8,6 +8,16 @@ from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler, RotatingFileHandler
 from utils.dummy_logger import DummyLogger
 
+# Load .env early so environment variables from a .env file are available
+# to modules that are imported later (e.g. admin password hash).
+try:
+    from dotenv import load_dotenv  # type: ignore
+    # Force override so values in .env replace any existing OS environment variables.
+    load_dotenv(override=True)
+except Exception:
+    # dotenv not installed or .env missing — continue without failing
+    pass
+
 
 def _ensure_python_multipart_installed() -> None:
     try:
@@ -130,7 +140,9 @@ def start():
             host=host,
             port=port,
             reload=False,
-            log_level="info"
+            log_level="info",
+            loop="asyncio",
+            ws="websockets"
         )
     except OSError as exc:
         if exc.errno in (98, 10048):

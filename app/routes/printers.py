@@ -1,15 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import Session, select
 from typing import List, Dict, Any
+import logging
 import socket
 import httpx
 import os
 from app.database import get_session
 from app.models.printer import Printer, PrinterCreate, PrinterRead
+from app.services import mqtt_runtime
 
 # Hinweis: kleine Kommentar-Änderung, um Dateisystem-Änderung und Reload zu triggern
 
 router = APIRouter(prefix="/api/printers", tags=["printers"])
+logger = logging.getLogger("app.routes.printers")
 
 UPLOAD_DIR = os.path.join("app", "static", "uploads", "printers")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -24,33 +27,42 @@ def get_image_url(printer_id: str) -> str | None:
 
 
 @router.get("/", response_model=List[PrinterRead])
-def get_all_printers(session: Session = Depends(get_session)):
-    """Alle Drucker abrufen"""
+def get_all_printers(live: bool = False, session: Session = Depends(get_session)):
+    """
+    Alle Drucker abrufen.
+    - live=false (default): schnelle Checks mit 0.3s Timeout
+    - live=true: Live-Check mit kurzem Timeout
+    """
     printers = session.exec(select(Printer)).all()
     result = []
     for printer in printers:
-        online = False
-        # Verbindungstest je nach Typ
+        online: bool = False
+        
+        # Kurze Timeout-Checks immer aktivieren (default 0.3s für schnelle Response)
+        timeout_val = 0.8 if live else 0.3
+        
         try:
             if printer.printer_type in ["bambu", "bambu_lab"]:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(1)
-                res = sock.connect_ex((printer.ip_address, printer.port or 6000))
-                sock.close()
-                online = (res == 0)
+                targets = [printer.port] if printer.port else []
+                targets.extend([6000, 8883])
+                for port in targets:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(timeout_val)
+                    res = sock.connect_ex((printer.ip_address, port))
+                    sock.close()
+                    if res == 0:
+                        online = True
+                        break
             elif printer.printer_type == "klipper":
                 port = printer.port or 7125
                 url = f"http://{printer.ip_address}:{port}/server/info"
-                try:
-                    r = httpx.get(url, timeout=1)
-                    online = r.status_code == 200
-                except Exception:
-                    online = False
-            elif printer.printer_type == "manual":
-                online = None
+                r = httpx.get(url, timeout=timeout_val)
+                online = r.status_code == 200
+            else:
+                online = False
         except Exception:
             online = False
-        # Dict mit Online-Status zurückgeben
+
         p_dict = printer.dict()
         p_dict["online"] = online
         p_dict["image_url"] = get_image_url(printer.id)
@@ -134,6 +146,7 @@ def update_printer(printer_id: str, printer: PrinterCreate, session: Session = D
     db_printer = session.get(Printer, printer_id)
     if not db_printer:
         raise HTTPException(status_code=404, detail="Drucker nicht gefunden")
+    old_auto_connect = bool(getattr(db_printer, "auto_connect", False))
     # Duplicate-Check bei IP/Typ-Änderung
     if printer.ip_address and printer.printer_type:
         exists = session.exec(
@@ -159,6 +172,18 @@ def update_printer(printer_id: str, printer: PrinterCreate, session: Session = D
     session.add(db_printer)
     session.commit()
     session.refresh(db_printer)
+    new_auto_connect = bool(getattr(db_printer, "auto_connect", False))
+    if old_auto_connect != new_auto_connect:
+        logger.info(
+            "Auto-connect flag changed (%s→%s) for printer %s",
+            old_auto_connect,
+            new_auto_connect,
+            printer_id,
+        )
+        try:
+            mqtt_runtime.apply_auto_connect(db_printer)
+        except Exception as exc:
+            logger.exception("Failed to apply auto-connect change for printer %s: %s", printer_id, exc)
     p_dict = db_printer.dict()
     p_dict["image_url"] = get_image_url(db_printer.id)
     return p_dict

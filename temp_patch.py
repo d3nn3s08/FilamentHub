@@ -155,7 +155,7 @@ add(indent + '            total_used_g = sum(u.get("used_g") or 0.0 for u in inf
 add(indent + '            job.filament_used_mm = total_used_mm')
 add(indent + '            job.filament_used_g = total_used_g')
 add(indent + '            job.finished_at = datetime.utcnow()')
-add(indent + '            if not job.spool_id and info.get("usages"):
+add(indent + '            if not job.spool_id and info.get("usages"):')
 add(indent + '                first_spool = next((u.get("spool_id") for u in info["usages"] if u.get("spool_id")), None)')
 add(indent + '                if first_spool:')
 add(indent + '                    job.spool_id = first_spool')

@@ -3,6 +3,8 @@ import time
 import os
 import psutil
 import yaml
+import logging
+import inspect
 import platform
 import shutil
 from fastapi import APIRouter, HTTPException
@@ -24,6 +26,17 @@ def load_config():
 
 
 def save_config(config: dict) -> None:
+    try:
+        logger = logging.getLogger('app')
+        caller = None
+        try:
+            fr = inspect.stack()[1]
+            caller = f"{fr.filename}:{fr.lineno} in {fr.function}"
+        except Exception:
+            caller = "unknown"
+        logger.info(f"Writing config.yaml (system_routes.save_config) called from {caller}")
+    except Exception:
+        pass
     with open("config.yaml", "w", encoding="utf-8") as f:
         yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
 
@@ -108,7 +121,6 @@ def system_status():
     # ECHTER ONLINE-STATUS AUS DB
     import socket
     import httpx
-    from app.database import get_session
     from app.models.printer import Printer
     from sqlmodel import select
     bambu_status = "offline"

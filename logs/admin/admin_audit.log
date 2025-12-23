@@ -1,5 +1,6 @@
-{"ts": "2025-12-17T19:14:30Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
-{"ts": "2025-12-17T21:57:49Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
-{"ts": "2025-12-17T21:57:49Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
-{"ts": "2025-12-17T21:57:49Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
-{"ts": "2025-12-17T21:57:51Z", "event": "admin_access", "details": {"path": "/admin/notifications", "ip": "127.0.0.1"}}
+{"ts": "2025-12-23T23:02:04Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-23T23:02:09Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-23T23:02:09Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-23T23:02:09Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-23T23:02:09Z", "event": "admin_coverage_report", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-23T23:02:12Z", "event": "admin_coverage_run", "details": {"ip": "127.0.0.1", "success": false, "stdout": "", "stderr": "ImportError while loading conftest 'C:\\Users\\Denis\\Desktop\\FilamentHub_Projekt\\FilamentHub\\tests\\conftest.py'.\ntests\\conftest.py:4: in <module>\n    from app.database import get_engine  # falls vorhanden\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   ImportError: cannot import name 'get_engine' from 'app.database' (C:\\Users\\Denis\\Desktop\\FilamentHub_Projekt\\FilamentHub\\app\\database.py)\n"}}

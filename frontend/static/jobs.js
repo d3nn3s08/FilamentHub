@@ -8,7 +8,7 @@ let overrideJobId = null;
 
 // Load data on page load
 document.addEventListener('DOMContentLoaded', async () => {
-    // erst Stammdaten laden, dann Jobs rendern, damit IDs aufgeloest werden
+    // Stammdaten ERST laden, dann Jobs rendern, damit IDs aufgelöst werden
     try {
         await loadPrinters();
         await loadSpools();
@@ -27,6 +27,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('searchInput').addEventListener('input', filterJobs);
     document.getElementById('filterPrinter').addEventListener('change', filterJobs);
     document.getElementById('filterStatus').addEventListener('change', filterJobs);
+    
+    // Auto-refresh alle 15 Sekunden
+    setInterval(async () => {
+        await loadJobs();
+        await loadStats();
+    }, 15000);
 });
 
 async function loadJobs() {
@@ -93,65 +99,51 @@ function renderJobs(jobsList) {
     const tbody = document.getElementById('jobsTable');
     tbody.innerHTML = '';
     
+    // Update count
+    document.getElementById('jobCount').textContent = jobsList.length;
+    
     if (jobsList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Keine Druckaufträge vorhanden</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-dim);">Keine Druckaufträge vorhanden</td></tr>';
         return;
     }
     
     jobsList.forEach(job => {
         const printer = printers.find(p => p.id === job.printer_id);
-        const usages = Array.isArray(job.usages) ? job.usages : [];
         const primarySpool = spools.find(s => s.id === job.spool_id);
         
         const status = job.finished_at ? 
             '<span class="status-badge status-online">Abgeschlossen</span>' : 
             '<span class="status-badge status-printing">Aktiv</span>';
         
-        const startDate = new Date(job.started_at).toLocaleString('de-DE');
-        const endDate = job.finished_at ? new Date(job.finished_at).toLocaleString('de-DE') : '-';
+        const verbrauch = `<strong>${job.filament_used_g.toFixed(1)}g</strong><br><small>${(job.filament_used_mm / 1000).toFixed(2)}m</small>`;
         
-        const verbrauch = `${job.filament_used_g.toFixed(1)}g / ${(job.filament_used_mm / 1000).toFixed(2)}m`;
+        // Berechne Dauer
+        const start = new Date(job.started_at);
+        const end = job.finished_at ? new Date(job.finished_at) : new Date();
+        const durationMs = end - start;
+        const durationMin = Math.floor(durationMs / 60000);
+        const hours = Math.floor(durationMin / 60);
+        const minutes = durationMin % 60;
+        const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        
+        const spoolDisplay = primarySpool ? 
+            `<div style="display:flex;align-items:center;gap:8px;">
+                ${primarySpool.tray_color ? `<span class="color-preview" style="background:#${primarySpool.tray_color.substring(0,6)}"></span>` : ''}
+                <span>${primarySpool.label || `Spule ${primarySpool.id.substring(0,6)}`}</span>
+             </div>` : '<span style="color: var(--text-dim);">-</span>';
         
         const row = `
             <tr>
-                <td>${job.name}</td>
-                <td>${printer ? printer.name : '<em>Unbekannt</em>'}</td>
-                <td>
-                    ${
-                        usages.length
-                            ? `<div class="usage-badges">
-                                ${usages.map((u) => {
-                                    const sp = spools.find((s) => s.id === u.spool_id);
-                                    const color = sp?.tray_color ? '#' + sp.tray_color.substring(0, 6) : null;
-                                    const label =
-                                        sp?.label ||
-                                        (u.slot !== undefined && u.slot !== null
-                                            ? `Slot ${u.slot}`
-                                            : `Spule ${(sp?.id || '').substring(0, 6)}`);
-                                    return `
-                                        <span class="usage-badge">
-                                            ${color ? `<span class="color-preview" style="background:${color}"></span>` : ''}
-                                            <span>${label} (${(u.used_g || 0).toFixed(1)}g / ${(((u.used_mm || 0) / 1000)).toFixed(2)}m)</span>
-                                        </span>`;
-                                }).join('')}
-                               </div>`
-                            : (primarySpool
-                                ? `<div style="display:flex;align-items:center;gap:8px;">
-                                        ${primarySpool.tray_color ? `<span class="color-preview" style="background:#${primarySpool.tray_color.substring(0,6)};width:16px;height:16px;border-radius:4px;display:inline-block;"></span>` : ''}
-                                        <span>${primarySpool.label || `Spule ${primarySpool.id.substring(0,6)}`}</span>
-                                   </div>`
-                                : '-')
-                    }
-                </td>
+                <td><strong>${job.name}</strong></td>
+                <td>${printer ? printer.name : '<em style="color: var(--text-dim);">Unbekannt</em>'}</td>
+                <td>${spoolDisplay}</td>
                 <td>${verbrauch}</td>
-                <td>${startDate}</td>
-                <td>${endDate}</td>
                 <td>${status}</td>
+                <td><strong>${durationText}</strong></td>
                 <td>
-                    <div class="action-group">
-                        <button class="btn btn-sm" onclick="editJob('${job.id}')">Bearbeiten</button>
-                        <button class="btn btn-sm" onclick="openOverrideModal('${job.id}')">Zuordnung überschreiben</button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteJob('${job.id}')">Löschen</button>
+                    <div class="table-actions">
+                        <button class="btn-icon" onclick="editJob('${job.id}')" title="Bearbeiten">✏️</button>
+                        <button class="btn-icon btn-delete" onclick="deleteJob('${job.id}')" title="Löschen">🗑️</button>
                     </div>
                 </td>
             </tr>
@@ -191,8 +183,8 @@ function openAddModal() {
     document.getElementById('jobName').value = '';
     document.getElementById('jobPrinter').value = '';
     document.getElementById('jobSpool').value = '';
-    document.getElementById('filamentMm').value = '0';
-    document.getElementById('filamentG').value = '0';
+    document.getElementById('filamentUsedMm').value = '0';
+    document.getElementById('filamentUsedG').value = '0';
     document.getElementById('finishedAt').value = '';
     
     const now = new Date();
@@ -211,8 +203,8 @@ function editJob(id) {
     document.getElementById('jobName').value = job.name;
     document.getElementById('jobPrinter').value = job.printer_id;
     document.getElementById('jobSpool').value = job.spool_id || '';
-    document.getElementById('filamentMm').value = job.filament_used_mm;
-    document.getElementById('filamentG').value = job.filament_used_g;
+    document.getElementById('filamentUsedMm').value = job.filament_used_mm;
+    document.getElementById('filamentUsedG').value = job.filament_used_g;
     
     const startDate = new Date(job.started_at);
     startDate.setMinutes(startDate.getMinutes() - startDate.getTimezoneOffset());
@@ -229,17 +221,24 @@ function editJob(id) {
     document.getElementById('jobModal').style.display = 'flex';
 }
 
-function closeModal() {
+function closeAddModal() {
     document.getElementById('jobModal').style.display = 'none';
     currentJobId = null;
 }
 
-async function saveJob() {
+function closeDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+    deleteJobId = null;
+}
+
+async function saveJob(event) {
+    event.preventDefault();
+    
     const name = document.getElementById('jobName').value.trim();
     const printer_id = document.getElementById('jobPrinter').value;
     const spool_id = document.getElementById('jobSpool').value || null;
-    const filament_used_mm = parseFloat(document.getElementById('filamentMm').value) || 0;
-    const filament_used_g = parseFloat(document.getElementById('filamentG').value) || 0;
+    const filament_used_mm = parseFloat(document.getElementById('filamentUsedMm').value) || 0;
+    const filament_used_g = parseFloat(document.getElementById('filamentUsedG').value) || 0;
     const started_at = document.getElementById('startedAt').value;
     const finished_at = document.getElementById('finishedAt').value || null;
     
@@ -269,10 +268,11 @@ async function saveJob() {
         });
         
         if (response.ok) {
-            closeModal();
+            closeAddModal();
             clearFilters();
             await loadJobs();
             await loadStats();
+            showNotification(currentJobId ? 'Job aktualisiert!' : 'Job erstellt!', 'success');
         } else {
             alert('Fehler beim Speichern des Jobs');
         }
@@ -283,17 +283,8 @@ async function saveJob() {
 }
 
 function deleteJob(id) {
-    const job = jobs.find(j => j.id === id);
-    if (!job) return;
-    
     deleteJobId = id;
-    document.getElementById('deleteJobName').textContent = job.name;
     document.getElementById('deleteModal').style.display = 'flex';
-}
-
-function closeDeleteModal() {
-    document.getElementById('deleteModal').style.display = 'none';
-    deleteJobId = null;
 }
 
 async function confirmDelete() {
@@ -309,6 +300,7 @@ async function confirmDelete() {
             clearFilters();
             await loadJobs();
             await loadStats();
+            showNotification('Job gelöscht!', 'success');
         } else {
             alert('Fehler beim Löschen des Jobs');
         }
@@ -319,93 +311,18 @@ async function confirmDelete() {
 }
 
 
-function openOverrideModal(id) {
-    const job = jobs.find(j => j.id === id);
-    if (!job) return;
-    overrideJobId = id;
-    const info = document.getElementById('overrideJobInfo');
-    info.textContent = `${job.name} – ${job.printer_id || 'Unbekannt'}`;
-
-    const select = document.getElementById('overrideSpoolSelect');
-    select.innerHTML = '<option value="">Keine Spule zuweisen</option>';
-    const filtered = spools.filter(s => !job.printer_id || s.printer_id === job.printer_id || !s.printer_id);
-    filtered.forEach(spool => {
-        const name = spool.label || `Spule ${spool.id.substring(0,6)}`;
-        const slot = spool.ams_slot ?? '-';
-        const mat = spool.tray_type || spool.material_id || '';
-        const option = document.createElement('option');
-        option.value = spool.id;
-        option.textContent = `${name} (Slot ${slot}${mat ? ' | ' + mat : ''})`;
-        if (job.spool_id === spool.id) option.selected = true;
-        select.appendChild(option);
-    });
-
-    document.getElementById('overrideModal').style.display = 'flex';
-}
-
-function closeOverrideModal() {
-    document.getElementById('overrideModal').style.display = 'none';
-    overrideJobId = null;
-}
-
-async function saveOverride() {
-    if (!overrideJobId) return;
-    const spoolId = document.getElementById('overrideSpoolSelect').value || null;
-    try {
-        const response = await fetch(`/api/jobs/${overrideJobId}/spool`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ spool_id: spoolId })
-        });
-        if (response.ok) {
-            closeOverrideModal();
-            await loadJobs();
-        } else {
-            alert('Konnte Zuordnung nicht speichern');
-        }
-    } catch (err) {
-        console.error('Override Fehler', err);
-        alert('Konnte Zuordnung nicht speichern');
-    }
-}
-
-async function removeOverride() {
-    if (!overrideJobId) return;
-    try {
-        const response = await fetch(`/api/jobs/${overrideJobId}/spool`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ spool_id: null })
-        });
-        if (response.ok) {
-            closeOverrideModal();
-            await loadJobs();
-        } else {
-            alert('Konnte Zuordnung nicht entfernen');
-        }
-    } catch (err) {
-        console.error('Override Entfernen Fehler', err);
-        alert('Konnte Zuordnung nicht entfernen');
-    }
-}
-
 // Close modal on ESC or background click
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        closeModal();
+        closeAddModal();
         closeDeleteModal();
-        closeOverrideModal();
     }
 });
 
-document.getElementById('jobModal').addEventListener('click', (e) => {
-    if (e.target.id === 'jobModal') closeModal();
+document.getElementById('jobModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'jobModal') closeAddModal();
 });
 
-document.getElementById('deleteModal').addEventListener('click', (e) => {
+document.getElementById('deleteModal')?.addEventListener('click', (e) => {
     if (e.target.id === 'deleteModal') closeDeleteModal();
-});
-
-document.getElementById('overrideModal').addEventListener('click', (e) => {
-    if (e.target.id === 'overrideModal') closeOverrideModal();
 });

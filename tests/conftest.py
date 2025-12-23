@@ -1,12 +1,41 @@
 import pytest
+import os
+from sqlmodel import SQLModel
+from app.database import get_engine  # falls vorhanden
+
+@pytest.fixture
+def test_db(tmp_path):
+    db_path = tmp_path / "test.db"
+    os.environ["FILAMENTHUB_DB_PATH"] = str(db_path)
+
+    engine = get_engine()
+    SQLModel.metadata.create_all(engine)
+
+    yield engine
+
+    engine.dispose()
+
+test_root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(test_root))
+
+import pytest
+from sqlalchemy.sql.elements import BinaryExpression
+from app.database import engine
+from sqlmodel import SQLModel
+
+import app.models.job  # ensure SQLModel metadata registered
+import app.models.material
+import app.models.printer
+import app.models.spool
+import app.models.settings
 
 
 class Field:
     def __init__(self, name):
         self.name = name
 
-    def __eq__(self, other):
-        return ("eq", self.name, other)
+    def __eq__(self, other) -> bool:
+        return self.name == getattr(other, "name", None)
 
 
 class DummySpool:
@@ -88,6 +117,10 @@ class FakeSession:
                 if isinstance(flt, tuple) and flt[0] == "eq":
                     _, field, expected = flt
                     items = [s for s in items if getattr(s, field, None) == expected]
+                elif isinstance(flt, BinaryExpression):
+                    key = flt.left.key
+                    value = getattr(flt.right, "value", None)
+                    items = [s for s in items if getattr(s, key, None) == value]
             return FakeResult(items)
         return FakeResult([])
 
@@ -125,3 +158,20 @@ def fake_session_env(monkeypatch):
     monkeypatch.setattr(ams_sync, "engine", None)
 
     return spools, materials
+
+
+@pytest.fixture(autouse=True, scope="session")
+def reset_db():
+    # Testdatenbank löschen, falls vorhanden
+    if os.path.exists(TEST_DB_PATH):
+        os.remove(TEST_DB_PATH)
+    # Tabellen neu anlegen
+    SQLModel.metadata.create_all(engine)
+    yield
+    # Nach den Tests optional wieder löschen
+    try:
+        engine.dispose()
+    except Exception:
+        pass
+    if os.path.exists(TEST_DB_PATH):
+        os.remove(TEST_DB_PATH)

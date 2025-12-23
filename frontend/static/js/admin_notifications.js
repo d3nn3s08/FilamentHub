@@ -89,6 +89,12 @@ async function triggerNotification(id) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: targetId }),
         });
+        if (typeof window.triggerAlert === "function") {
+            const notification = notificationsConfig.find((n) => n.id === targetId);
+            if (notification && notification.enabled !== false) {
+                window.triggerAlert(notification);
+            }
+        }
     } catch (err) {
         console.error("Trigger fehlgeschlagen", err);
     }
@@ -110,69 +116,61 @@ function renderList() {
     container.innerHTML = "";
     if (!notificationsConfig.length) {
         const empty = document.createElement("div");
-        empty.className = "panel";
+        empty.style.color = "var(--text-dim)";
         empty.textContent = "Keine Notifications vorhanden.";
         container.appendChild(empty);
         return;
     }
     notificationsConfig.forEach((n) => {
-        const card = document.createElement("div");
-        card.className = "panel";
-        card.style.cursor = "pointer";
-        card.addEventListener("click", () => fillForm(n));
+        const item = document.createElement("div");
+        item.className = "notif-item";
+        item.addEventListener("click", () => fillForm(n));
 
-        const title = document.createElement("div");
-        title.className = "eyebrow";
-        title.textContent = n.id;
+        const header = document.createElement("div");
+        header.className = "notif-item-header";
+        
+        const id = document.createElement("div");
+        id.className = "notif-item-id";
+        id.textContent = n.id;
+        
+        const type = document.createElement("div");
+        type.className = "notif-item-type";
+        type.textContent = n.type || "info";
+        
+        header.appendChild(id);
+        header.appendChild(type);
 
-        const label = document.createElement("h4");
-        label.style.margin = "6px 0";
+        const label = document.createElement("div");
+        label.className = "notif-item-label";
         label.textContent = n.label || n.id;
 
-        const msg = document.createElement("p");
-        msg.className = "subtitle";
+        const msg = document.createElement("div");
+        msg.className = "notif-item-msg";
         msg.textContent = n.message;
 
         const meta = document.createElement("div");
-        meta.style.display = "flex";
-        meta.style.gap = "8px";
-        meta.style.alignItems = "center";
-        const badge = document.createElement("span");
-        badge.className = "btn ghost";
-        badge.style.padding = "6px 10px";
-        badge.textContent = n.type || "info";
-        const persistent = document.createElement("span");
-        persistent.className = "subtitle";
-        persistent.textContent = `${n.enabled !== false ? "Aktiv" : "Inaktiv"} · ${n.persistent ? "Persistent" : "Transient"}`;
-        meta.appendChild(badge);
-        meta.appendChild(persistent);
+        meta.className = "notif-item-meta";
+        meta.textContent = `${n.enabled !== false ? "Aktiv" : "Inaktiv"} · ${n.persistent ? "Persistent" : "Transient"}`;
 
         const actions = document.createElement("div");
-        actions.className = "actions";
-        actions.style.marginTop = "10px";
+        actions.className = "notif-item-actions";
 
         const btnEdit = document.createElement("button");
-        btnEdit.className = "btn ghost";
-        btnEdit.type = "button";
-        btnEdit.textContent = "Bearbeiten";
+        btnEdit.textContent = "✏️ Bearbeiten";
         btnEdit.addEventListener("click", (e) => {
             e.stopPropagation();
             fillForm(n);
         });
 
         const btnDelete = document.createElement("button");
-        btnDelete.className = "btn ghost";
-        btnDelete.type = "button";
-        btnDelete.textContent = "Löschen";
+        btnDelete.textContent = "🗑️ Löschen";
         btnDelete.addEventListener("click", async (e) => {
             e.stopPropagation();
             await deleteNotification(n.id);
         });
 
         const btnTrigger = document.createElement("button");
-        btnTrigger.className = "btn primary";
-        btnTrigger.type = "button";
-        btnTrigger.textContent = "Triggern";
+        btnTrigger.textContent = "⚡ Triggern";
         btnTrigger.addEventListener("click", async (e) => {
             e.stopPropagation();
             await triggerNotification(n.id);
@@ -182,12 +180,12 @@ function renderList() {
         actions.appendChild(btnDelete);
         actions.appendChild(btnTrigger);
 
-        card.appendChild(title);
-        card.appendChild(label);
-        card.appendChild(msg);
-        card.appendChild(meta);
-        card.appendChild(actions);
-        container.appendChild(card);
+        item.appendChild(header);
+        item.appendChild(label);
+        item.appendChild(msg);
+        item.appendChild(meta);
+        item.appendChild(actions);
+        container.appendChild(item);
     });
 }
 
@@ -205,6 +203,12 @@ async function triggerSelectedNotification() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: notifId, trigger: triggerType })
         });
+        if (typeof window.triggerAlert === "function") {
+            const notification = notificationsConfig.find((n) => n.id === notifId);
+            if (notification && notification.enabled !== false) {
+                window.triggerAlert(notification);
+            }
+        }
     } catch (err) {
         console.error("Trigger fehlgeschlagen", err);
     }

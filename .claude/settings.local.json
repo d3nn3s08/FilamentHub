@@ -4,7 +4,10 @@
       "Bash(.venv/Scripts/python.exe:*)",
       "Bash(curl:*)",
       "Bash(node:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(cp:*)",
+      "Bash(find:*)",
+      "Bash(python -m py_compile:*)"
     ]
   }
 }

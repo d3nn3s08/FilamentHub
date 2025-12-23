@@ -1,4 +1,6 @@
 (function () {
+    console.log("[GlobalNotifications] Script wird geladen...");
+
     const state = {
         config: [],
         socket: null,
@@ -63,23 +65,38 @@
     }
 
     function triggerAlert(notification) {
+        console.log("[GlobalNotifications] triggerAlert aufgerufen:", notification);
         const root = getAlertRoot();
-        if (!root) return;
+        if (!root) {
+            console.error("[GlobalNotifications] alert-root nicht gefunden!");
+            return;
+        }
 
         let resolved = notification;
         if (typeof notification === "string") {
             resolved = findNotificationById(notification);
         }
-        if (!resolved) return;
-        if (resolved.enabled === false) return;
+        if (!resolved) {
+            console.warn("[GlobalNotifications] Notification nicht gefunden:", notification);
+            return;
+        }
+        if (resolved.enabled === false) {
+            console.log("[GlobalNotifications] Notification ist deaktiviert:", resolved.id);
+            return;
+        }
 
         const existing = root.querySelector(`.alert[data-id="${resolved.id}"]`);
         if (existing && resolved.persistent) {
+            console.log("[GlobalNotifications] Persistente Notification existiert bereits:", resolved.id);
             return;
         }
 
         const alertEl = createAlertElement(resolved);
-        if (!alertEl) return;
+        if (!alertEl) {
+            console.error("[GlobalNotifications] createAlertElement fehlgeschlagen!");
+            return;
+        }
+        console.log("[GlobalNotifications] Alert anzeigen:", resolved.id);
         root.appendChild(alertEl);
 
         if (!resolved.persistent) {
@@ -103,35 +120,46 @@
     }
 
     function handleSocketMessage(event) {
+        console.log("[GlobalNotifications] WebSocket Nachricht empfangen:", event.data);
         try {
             const data = JSON.parse(event.data);
+            console.log("[GlobalNotifications] Geparste Daten:", data);
             if (data && data.event === "notification_trigger" && data.payload) {
+                console.log("[GlobalNotifications] Notification-Trigger erkannt, zeige Alert...");
                 triggerAlert(data.payload);
+            } else {
+                console.warn("[GlobalNotifications] Unbekanntes Event oder fehlendes Payload:", data);
             }
         } catch (err) {
-            console.error("WebSocket payload ungültig:", err);
+            console.error("[GlobalNotifications] WebSocket payload ungültig:", err);
         }
     }
 
     function connectSocket() {
         const protocol = window.location.protocol === "https:" ? "wss" : "ws";
         const wsUrl = `${protocol}://${window.location.host}/api/notifications/ws`;
+        console.log("[GlobalNotifications] Verbinde WebSocket:", wsUrl);
         try {
             state.socket = new WebSocket(wsUrl);
+            state.socket.onopen = () => {
+                console.log("[GlobalNotifications] WebSocket verbunden!");
+            };
             state.socket.onmessage = handleSocketMessage;
             state.socket.onclose = () => {
+                console.log("[GlobalNotifications] WebSocket geschlossen, reconnect in 2s...");
                 if (state.reconnectTimer) clearTimeout(state.reconnectTimer);
                 state.reconnectTimer = setTimeout(connectSocket, 2000);
             };
-            state.socket.onerror = () => {
+            state.socket.onerror = (err) => {
+                console.error("[GlobalNotifications] WebSocket Fehler:", err);
                 try {
                     state.socket.close();
                 } catch (e) {
-                    console.error("WebSocket close error", e);
+                    console.error("[GlobalNotifications] WebSocket close error", e);
                 }
             };
         } catch (err) {
-            console.error("WebSocket konnte nicht geöffnet werden:", err);
+            console.error("[GlobalNotifications] WebSocket konnte nicht geöffnet werden:", err);
             if (state.reconnectTimer) clearTimeout(state.reconnectTimer);
             state.reconnectTimer = setTimeout(connectSocket, 3000);
         }
@@ -139,15 +167,16 @@
 
 
     document.addEventListener("DOMContentLoaded", () => {
+        console.log("[GlobalNotifications] DOMContentLoaded - Initialisiere...");
         loadNotifications();
-        // WebSocket nur im Admin-Panel verbinden
-        if (window.location.pathname.startsWith("/admin/notifications")) {
-            connectSocket();
-        }
+        // WebSocket auf allen Seiten verbinden für globale Benachrichtigungen
+        connectSocket();
     });
 
+    console.log("[GlobalNotifications] Exportiere Funktionen zu window...");
     window.loadNotifications = loadNotifications;
     window.triggerAlert = triggerAlert;
     window.renderPersistentAlerts = renderPersistentAlerts;
     window.closeAlert = closeAlert;
+    console.log("[GlobalNotifications] Script vollständig geladen!");
 })();

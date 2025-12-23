@@ -12,6 +12,7 @@ def set_live_state(device_id: str, payload: Any) -> None:
         "ts": datetime.utcnow().isoformat(),
         "payload": payload,
     }
+    print(f"[live_state] Updated: device={device_id}, keys={len(live_state)}")
 
 
 def get_live_state(device_id: str) -> Optional[Dict[str, Any]]:

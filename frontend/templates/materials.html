@@ -3,26 +3,130 @@
 {% set page_subtitle = "Verwalte Materialprofile und Eigenschaften" %}
 
 {% block extra_styles %}
-<link rel="stylesheet" href="{{ url_for('frontend_static', path='css/printers.css') }}">
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='materials.css') }}">
 {% endblock %}
 
 {% block header_actions %}
 <div class="actions">
-    <button class="btn primary">Neues Material</button>
+    <button class="btn primary" onclick="openCreateModal()">Neues Material</button>
 </div>
 {% endblock %}
 
 {% block content %}
-<section class="card-grid">
-    <div class="panel">
-        <p class="eyebrow">Hinweis</p>
-        <p class="subtitle">Hier werden später Materialkarten und Filter eingeblendet.</p>
-    </div>
-    <div class="panel">
-        <p class="eyebrow">API</p>
-        <p class="subtitle">Daten kommen aus /api/materials.</p>
-    </div>
+<section class="panel">
+    <table class="materials-table" id="materialsTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Marke</th>
+                <th>Dichte</th>
+                <th>Durchmesser</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody id="materialsTableBody">
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 20px;">Laden...</td>
+            </tr>
+        </tbody>
+    </table>
 </section>
+
+<!-- EDIT MODAL -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Material bearbeiten</h2>
+            <button class="modal-close" onclick="closeEditModal()">×</button>
+        </div>
+        <form id="editForm" onsubmit="saveMaterial(event)">
+            <div class="form-group">
+                <label for="editName">Name *</label>
+                <input type="text" id="editName" name="name" required>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editBrand">Marke</label>
+                    <select id="editBrand" name="brand" onchange="toggleEditBrandInput()">
+                        <option value="">-- Keine --</option>
+                        <option value="__new__">+ Neue Marke...</option>
+                    </select>
+                    <input type="text" id="editBrandInput" placeholder="Neue Marke eingeben..." style="display: none; margin-top: 8px;">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editDensity">Dichte (g/cm³)</label>
+                    <input type="number" id="editDensity" name="density" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="editDiameter">Durchmesser (mm)</label>
+                    <input type="number" id="editDiameter" name="diameter" step="0.01">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="editNotes">Notizen</label>
+                <textarea id="editNotes" name="notes" rows="3"></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="closeEditModal()">Abbrechen</button>
+                <button type="submit" class="btn primary">Speichern</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- CREATE MODAL -->
+<div id="createModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Neues Material</h2>
+            <button class="modal-close" onclick="closeCreateModal()">×</button>
+        </div>
+        <form id="createForm" onsubmit="createMaterial(event)">
+            <div class="form-group">
+                <label for="createName">Name *</label>
+                <input type="text" id="createName" name="name" required>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="createBrand">Marke</label>
+                    <select id="createBrand" name="brand" onchange="toggleCreateBrandInput()">
+                        <option value="">-- Keine --</option>
+                        <option value="__new__">+ Neue Marke...</option>
+                    </select>
+                    <input type="text" id="createBrandInput" placeholder="Neue Marke eingeben..." style="display: none; margin-top: 8px;">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="createDensity">Dichte (g/cm³)</label>
+                    <input type="number" id="createDensity" name="density" step="0.01" value="1.24">
+                </div>
+                <div class="form-group">
+                    <label for="createDiameter">Durchmesser (mm)</label>
+                    <input type="number" id="createDiameter" name="diameter" step="0.01" value="1.75">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="createNotes">Notizen</label>
+                <textarea id="createNotes" name="notes" rows="3"></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="closeCreateModal()">Abbrechen</button>
+                <button type="submit" class="btn primary">Erstellen</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}

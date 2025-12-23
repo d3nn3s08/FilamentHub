@@ -7,12 +7,29 @@ async function loadPrinters() {
     try {
         const res = await fetch("/api/printers/");
         if (!res.ok) throw new Error("Request failed");
-        const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) {
+        const printers = await res.json();
+        const liveRes = await fetch("/api/live-state/");
+        const liveData = await liveRes.ok ? await liveRes.json() : {};
+        // Mappe Live-State nach cloud_serial, nutze payload.print falls vorhanden, sonst payload
+        const liveMap = Object.fromEntries(
+            Object.entries(liveData).map(([k, v]) => {
+                let live = v.payload && v.payload.print ? { ...v.payload.print } : { ...v.payload };
+                // AMS Tray-Daten explizit kopieren
+                if (v.payload?.ams?.ams && Array.isArray(v.payload.ams.ams) && v.payload.ams.ams[0]) {
+                    live.tray = v.payload.ams.ams[0].tray;
+                    live.tray_now = v.payload.ams.ams[0].tray_now;
+                }
+                return [k, live];
+            })
+        );
+        if (!Array.isArray(printers) || printers.length === 0) {
             cardsContainer.innerHTML = '<div class="empty">Keine Drucker konfiguriert.</div>';
             return;
         }
-        cardsContainer.innerHTML = data.map(renderCard).join("");
+        cardsContainer.innerHTML = printers.map(printer => renderCard({
+            ...printer,
+            live: liveMap[printer.cloud_serial] || null
+        })).join("");
     } catch (err) {
         console.error(err);
         cardsContainer.innerHTML = '<div class="empty">Fehler beim Laden der Drucker.</div>';
@@ -25,10 +42,33 @@ function renderCard(printer) {
     const icon = printer.image_url
         ? `<img src="${printer.image_url}" alt="${printer.name || "Drucker"}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #2f3a4d;">`
         : renderPrinterIcon(printer.printer_type);
-    const nozzle = printer.nozzle_temp ?? "-";
-    const bed = printer.bed_temp ?? "-";
-    const filament = printer.filament_material || printer.printer_type?.toUpperCase() || "-";
-    const progress = printer.progress_percent ?? 0;
+    // Live-Daten bevorzugen, Fallback auf statische Daten
+    const nozzle = printer.live?.nozzle_temper ?? printer.nozzle_temp ?? "-";
+    const bed = printer.live?.bed_temper ?? printer.bed_temp ?? "-";
+    let filament = "-";
+    // Robust: tray/tray_now ggf. aus AMS-Daten extrahieren
+    let tray = printer.live?.tray;
+    let tray_now = printer.live?.tray_now;
+    if ((!tray || tray.length === 0) && printer.live?.ams?.ams && Array.isArray(printer.live.ams.ams) && printer.live.ams.ams[0]) {
+        tray = printer.live.ams.ams[0].tray;
+        tray_now = printer.live.ams.ams[0].tray_now;
+    }
+    console.log("DEBUG AMS tray_now:", tray_now, "tray:", tray, printer);
+    if (tray && Array.isArray(tray) && tray.length > 0) {
+        let tray_now_num = Number(tray_now);
+        if (!isNaN(tray_now_num) && tray[tray_now_num]) {
+            const t = tray[tray_now_num];
+            filament = t.tray_sub_brands || t.tray_type || "-";
+        } else {
+            const t = tray[0];
+            filament = t.tray_sub_brands || t.tray_type || "-";
+        }
+    } else {
+        console.log("DEBUG Filament Fallback:", printer.live);
+        filament = printer.live?.tray_type || printer.live?.filament_material || printer.filament_material || printer.printer_type?.toUpperCase() || "-";
+        if (filament && filament !== "-") filament += "  | Datenbank";
+    }
+    const progress = printer.live?.percent ?? printer.progress_percent ?? 0;
     const progressColor = pickProgressColor(progress);
 
     return `
@@ -97,7 +137,9 @@ function renderPrinterIcon(type) {
 
 document.addEventListener("DOMContentLoaded", () => {
     loadPrinters();
-    if (refreshBtn) refreshBtn.addEventListener("click", loadPrinters);
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", loadPrinters);
+    }
 });
 
 function toggleMenu(evt, id) {
@@ -125,6 +167,8 @@ async function openEditModal(id) {
         document.getElementById("editType").value = p.printer_type || "";
         document.getElementById("editIp").value = p.ip_address || "";
         document.getElementById("editPort").value = p.port || "";
+        document.getElementById("editPower").value = p.power_consumption_kw ?? "";
+        document.getElementById("editMaintenance").value = p.maintenance_cost_yearly ?? "";
         document.getElementById("editSerial").value = p.cloud_serial || "";
         document.getElementById("editApiKey").value = p.api_key || "";
         document.getElementById("editAutoConnect").checked = !!p.auto_connect;
@@ -142,6 +186,8 @@ async function savePrinterEdit(ev) {
         printer_type: document.getElementById("editType").value,
         ip_address: document.getElementById("editIp").value,
         port: document.getElementById("editPort").value ? Number(document.getElementById("editPort").value) : null,
+        power_consumption_kw: document.getElementById("editPower").value ? Number(document.getElementById("editPower").value) : null,
+        maintenance_cost_yearly: document.getElementById("editMaintenance").value ? Number(document.getElementById("editMaintenance").value) : null,
         cloud_serial: document.getElementById("editSerial").value,
         api_key: document.getElementById("editApiKey").value,
         auto_connect: document.getElementById("editAutoConnect").checked

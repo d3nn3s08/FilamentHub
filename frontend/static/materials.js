@@ -16,20 +16,6 @@ function setupEventListeners() {
     
     // Brand filter
     document.getElementById('filterBrand').addEventListener('change', filterMaterials);
-    
-    // Color picker sync
-    const colorPicker = document.getElementById('materialColorPicker');
-    const colorInput = document.getElementById('materialColor');
-    
-    colorPicker.addEventListener('input', (e) => {
-        colorInput.value = e.target.value;
-    });
-    
-    colorInput.addEventListener('input', (e) => {
-        if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
-            colorPicker.value = e.target.value;
-        }
-    });
 }
 
 // === LOAD MATERIALS ===
@@ -87,7 +73,6 @@ function renderMaterials(materialsToRender) {
                     <tr>
                         <th>Name</th>
                         <th>Marke</th>
-                        <th>Farbe</th>
                         <th>Dichte</th>
                         <th>Durchmesser</th>
                         <th>Aktionen</th>
@@ -98,12 +83,6 @@ function renderMaterials(materialsToRender) {
                         <tr>
                             <td><strong>${m.name}</strong></td>
                             <td>${m.brand || '-'}</td>
-                            <td>
-                                ${m.color ? `
-                                    <span class="color-preview" style="background: ${m.color}"></span>
-                                    ${m.color}
-                                ` : '-'}
-                            </td>
                             <td>${m.density} g/cm³</td>
                             <td>${m.diameter} mm</td>
                             <td>
@@ -175,8 +154,6 @@ function openEditModal(id) {
     document.getElementById('materialId').value = material.id;
     document.getElementById('materialName').value = material.name;
     document.getElementById('materialBrand').value = material.brand || '';
-    document.getElementById('materialColor').value = material.color || '';
-    document.getElementById('materialColorPicker').value = material.color || '#000000';
     document.getElementById('materialDensity').value = material.density;
     document.getElementById('materialDiameter').value = material.diameter;
     document.getElementById('materialNotes').value = material.notes || '';
@@ -206,7 +183,6 @@ async function saveMaterial(event) {
     const data = {
         name: document.getElementById('materialName').value,
         brand: document.getElementById('materialBrand').value || null,
-        color: document.getElementById('materialColor').value || null,
         density: parseFloat(document.getElementById('materialDensity').value),
         diameter: parseFloat(document.getElementById('materialDiameter').value),
         notes: document.getElementById('materialNotes').value || null

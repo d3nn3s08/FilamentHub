@@ -1,7 +1,7 @@
 """Add spool usage tracking fields
 
 Revision ID: 20231202_add_spool_usage_fields
-Revises: 
+Revises: 20231202_ams_fields
 Create Date: 2025-12-02 22:00:00
 """
 from alembic import op

@@ -4,6 +4,8 @@ from pydantic import BaseModel
 import sqlite3
 import yaml
 import os
+import logging
+import inspect
 
 router = APIRouter(prefix="/api/debug", tags=["Debug & Config"])
 
@@ -43,6 +45,17 @@ def load_config() -> dict:
 
 def save_config(config: dict) -> None:
     """Speichert die config.yaml"""
+    try:
+        logger = logging.getLogger('app')
+        caller = None
+        try:
+            fr = inspect.stack()[1]
+            caller = f"{fr.filename}:{fr.lineno} in {fr.function}"
+        except Exception:
+            caller = "unknown"
+        logger.info(f"Writing config.yaml (debug_routes.save_config) called from {caller}")
+    except Exception:
+        pass
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
 
@@ -340,3 +353,113 @@ def delete_logs(module: str = "app"):
     except Exception:
         pass
     return {"deleted": deleted, "module": module_key}
+
+
+@router.post("/logs/clear")
+def clear_logs_post(payload: dict):
+    """
+    Leert Logdateien für ein Modul (sichere Behandlung von FileHandlers).
+    Erwartet JSON-Body: { "module": "<name>" }
+    Antwort immer 200 mit Standard-Response.
+    """
+    module = (payload or {}).get("module") if isinstance(payload, dict) else None
+    if not module:
+        return {"status": "fail", "message": "Logdatei konnte nicht geleert werden", "details": "missing module"}
+    return _clear_logs_impl(module)
+
+
+@router.delete("/logs")
+def clear_logs_delete(module: str = "app"):
+    """
+    Kompatibler DELETE-Endpunkt: /api/debug/logs?module=app
+    Antwort immer 200 mit Standard-Response.
+    """
+    return _clear_logs_impl(module)
+
+
+def _clear_logs_impl(module: str):
+    """Common implementation for safely clearing log files."""
+    from pathlib import Path
+    import glob
+
+    try:
+        module_map = {
+            "app": "app",
+            "mqtt": "mqtt",
+            "3d_drucker": "3d_drucker",
+            "3d-drucker": "3d_drucker",
+            "3d_printer": "3d_drucker",
+            "printer": "3d_drucker",
+            "klipper": "klipper",
+            "errors": "errors",
+        }
+        module_key = module_map.get(module.lower(), module)
+        cfg = load_config()
+        logs_root = cfg.get("paths", {}).get("logs", "./logs")
+        logs_root_path = Path(logs_root).resolve()
+
+        patterns = [str(logs_root_path / f"{module_key}*.log"), str(logs_root_path / module_key / "*.log")]
+        files = sorted({fp for pat in patterns for fp in glob.glob(pat)})
+
+        if not files:
+            logging.getLogger("app").info(f"Keine Logdatei zum Leeren gefunden: module={module_key}")
+            return {"status": "ok", "message": "Logdatei wurde geleert"}
+
+        cleared = []
+        logger = logging.getLogger("app")
+
+        def _matches_handler(handler, target_path: Path) -> bool:
+            base = getattr(handler, "baseFilename", None)
+            if not base:
+                return False
+            try:
+                return Path(base).resolve() == target_path
+            except Exception:
+                return False
+
+        def _collect_handlers(target_path: Path):
+            matched = set()
+            for handler in logging.root.handlers:
+                if isinstance(handler, logging.FileHandler) and _matches_handler(handler, target_path):
+                    matched.add(handler)
+            for logger_obj in logging.root.manager.loggerDict.values():
+                if isinstance(logger_obj, logging.Logger):
+                    for handler in getattr(logger_obj, "handlers", []):
+                        if isinstance(handler, logging.FileHandler) and _matches_handler(handler, target_path):
+                            matched.add(handler)
+            return matched
+
+        def _truncate_handler(handler: logging.FileHandler):
+            handler.acquire()
+            try:
+                stream = getattr(handler, "stream", None)
+                if stream:
+                    stream.seek(0)
+                    stream.truncate(0)
+            finally:
+                handler.release()
+
+        for fp in files:
+            file_path = Path(fp).resolve()
+            handlers = _collect_handlers(file_path)
+            if handlers:
+                handler_success = False
+                for handler in handlers:
+                    try:
+                        _truncate_handler(handler)
+                        handler_success = True
+                    except Exception as exc:
+                        logger.exception(f"Fehler beim Leeren des FileHandlers für {file_path}: {exc}")
+                if not handler_success:
+                    raise RuntimeError(f"FileHandler konnte nicht geleert werden: {file_path}")
+            else:
+                with open(file_path, "w", encoding="utf-8"):
+                    pass
+            cleared.append(str(file_path))
+
+        logger.info(f"Logdateien geleert: module={module_key}, count={len(cleared)}")
+        return {"status": "ok", "message": "Logdatei wurde geleert"}
+
+    except Exception as exc:
+        logging.getLogger("app").exception(f"Log-Clear fehlgeschlagen: module={module}, error={exc}")
+        return {"status": "fail", "message": "Logdatei konnte nicht geleert werden", "details": str(exc)}

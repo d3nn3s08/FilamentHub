@@ -7,10 +7,34 @@ import time
 from collections import deque
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
+import json
+import ssl
+import logging
+import yaml
+from datetime import datetime
+from typing import Dict, Any, Optional, Sequence, Set, List, cast
+import paho.mqtt.client as mqtt
+from sqlmodel import select
+from app.database import get_session
+from services.printer_service import PrinterService
 
 import sqlalchemy as sa
 
 from app.services import mqtt_runtime
+from logging.handlers import RotatingFileHandler
+from pydantic import BaseModel
+from fastapi import Request
+
+from app.services.mqtt_payload_processor import process_mqtt_payload
+from app.services.ams_parser import parse_ams
+from app.services.job_parser import parse_job
+from app.services.universal_mapper import UniversalMapper
+from app.services.printer_auto_detector import PrinterAutoDetector
+from app.services.live_state import set_live_state
+from app.services.ams_sync import sync_ams_slots
+
+from app.models.printer import Printer
+from services.mqtt_protocol_detector import MQTTProtocolDetector
 
 # ...existing code...
 
@@ -33,67 +57,38 @@ async def websocket_logs(websocket: WebSocket, module: str):
     await websocket.accept()
 
     log_file_map = {
-
         "app": "logs/app/app.log",
-
         "bambu": "logs/bambu/bambu.log",
-
         "klipper": "logs/klipper/klipper.log",
-
         "errors": "logs/errors/errors.log",
-
-        "mqtt": "logs/mqtt/mqtt_messages.log"
-
+        "mqtt": "logs/mqtt/mqtt_messages.log",
     }
 
     log_file = log_file_map.get(module)
 
     try:
-
         # Optional: nur die letzten N Zeilen senden (tail). Default: 0 = keine Historie
-
         tail_param = websocket.query_params.get("tail", "0") if hasattr(websocket, "query_params") else "0"
-
         try:
-
             tail = int(tail_param)
-
         except Exception:
-
             tail = 0
 
-
-
         last_size = 0
-
         if log_file and os.path.exists(log_file):
-
-            # Falls tail > 0 angefordert wurde, sende letzte N Zeilen; ansonsten �berspringe Historie
-
+            # Falls tail > 0 angefordert wurde, sende letzte N Zeilen; ansonsten überspringe Historie
             if tail > 0:
-
                 try:
-
                     with open(log_file, "r", encoding="utf-8") as f:
-
                         dq = deque(f, maxlen=tail)
-
                     for line in dq:
-
                         await websocket.send_text(line.strip())
-
                 except Exception:
-
                     pass
-
             # setze Startposition auf Dateiende, damit keine Historie erneut gesendet wird
-
             try:
-
                 last_size = os.path.getsize(log_file)
-
             except Exception:
-
                 last_size = 0
 
         while True:
@@ -121,59 +116,7 @@ async def websocket_logs(websocket: WebSocket, module: str):
             await asyncio.sleep(1)
 
     except WebSocketDisconnect:
-
-        pass
-
-"""
-
-MQTT Viewer Routes
-
-Live monitoring and debugging of MQTT messages
-
-"""
-
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Request
-
-from pydantic import BaseModel
-
-from typing import Dict, List, Optional, Set, Any, Sequence, cast
-
-import ssl
-
-from app.database import get_session
-
-from app.models.printer import Printer
-
-import json
-
-import asyncio
-
-import paho.mqtt.client as mqtt
-
-from datetime import datetime
-
-import logging
-
-from logging.handlers import RotatingFileHandler
-
-import os
-
-import yaml
-
-from app.services.ams_parser import parse_ams
-
-from app.services.job_parser import parse_job
-
-from app.services.ams_sync import sync_ams_slots
-
-from app.services.universal_mapper import UniversalMapper
-
-from app.services.printer_auto_detector import PrinterAutoDetector
-from app.services.mqtt_payload_processor import process_mqtt_payload
-from app.services.live_state import set_live_state
-
-from services.mqtt_protocol_detector import MQTTProtocolDetector
-
+        return
 from app.models.job import Job, JobSpoolUsage
 
 from sqlmodel import select
@@ -186,7 +129,7 @@ from services.printer_service import PrinterService
 
 
 
-# Wichtig: KEINE zweite Router-Initialisierung � wir verwenden den oben definierten `router`.
+# Wichtig: KEINE zweite Router-Initialisierung  wir verwenden den oben definierten `router`.
 
 
 
@@ -337,6 +280,7 @@ subscribed_topics: Set[str] = set()
 event_loop: Optional[asyncio.AbstractEventLoop] = None
 
 active_jobs: Dict[str, Dict[str, Any]] = {}
+last_gstate: Dict[str, str] = {}
 
 last_connect_error: Optional[int] = None  # letzter RC bei fehlgeschlagener Verbindung
 
@@ -475,7 +419,7 @@ def on_message(client, userdata, msg):
 
     try:
         # Ensure variables are always defined for static analysis
-        serial_from_topic = None
+        cloud_serial_from_topic = None
         printer_model_for_mapper = None
         printer_name_for_service = None
         # raw payload text
@@ -490,7 +434,7 @@ def on_message(client, userdata, msg):
             mapped_dict = proc.get("mapped_dict")
             caps = proc.get("capabilities")
             if proc.get("serial"):
-                serial_from_topic = proc.get("serial")
+                cloud_serial_from_topic = proc.get("serial")
         except Exception:
             parsed_json = None
             ams_data = []
@@ -499,20 +443,11 @@ def on_message(client, userdata, msg):
             mapped_dict = None
             caps = None
 
-        mapped_dict: Optional[Dict[str, Any]] = None
-
-        mapped_obj = None
-
         try:
-
             parts = msg.topic.split("/")
-
             if len(parts) >= 2 and parts[0] == "device":
-
-                serial_from_topic = parts[1]
-
+                cloud_serial_from_topic = parts[1]
         except Exception:
-
             pass
 
         try:
@@ -525,12 +460,16 @@ def on_message(client, userdata, msg):
 
                 job_data = parse_job(parsed_json) or {}
 
-                # Update in-memory live-state for this device if we have a serial
+                # Update in-memory live-state for this device if we have a cloud_serial
                 try:
-                    if serial_from_topic:
-                        set_live_state(serial_from_topic, parsed_json)
-                except Exception:
-                    pass
+                    if cloud_serial_from_topic:
+                        set_live_state(cloud_serial_from_topic, parsed_json)
+                    else:
+                        print(f"[MQTT] WARNING: No cloud_serial_from_topic for {msg.topic}")
+                except Exception as e:
+                    print(f"[MQTT] ERROR in set_live_state: {e}")
+                    import traceback
+                    traceback.print_exc()
 
         except Exception:
 
@@ -590,13 +529,13 @@ def on_message(client, userdata, msg):
 
         caps = None
 
-        if serial_from_topic:
+        if cloud_serial_from_topic:
 
             try:
 
                 with next(get_session()) as session:
 
-                    p = session.exec(select(Printer).where(Printer.cloud_serial == serial_from_topic)).first()
+                    p = session.exec(select(Printer).where(Printer.cloud_serial == cloud_serial_from_topic)).first()
 
                     if p:
 
@@ -654,10 +593,10 @@ def on_message(client, userdata, msg):
 
                 if printer_service_ref:
                     # Prefer cloud_serial as key. If no serial is present, ignore updates.
-                    if serial_from_topic:
-                        printer_service_ref.update_printer(serial_from_topic, mapped_obj)
+                    if cloud_serial_from_topic:
+                        printer_service_ref.update_printer(cloud_serial_from_topic, mapped_obj)
                         if caps:
-                            printer_service_ref.update_capabilities(serial_from_topic, caps)
+                            printer_service_ref.update_capabilities(cloud_serial_from_topic, caps)
                     else:
                         print("[MQTT] Received mapped data without cloud_serial; update skipped")
 
@@ -679,6 +618,8 @@ def on_message(client, userdata, msg):
 
             try:
 
+                mqtt_message_logger.info(f"[AMS SYNC] printer_id={printer_id_for_ams} ams_count={len(ams_data) if isinstance(ams_data, list) else 0}")
+
                 sync_ams_slots(
 
                     [dict(unit) for unit in ams_data] if isinstance(ams_data, list) else [],
@@ -689,13 +630,23 @@ def on_message(client, userdata, msg):
 
                 ) if ams_data else None
 
+                mqtt_message_logger.info(f"[AMS SYNC] done printer_id={printer_id_for_ams}")
+
             except Exception as sync_err:
+
+                mqtt_message_logger.error(f"AMS Sync failed: {sync_err}")
 
                 print(f"AMS Sync failed: {sync_err}")
 
 
 
-        # Job-Tracking (einfach): Start/Finish auf Basis gcode_state
+        # ============================================================
+        # JOB-TRACKING SYSTEM: START → LIVE → FINISH
+        # ============================================================
+        # Vollständiges Job-Tracking basierend auf gcode_state:
+        # - JOB START: Erkennt PRINTING/RUNNING (mit RAM + DB Guards)
+        # - LIVE: Verbrauch während Druck (Slot-Wechsel, Filament-Usage)
+        # - FINISH: Abschluss bei FINISH/FAILED/CANCELLED/ABORTED
 
         if parsed_json and msg.topic.endswith("/report"):
 
@@ -709,9 +660,10 @@ def on_message(client, userdata, msg):
 
                         printer_id = printer_id_for_ams
 
-                        if not printer_id and serial_from_topic:
 
-                            p = session.exec(select(Printer).where(Printer.cloud_serial == serial_from_topic)).first()
+                        if not printer_id and cloud_serial_from_topic:
+
+                            p = session.exec(select(Printer).where(Printer.cloud_serial == cloud_serial_from_topic)).first()
 
                             if p:
 
@@ -760,8 +712,6 @@ def on_message(client, userdata, msg):
                                     name=name,
 
                                     brand=brand,
-
-                                    color=f"#{tray_color[:6]}" if tray_color else None,
 
                                     density=1.24,
 
@@ -1025,87 +975,111 @@ def on_message(client, userdata, msg):
 
 
 
-                        # START: Slot/Spulen-Init
+                        # ============================================================
+                        # FILAMENTHUB: VERIFIED JOB START STATE TRANSITION
+                        # ============================================================
 
-                        if gstate.upper() in ("RUNNING", "START", "PRINTING") and printer_id:
+                        PRINT_STATES = {"PRINTING", "RUNNING"}
 
-                            if serial_from_topic and serial_from_topic not in active_jobs:
+                        # Ohne eindeutige Drucker-Identität kein Job-Tracking
+                        if not cloud_serial_from_topic:
+                            return
 
+                        # aktuellen Druckzustand ermitteln
+                        current_gstate = (
+                            parsed_json.get("print", {}).get("gcode_state")
+                            or parsed_json.get("gcode_state")
+                            or ""
+                        ).upper()
+
+                        # vorherigen Zustand merken (nur Kontext)
+                        prev_gstate = last_gstate.get(cloud_serial_from_topic)
+                        last_gstate[cloud_serial_from_topic] = current_gstate
+
+                        # RAM-Guard: läuft bereits ein Job?
+                        has_active_job = cloud_serial_from_topic in active_jobs
+
+                        # ------------------------------------------------------------
+                        # JOB START (einziger gültiger Trigger)
+                        # ------------------------------------------------------------
+                        if (
+                            printer_id
+                            and not has_active_job
+                            and current_gstate in PRINT_STATES
+                        ):
+                            # DB-Guard: gibt es bereits einen offenen Job?
+                            existing_job = session.exec(
+                                select(Job)
+                                .where(Job.printer_id == printer_id)
+                                .where(Job.finished_at == None)
+                            ).first()
+
+                            if not existing_job:
+                                # Slot bestimmen
                                 slot = job_data.get("tray_target") if isinstance(job_data, dict) else None
-
                                 if slot is None:
-
                                     slot = job_data.get("tray_current") if isinstance(job_data, dict) else None
-
                                 slot_int = int(slot) if slot is not None else None
 
-                                tray_info = _find_tray(ams_data if isinstance(ams_data, list) else [], slot_int)
+                                # Tray / AMS Infos holen
+                                tray_info = _find_tray(
+                                    ams_data if isinstance(ams_data, list) else [],
+                                    slot_int
+                                )
 
-                                raw_name = None
-
-                                if isinstance(job_data, dict):
-
-                                    raw_name = job_data.get("subtask_name")
-
-                                if not raw_name and isinstance(parsed_json, dict):
-
-                                    raw_name = parsed_json.get("subtask_name")
-
-                                if not raw_name and isinstance(parsed_json, dict):
-
-                                    raw_name = parsed_json.get("gcode_file") or parsed_json.get("file")
+                                # Job-Name bestimmen (Priorität: subtask_name)
+                                raw_name = (
+                                    job_data.get("subtask_name") if isinstance(job_data, dict) else None
+                                    or parsed_json.get("subtask_name")
+                                    or parsed_json.get("gcode_file")
+                                    or parsed_json.get("file")
+                                )
 
                                 if raw_name and "/" in raw_name:
-
                                     raw_name = raw_name.split("/")[-1]
 
-                                spool_obj = match_spool(slot_int, tray_info) or create_spool_from_tray(slot_int, tray_info)
+                                # Spool zuordnen oder anlegen
+                                spool_obj = (
+                                    match_spool(slot_int, tray_info)
+                                    or create_spool_from_tray(slot_int, tray_info)
+                                )
 
+                                # >>> HIER wird der Job wirklich angelegt <<<
                                 job = Job(
-
                                     printer_id=printer_id,
-
                                     spool_id=spool_obj.id if spool_obj else None,
-
                                     name=raw_name or "Unnamed Job",
-
+                                    started_at=datetime.utcnow(),
                                     filament_used_mm=0,
-
                                     filament_used_g=0,
-
+                                    status="running",
                                 )
 
                                 session.add(job)
-
                                 session.commit()
-
                                 session.refresh(job)
 
-                                active_jobs[serial_from_topic] = {
+                                mqtt_message_logger.info(
+                                    f"[JOB START] printer_id={printer_id} job_id={job.id} name={job.name}"
+                                )
 
+                                # RAM-Cache für Filament-Tracking
+                                active_jobs[cloud_serial_from_topic] = {
                                     "job_id": job.id,
-
                                     "slot": slot_int,
-
                                     "spool_id": spool_obj.id if spool_obj else None,
-
                                     "start_remain": tray_info.get("remain") if tray_info else None,
-
                                     "start_total_len": tray_info.get("total_len") if tray_info else None,
-
                                     "last_remain": tray_info.get("remain") if tray_info else None,
-
                                     "usages": [],
-
                                 }
-
 
 
                         # LIVE: Slot-Wechsel erkennen und Verbrauch aufsummieren
 
-                        if serial_from_topic and serial_from_topic in active_jobs:
+                        if cloud_serial_from_topic and cloud_serial_from_topic in active_jobs:
 
-                            info = active_jobs.get(serial_from_topic, {})
+                            info = active_jobs.get(cloud_serial_from_topic, {})
 
                             job_id = info.get("job_id")
 
@@ -1204,104 +1178,111 @@ def on_message(client, userdata, msg):
 
 
                         # FINISH: Abschluss & job_spool_usage schreiben
+                        # Unterscheide zwischen erfolgreichen und abgebrochenen Jobs
+                        completed_states = ["FINISH", "FINISHED", "COMPLETED", "COMPLETE"]
+                        failed_states = ["FAILED", "CANCELLED", "CANCELED", "ABORTED"]
 
-                        if gstate.upper() in ("FINISH", "IDLE", "COMPLETED") and serial_from_topic and serial_from_topic in active_jobs:
+                        current_state_upper = gstate.upper()
+                        is_completed = current_state_upper in completed_states
+                        is_failed = current_state_upper in failed_states
+                        should_finish_job = is_completed or is_failed
 
-                            info = active_jobs.pop(serial_from_topic, {})
+                        if should_finish_job and cloud_serial_from_topic:
 
-                            job_id = info.get("job_id")
+                            # Versuche zuerst, Cache-Eintrag zu verwenden
+                            info = active_jobs.pop(cloud_serial_from_topic, None)
 
-                            if job_id:
+                            job = None
 
-                                job = session.get(Job, job_id)
+                            if info and info.get("job_id"):
+                                job = session.get(Job, info.get("job_id"))
 
+                            # Wenn kein Cache-Eintrag vorhanden ist, versuche offenen DB-Job zu finden
+                            if not job and printer_id:
+                                job = session.exec(
+                                    select(Job)
+                                    .where(Job.printer_id == printer_id)
+                                    .where(Job.finished_at == None)
+                                ).first()
+
+                                # Baue ein minimales Info-Objekt aus DB-Daten, falls benötigt
                                 if job:
+                                    info = info or {}
+                                    info.setdefault("job_id", job.id)
+                                    info.setdefault("slot", None)
+                                    info.setdefault("spool_id", job.spool_id)
+                                    info.setdefault("start_remain", None)
+                                    info.setdefault("start_total_len", None)
+                                    info.setdefault("last_remain", None)
+                                    info.setdefault("usages", [])
 
-                                    tray_final = _find_tray(ams_data if isinstance(ams_data, list) else [], info.get("slot"))
+                            if job:
+                                info = info or {}
 
-                                    if tray_final and isinstance(tray_final, dict):
+                                tray_final = _find_tray(ams_data if isinstance(ams_data, list) else [], info.get("slot") if info else None)
 
-                                        info["last_remain"] = tray_final.get("remain")
+                                if tray_final and isinstance(tray_final, dict):
+                                    info["last_remain"] = tray_final.get("remain")
 
-                                    usage = _finalize_current(info)
+                                # Versuche Verbrauch zu berechnen; _finalize_current ist robust gegenüber fehlenden Werten
+                                usage = _finalize_current(info) if info else None
+                                if usage:
+                                    info.setdefault("usages", []).append(usage)
 
-                                    if usage:
+                                total_used_mm = sum(u.get("used_mm") or 0.0 for u in info.get("usages", []))
+                                total_used_g = sum(u.get("used_g") or 0.0 for u in info.get("usages", []))
 
-                                        info.setdefault("usages", []).append(usage)
+                                job.filament_used_mm = total_used_mm
+                                job.filament_used_g = total_used_g
+                                job.finished_at = datetime.utcnow()
 
+                                # Setze Job-Status basierend auf gcode_state
+                                if is_completed:
+                                    job.status = "completed"
+                                elif is_failed:
+                                    if current_state_upper in ["CANCELLED", "CANCELED"]:
+                                        job.status = "cancelled"
+                                    elif current_state_upper == "ABORTED":
+                                        job.status = "aborted"
+                                    else:
+                                        job.status = "failed"
 
+                                mqtt_message_logger.info(f"[JOB FINISH] printer_id={printer_id} job_id={job.id if job.id else 'N/A'} status={job.status} used_mm={total_used_mm} used_g={total_used_g}")
 
-                                    total_used_mm = sum(u.get("used_mm") or 0.0 for u in info.get("usages", []))
+                                if not job.spool_id and (info.get("usages") or []):
+                                    first_spool = next((u.get("spool_id") for u in (info.get("usages") or []) if u.get("spool_id")), None)
+                                    if first_spool:
+                                        job.spool_id = first_spool
 
-                                    total_used_g = sum(u.get("used_g") or 0.0 for u in info.get("usages", []))
+                                session.add(job)
 
-                                    job.filament_used_mm = total_used_mm
+                                if job.id is not None:
+                                    job_spool_usage_table = cast(Any, JobSpoolUsage).__table__
+                                    session.exec(sa.delete(job_spool_usage_table).where(job_spool_usage_table.c.job_id == job.id))
 
-                                    job.filament_used_g = total_used_g
-
-                                    job.finished_at = datetime.utcnow()
-
-                                    if not job.spool_id and info.get("usages"):
-
-                                        first_spool = next((u.get("spool_id") for u in info["usages"] if u.get("spool_id")), None)
-
-                                        if first_spool:
-
-                                            job.spool_id = first_spool
-
-                                    session.add(job)
-
-
-
-                                    if job.id is not None:
-                                        job_spool_usage_table = cast(Any, JobSpoolUsage).__table__
-                                        session.exec(sa.delete(job_spool_usage_table).where(job_spool_usage_table.c.job_id == job.id))
-
-                                    order_idx = 0
-
-                                    for u in info.get("usages", []):
-
-                                        session.add(
-
-                                            JobSpoolUsage(
-
-                                                job_id=job.id,
-
-                                                spool_id=u.get("spool_id"),
-
-                                                slot=u.get("slot"),
-
-                                                used_mm=u.get("used_mm") or 0.0,
-
-                                                used_g=u.get("used_g") or 0.0,
-
-                                                order_index=order_idx,
-
-                                            )
-
+                                order_idx = 0
+                                for u in info.get("usages", []):
+                                    session.add(
+                                        JobSpoolUsage(
+                                            job_id=job.id,
+                                            spool_id=u.get("spool_id"),
+                                            slot=u.get("slot"),
+                                            used_mm=u.get("used_mm") or 0.0,
+                                            used_g=u.get("used_g") or 0.0,
+                                            order_index=order_idx,
                                         )
+                                    )
+                                    order_idx += 1
 
-                                        order_idx += 1
-
-
-
-                                    touched_spools = set(u.get("spool_id") for u in info.get("usages", []) if u.get("spool_id"))
-
-                                    for sid in touched_spools:
-
-                                        sp = session.get(Spool, sid)
-
-                                        if sp:
-
-                                            sp.used_count = (sp.used_count or 0) + 1
-
-                                            sp.last_slot = info.get("slot")
-
-                                            sp.last_seen = datetime.utcnow().isoformat()
-
-                                            session.add(sp)
-
-                                    session.commit()
+                                touched_spools = set(u.get("spool_id") for u in info.get("usages", []) if u.get("spool_id"))
+                                for sid in touched_spools:
+                                    sp = session.get(Spool, sid)
+                                    if sp:
+                                        sp.used_count = (sp.used_count or 0) + 1
+                                        sp.last_slot = info.get("slot")
+                                        sp.last_seen = datetime.utcnow().isoformat()
+                                        session.add(sp)
+                                session.commit()
 
                 except Exception as job_err:
 

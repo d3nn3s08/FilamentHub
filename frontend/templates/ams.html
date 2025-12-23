@@ -1,0 +1,251 @@
+{% extends "layout.html" %}
+{% set page_title = "AMS Übersicht" %}
+{% set page_subtitle = "Live-Monitoring der Automatic Material System Einheiten" %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='ams.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="loading-spinner"></div>
+    <p>Lade AMS-Daten...</p>
+</div>
+
+<!-- AMS Status Cards -->
+<section class="ams-stats">
+    <div class="stat-card">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-content">
+            <div class="stat-label">Online AMS</div>
+            <div class="stat-value" id="amsOnlineCount">0</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">🧵</div>
+        <div class="stat-content">
+            <div class="stat-label">Aktive Slots</div>
+            <div class="stat-value" id="amsActiveSlots">0</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">📦</div>
+        <div class="stat-content">
+            <div class="stat-label">Verfügbares Filament</div>
+            <div class="stat-value" id="amsAvailableFilament">0kg</div>
+        </div>
+    </div>
+    
+    <div class="stat-card stat-card-alerts">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-content">
+            <div class="stat-label">Warnungen</div>
+            <div class="stat-value" id="amsWarningCount">0</div>
+        </div>
+    </div>
+</section>
+
+<!-- AMS Units Grid -->
+<section class="ams-grid">
+    <!-- AMS Unit 1 -->
+    <div class="ams-unit" data-ams="1">
+        <div class="ams-header">
+            <div class="ams-title">
+                <span class="ams-icon">🎰</span>
+                <div>
+                    <h3>AMS #1</h3>
+                    <div class="ams-meta">
+                        <span class="ams-serial" id="amsSerial1">SN: –</span>
+                        <span class="ams-firmware" id="amsFirmware1">FW: –</span>
+                    </div>
+                </div>
+            </div>
+            <div class="ams-status-group">
+                <div class="ams-status" id="amsStatus1">
+                    <span class="status-badge status-offline">Offline</span>
+                </div>
+                <div class="ams-connection" id="amsConnection1">
+                    <span class="connection-type">MQTT</span>
+                    <span class="connection-quality" id="amsSignal1">–</span>
+                </div>
+                <div class="ams-printer" id="amsPrinter1">
+                    <span class="printer-badge">Kein Drucker</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="ams-slots" id="amsSlots1">
+            <!-- Slots werden von JavaScript gefüllt -->
+            <div class="slot-empty">
+                <div class="slot-number">Slot 1</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty">
+                <div class="slot-number">Slot 2</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty">
+                <div class="slot-number">Slot 3</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty">
+                <div class="slot-number">Slot 4</div>
+                <div class="slot-label">Leer</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- AMS Unit 2 -->
+    <div class="ams-unit" data-ams="2">
+        <div class="ams-header">
+            <div class="ams-title">
+                <span class="ams-icon">🎰</span>
+                <div>
+                    <h3>AMS #2</h3>
+                    <div class="ams-meta">
+                        <span class="ams-serial" id="amsSerial2">SN: –</span>
+                        <span class="ams-firmware" id="amsFirmware2">FW: –</span>
+                    </div>
+                </div>
+            </div>
+            <div class="ams-status-group">
+                <div class="ams-status" id="amsStatus2">
+                    <span class="status-badge status-offline">Offline</span>
+                </div>
+                <div class="ams-connection" id="amsConnection2">
+                    <span class="connection-type">MQTT</span>
+                    <span class="connection-quality" id="amsSignal2">–</span>
+                </div>
+                <div class="ams-printer" id="amsPrinter2">
+                    <span class="printer-badge">Kein Drucker</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="ams-slots" id="amsSlots2">
+            <div class="slot-empty">
+                <div class="slot-number">Slot 1</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty">
+                <div class="slot-number">Slot 2</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty">
+                <div class="slot-number">Slot 3</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty">
+                <div class="slot-number">Slot 4</div>
+                <div class="slot-label">Leer</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- AMS Unit 3 -->
+    <div class="ams-unit" data-ams="3">
+        <div class="ams-header">
+            <div class="ams-title">
+                <span class="ams-icon">🎰</span>
+                <div>
+                    <h3>AMS #3</h3>
+                    <div class="ams-meta">
+                        <span class="ams-serial" id="amsSerial3">SN: –</span>
+                        <span class="ams-firmware" id="amsFirmware3">FW: –</span>
+                    </div>
+                </div>
+            </div>
+            <div class="ams-status-group">
+                <div class="ams-status" id="amsStatus3">
+                    <span class="status-badge status-offline">Offline</span>
+                </div>
+                <div class="ams-connection" id="amsConnection3">
+                    <span class="connection-type">MQTT</span>
+                    <span class="connection-quality" id="amsSignal3">–</span>
+                </div>
+                <div class="ams-printer" id="amsPrinter3">
+                    <span class="printer-badge">Kein Drucker</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="ams-slots" id="amsSlots3">
+            <div class="slot-empty">
+                <div class="slot-number">Slot 1</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty">
+                <div class="slot-number">Slot 2</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty">
+                <div class="slot-number">Slot 3</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty">
+                <div class="slot-number">Slot 4</div>
+                <div class="slot-label">Leer</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- AMS Unit 4 -->
+    <div class="ams-unit" data-ams="4">
+        <div class="ams-header">
+            <div class="ams-title">
+                <span class="ams-icon">🎰</span>
+                <div>
+                    <h3>AMS #4</h3>
+                    <div class="ams-meta">
+                        <span class="ams-serial" id="amsSerial4">SN: –</span>
+                        <span class="ams-firmware" id="amsFirmware4">FW: –</span>
+                    </div>
+                </div>
+            </div>
+            <div class="ams-status-group">
+                <div class="ams-status" id="amsStatus4">
+                    <span class="status-badge status-offline">Offline</span>
+                </div>
+                <div class="ams-connection" id="amsConnection4">
+                    <span class="connection-type">MQTT</span>
+                    <span class="connection-quality" id="amsSignal4">–</span>
+                </div>
+                <div class="ams-printer" id="amsPrinter4">
+                    <span class="printer-badge">Kein Drucker</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="ams-slots" id="amsSlots4">
+            <div class="slot-empty">
+                <div class="slot-number">Slot 1</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty">
+                <div class="slot-number">Slot 2</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty">
+                <div class="slot-number">Slot 3</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty">
+                <div class="slot-number">Slot 4</div>
+                <div class="slot-label">Leer</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Notification Toast -->
+<div id="notification" class="notification"></div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='ams.js') }}"></script>
+{% endblock %}

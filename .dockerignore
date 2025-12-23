@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.github/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.backup*
+*.bak
+*.bak[0-9]
+*.backup_*
+
+# Logs (werden als Volume gemountet)
+logs/
+
+# Data (wird als Volume gemountet)
+data/filamenthub.db
+data/backups/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Temporary files
+temp_*
+tmp_*
+nul

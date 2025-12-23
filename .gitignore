@@ -41,3 +41,6 @@ scripts/_tmp_*
 # Catch backups anywhere in tree
 **/*.bak*
 **/*.backup*
+
+# Environment file (local secrets)
+.env

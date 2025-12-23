@@ -27,6 +27,7 @@ class SpoolBase(SQLModel):
     first_seen: Optional[str] = None
     used_count: int = 0
     last_slot: Optional[int] = None
+    is_open: bool = True
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -61,6 +62,7 @@ class SpoolCreateSchema(BaseModel):
     first_seen: str | None = None
     used_count: int = 0
     last_slot: int | None = None
+    is_open: bool = True
 
     @field_validator("material_id")
     def material_id_not_empty(cls, v: str) -> str:
@@ -113,6 +115,7 @@ class SpoolUpdateSchema(BaseModel):
     first_seen: str | None = None
     used_count: int | None = None
     last_slot: int | None = None
+    is_open: bool | None = None
 
     @field_validator("material_id")
     def material_id_not_empty(cls, v: str | None) -> str | None:
@@ -166,5 +169,6 @@ class SpoolReadSchema(BaseModel):
     first_seen: str | None = None
     used_count: int = 0
     last_slot: int | None = None
+    is_open: bool = True
     created_at: str | None = None
     updated_at: str | None = None

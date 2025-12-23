@@ -9,15 +9,15 @@
 [x] MQTT-Tab: Card-Layout an System-Status-Card-Pattern angepasst
 [x] MQTT-Tab: Lite-Modus aktiviert (auch im Lite-Modus sichtbar)
 [ ] MQTT-Statusdaten später anbinden
-[ ] Log Viewer Pro: Einstzeilige Logs mit dezenter Detailfläche bei Klick
-[ ] Log Viewer Pro: Zeilenklick toggelt Stacktrace
-[ ] Log Viewer Pro: Message-Layout + Timestamp ergänzt
-[ ] Log Viewer Pro: Alter State (log_viewer_state.js) als ungenutzt markiert
-[ ] Log Viewer Pro: Filter (Level/Modul/Suche) aktiviert
- [ ] Log Viewer Pro: Toolbar UI gestylt
+[x] Log Viewer Pro: Einstzeilige Logs mit dezenter Detailfläche bei Klick
+[x] Log Viewer Pro: Zeilenklick toggelt Stacktrace
+[x] Log Viewer Pro: Message-Layout + Timestamp ergänzt
+[x] Log Viewer Pro: Alter State (log_viewer_state.js) als ungenutzt markiert
+[x] Log Viewer Pro: Filter (Level/Modul/Suche) aktiviert
+ [x] Log Viewer Pro: Toolbar UI gestylt
 - [x] Logging-Status und Level aus Settings laden (system_routes)
 - [x] Log Viewer Pro nutzt /api/debug/logs (keine Alt-Routen)
-- [ ] Log Viewer: Filter/Modulwahl und Detailanzeige finalisieren
+- [x] Log Viewer: Filter/Modulwahl und Detailanzeige finalisieren
 - [x] Port-Architektur finalisiert (Default 8085, ENV HOST/PORT Override).
 - [x] Uvicorn-Start unter Windows stabilisiert
 - [ ] Config Manager UI (Pro): Skeleton + JS anbinden
@@ -166,3 +166,15 @@
 - [ ] Add tests for `database_routes` edge cases (vacuum, backup, backups/list)
 - [ ] Optional: Add unit-tests for `mqtt_payload_processor` mapping behavior (pure function)
 
+
+## Aktuelle Prioritäten
+- [ ] Smart MQTT Logging Backend gemäß `sequential-purring-dolphin.md` implementieren und testen
+- [ ] Coverage-Admin-Flow (Button + Report) mehrfach prüfen + ggf. Dokumentation ergänzen
+- [ ] Auto-Connect Runtime & Startup-Hook mit echten Druckern verifizieren, Fehlertoleranz dokumentieren
+
+## Lokale Debug/Cleanup (Dringend)
+- [ ] Entferne temporäre Debug-Route `/api/admin/debug_verify` und zugehörige Audit-Log-Zeilen
+- [ ] Entferne zusätzliche Debug-Audit-Einträge in `app/routes/admin_routes.py`
+- [ ] Server neu starten und Admin-Login verifizieren (Lucy22032021)
+- [ ] Reproduce `config.yaml` overwrite und Instrumentation prüfen
+- [ ] Falls nötig: `debug_routes.save_config` instrumentieren, um config.yaml-Überschreiber zu finden

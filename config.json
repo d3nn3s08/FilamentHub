@@ -27,5 +27,29 @@
     "max_size_mb": 5,
     "max_depth": 50,
     "allow_override": false
+  },
+  "logging": {
+    "enabled": true,
+    "keep_days": 14,
+    "level": "DEBUG",
+    "max_size_mb": 5,
+    "backup_count": 3,
+    "modules": {
+      "app": {
+        "enabled": true
+      },
+      "bambu": {
+        "enabled": true
+      },
+      "errors": {
+        "enabled": true
+      },
+      "klipper": {
+        "enabled": false
+      },
+      "mqtt": {
+        "enabled": true
+      }
+    }
   }
 }

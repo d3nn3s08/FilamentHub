@@ -8,7 +8,18 @@ export PYTHONPATH="${PYTHONPATH:-/app}"
 echo "[entrypoint] DB_PATH=${FILAMENTHUB_DB_PATH}"
 
 # Ensure directories exist
-mkdir -p "$(dirname "$FILAMENTHUB_DB_PATH")" /app/logs
+mkdir -p "$(dirname "$FILAMENTHUB_DB_PATH")" /app/logs /app/app/logging
+
+# Verify Python module structure
+echo "[entrypoint] Verifying Python modules..."
+python -c "from app.logging.runtime import reconfigure_logging; print('[entrypoint] ✓ app.logging module OK')" || {
+  echo "[entrypoint] ERROR: app.logging module not found!"
+  echo "[entrypoint] PYTHONPATH=$PYTHONPATH"
+  echo "[entrypoint] Directory structure:"
+  ls -la /app/app/ || true
+  ls -la /app/app/logging/ || true
+  exit 1
+}
 
 # Run Alembic migrations (if available)
 if [ -f /app/alembic.ini ]; then
@@ -19,4 +30,8 @@ else
 fi
 
 # Start the app
-exec python run.py
+echo "[entrypoint] Starting FilamentHub..."
+exec uvicorn app.main:app \
+  --host 0.0.0.0 \
+  --port 8085 \
+  --proxy-headers

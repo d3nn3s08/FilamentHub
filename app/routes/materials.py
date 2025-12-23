@@ -26,6 +26,14 @@ def list_materials(session: Session = Depends(get_session)):
     return [MaterialReadSchema.model_validate(m) for m in result]
 
 
+@router.get("/brands/list", response_model=List[str])
+def get_brands(session: Session = Depends(get_session)):
+    """Get all unique brands from materials"""
+    materials = session.exec(select(Material)).all()
+    brands = sorted(set(m.brand for m in materials if m.brand))
+    return list(brands)
+
+
 @router.get("/{material_id}", response_model=MaterialReadSchema)
 def get_material(material_id: str, session: Session = Depends(get_session)):
     material = session.get(Material, material_id)

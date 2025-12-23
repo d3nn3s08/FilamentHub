@@ -11,45 +11,40 @@ def api_get_logs(module: str = Query("app"), limit: int = Query(100)):
 def api_delete_logs(module: str = Query("app")):
     return delete_logs(module=module)
 import logging
-from logging.handlers import RotatingFileHandler
 import yaml
 import os
+from app.logging.runtime import reconfigure_logging
 
 # Logging-Konfiguration aus config.yaml
 def get_logging_config():
     config_path = os.path.join(os.path.dirname(__file__), "..", "..", "config.yaml")
     if not os.path.exists(config_path):
-        return {"max_size_mb": 10, "backup_count": 3, "level": "INFO"}
+        return {
+            "enabled": True,
+            "level": "INFO",
+            "keep_days": 14,
+            "max_size_mb": 10,
+            "backup_count": 3,
+            "modules": {},
+        }
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     logging_cfg = config.get("logging", {})
     return {
+        "enabled": logging_cfg.get("enabled", True),
+        "level": logging_cfg.get("level", "INFO"),
+        "keep_days": logging_cfg.get("keep_days", 14),
         "max_size_mb": logging_cfg.get("max_size_mb", 10),
         "backup_count": logging_cfg.get("backup_count", 3),
-        "level": logging_cfg.get("level", "INFO")
+        "modules": logging_cfg.get("modules", {}),
     }
 
 log_settings = get_logging_config()
-log_path = "logs/app/app.log"
-os.makedirs(os.path.dirname(log_path), exist_ok=True)
+reconfigure_logging(log_settings)
 log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s - %(message)s")
-file_handler = RotatingFileHandler(
-    log_path,
-    maxBytes=log_settings["max_size_mb"] * 1024 * 1024,
-    backupCount=log_settings["backup_count"],
-    encoding="utf-8"
-)
-file_handler.setFormatter(log_formatter)
-file_handler.setLevel(getattr(logging, log_settings["level"].upper(), logging.INFO))
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(log_formatter)
-
-# Root-Logger
-logging.getLogger().setLevel(getattr(logging, log_settings["level"].upper(), logging.INFO))
-logging.getLogger().addHandler(file_handler)
 logging.getLogger().addHandler(console_handler)
-logging.getLogger("uvicorn.error").addHandler(file_handler)
-logging.getLogger("uvicorn").addHandler(file_handler)
 # WICHTIG: Access-Logs explizit NICHT in app.log
 for h in list(logging.getLogger("uvicorn.access").handlers):
     logging.getLogger("uvicorn.access").removeHandler(h)
@@ -58,6 +53,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from services.printer_service import PrinterService
+from app.services import mqtt_runtime
 from app.monitoring.runtime_monitor import record_request
 import time
 
@@ -79,9 +75,11 @@ from app.routes.mqtt_routes import router as mqtt_router
 from app.routes.performance_routes import router as performance_router
 from app.routes.printers import router as printers_router
 from app.routes.jobs import router as jobs_router
+from app.routes.statistics_routes import router as statistics_router
 
 from app.routes.bambu_routes import router as bambu_router
 from app.routes.admin_routes import router as admin_router
+from app.routes.admin_coverage_routes import router as admin_coverage_router
 from app.routes.settings_routes import router as settings_router
 from app.routes.debug_ams_routes import router as debug_ams_router
 from app.routes.debug_system_routes import router as debug_system_router
@@ -91,6 +89,7 @@ from app.routes.notification_routes import router as notification_router
 from app.routes.config_routes import router as config_router
 from app.routes import debug_log_routes
 from app.routes import mqtt_runtime_routes
+from app.routes.live_state_routes import router as live_state_router
 
 from app.websocket.log_stream import stream_log
 from sqlmodel import Session, select
@@ -157,9 +156,11 @@ app.include_router(mqtt_router)
 app.include_router(performance_router)
 app.include_router(printers_router)
 app.include_router(jobs_router)
+app.include_router(statistics_router)
 
 app.include_router(bambu_router)
 app.include_router(admin_router)
+app.include_router(admin_coverage_router, prefix="/api/admin")
 app.include_router(settings_router)
 app.include_router(debug_ams_router)
 app.include_router(debug_system_router)
@@ -172,6 +173,28 @@ app.include_router(debug_log_routes.router, prefix="/api/debug", tags=["debug"])
 
 # Runtime MQTT control endpoints (separate from legacy mqtt_routes to avoid collisions)
 app.include_router(mqtt_runtime_routes.router, prefix="/api/mqtt/runtime", tags=["mqtt"])
+
+# Live state endpoints for real-time device data
+app.include_router(live_state_router)
+
+
+@app.on_event("startup")
+def apply_auto_connect_on_startup():
+    logger = logging.getLogger("app")
+    try:
+        with Session(engine) as session:
+            printers = session.exec(select(Printer)).all()
+    except Exception as exc:
+        logger.exception("Failed to load printers for auto-connect startup: %s", exc)
+        return
+
+    for printer in printers:
+        if getattr(printer, "auto_connect", False):
+            logger.info("Applying auto-connect for printer %s (%s)", printer.name, printer.id)
+            try:
+                mqtt_runtime.apply_auto_connect(printer)
+            except Exception as exc:
+                logger.exception("Auto-connect startup failed for printer %s: %s", printer.id, exc)
 
 
 # -----------------------------------------------------
@@ -209,6 +232,18 @@ async def spools_page(request: Request):
             'request': request,
             'title': 'Spulen - FilamentHub',
             'active_page': 'spools'
+        },
+    )
+
+
+@app.get('/ams', response_class=HTMLResponse)
+async def ams_page(request: Request):
+    return templates.TemplateResponse(
+        'ams.html',
+        {
+            'request': request,
+            'title': 'AMS - FilamentHub',
+            'active_page': 'ams'
         },
     )
 

@@ -1,2 +1,0 @@
-2025-12-03 00:23:59,296 [INFO] App - FilamentHub Logging-System initialisiert.
-2025-12-03 00:23:59,296 [INFO] App - Aktive Log-Module: {'app': {'enabled': True}, 'bambu': {'enabled': True}, 'errors': {'enabled': True}, 'klipper': {'enabled': False}, 'mqtt': {'enabled': False}}

@@ -1201,9 +1201,180 @@ function initScannerTab() {
   if (btn) {
     btn.addEventListener('click', handleQuickScanClick);
   }
+  const addManualBtn = $('scannerAddManual');
+  if (addManualBtn) {
+    addManualBtn.addEventListener('click', openManualPrinterDialog);
+  }
+  const closeDialogBtn = $('closeManualDialog');
+  if (closeDialogBtn) {
+    closeDialogBtn.addEventListener('click', closeManualPrinterDialog);
+  }
+  const testBtn = $('manualTestBtn');
+  if (testBtn) {
+    testBtn.addEventListener('click', handleManualTest);
+  }
+  const saveBtn = $('manualSaveBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', handleManualSave);
+  }
   renderScannerEmpty('No printers detected');
   loadNetworkInfo();
   scannerInitialized = true;
+}
+
+function openManualPrinterDialog() {
+  const dialog = $('manualPrinterDialog');
+  if (!dialog) return;
+
+  // Reset form
+  const ipInput = $('manualIp');
+  const portInput = $('manualPort');
+  const typeSelect = $('manualType');
+  const testResult = $('manualTestResult');
+  const saveBtn = $('manualSaveBtn');
+
+  if (ipInput) ipInput.value = '';
+  if (portInput) portInput.value = '';
+  if (typeSelect) typeSelect.value = 'bambu';
+  if (testResult) {
+    testResult.style.display = 'none';
+    testResult.innerHTML = '';
+  }
+  if (saveBtn) saveBtn.disabled = true;
+
+  dialog.style.display = 'flex';
+}
+
+function closeManualPrinterDialog() {
+  const dialog = $('manualPrinterDialog');
+  if (!dialog) return;
+  dialog.style.display = 'none';
+}
+
+async function handleManualTest() {
+  const ipInput = $('manualIp');
+  const portInput = $('manualPort');
+  const typeSelect = $('manualType');
+  const testBtn = $('manualTestBtn');
+  const saveBtn = $('manualSaveBtn');
+  const testResult = $('manualTestResult');
+
+  if (!ipInput || !portInput || !typeSelect || !testBtn || !saveBtn || !testResult) return;
+
+  const ip = ipInput.value.trim();
+  const port = parseInt(portInput.value.trim(), 10);
+  const printerType = typeSelect.value;
+
+  // Validate IP
+  const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+  if (!ip || !ipRegex.test(ip)) {
+    testResult.style.display = 'block';
+    testResult.className = 'test-result test-result-error';
+    testResult.textContent = 'Invalid IP address format';
+    saveBtn.disabled = true;
+    return;
+  }
+
+  // Validate port
+  if (!port || port < 1 || port > 65535) {
+    testResult.style.display = 'block';
+    testResult.className = 'test-result test-result-error';
+    testResult.textContent = 'Port must be between 1 and 65535';
+    saveBtn.disabled = true;
+    return;
+  }
+
+  // Disable button during test
+  testBtn.disabled = true;
+  testBtn.textContent = 'Testing...';
+  testResult.style.display = 'block';
+  testResult.className = 'test-result test-result-info';
+  testResult.textContent = 'Testing connection...';
+  saveBtn.disabled = true;
+
+  try {
+    const res = await fetch('/api/debug/printer/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ip, port, timeout_ms: 2000 })
+    });
+
+    const data = await res.json();
+
+    if (data.ok && data.reachable) {
+      testResult.className = 'test-result test-result-success';
+      testResult.textContent = `Connection successful! Latency: ${data.latency_ms}ms`;
+      saveBtn.disabled = false;
+    } else {
+      testResult.className = 'test-result test-result-error';
+      testResult.textContent = data.message || 'Connection failed - printer not reachable';
+      saveBtn.disabled = true;
+    }
+  } catch (err) {
+    testResult.className = 'test-result test-result-error';
+    testResult.textContent = 'Test failed: ' + err.message;
+    saveBtn.disabled = true;
+  } finally {
+    testBtn.disabled = false;
+    testBtn.textContent = 'Test Connection';
+  }
+}
+
+async function handleManualSave() {
+  const ipInput = $('manualIp');
+  const portInput = $('manualPort');
+  const typeSelect = $('manualType');
+  const saveBtn = $('manualSaveBtn');
+  const testResult = $('manualTestResult');
+
+  if (!ipInput || !portInput || !typeSelect || !saveBtn || !testResult) return;
+
+  const ip = ipInput.value.trim();
+  const port = parseInt(portInput.value.trim(), 10);
+  const printerType = typeSelect.value;
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving...';
+
+  const payload = {
+    name: `${printerType}-${ip}`,
+    printer_type: printerType,
+    ip_address: ip,
+    port: port,
+    model: printerType === 'bambu' ? 'X1C' : printerType === 'klipper' ? 'Klipper' : 'Generic',
+    mqtt_version: '311',
+    active: true
+  };
+
+  try {
+    const res = await fetch('/api/printers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (data.status === 'exists') {
+      testResult.className = 'test-result test-result-warning';
+      testResult.textContent = 'Printer already exists in system';
+    } else if (data.id) {
+      testResult.className = 'test-result test-result-success';
+      testResult.textContent = 'Printer added successfully!';
+      setTimeout(() => {
+        closeManualPrinterDialog();
+      }, 1500);
+    } else {
+      testResult.className = 'test-result test-result-error';
+      testResult.textContent = 'Failed to add printer';
+    }
+  } catch (err) {
+    testResult.className = 'test-result test-result-error';
+    testResult.textContent = 'Save failed: ' + err.message;
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save Printer';
+  }
 }
 
 function renderSystemHealth(statusData) {

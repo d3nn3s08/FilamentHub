@@ -1,45 +1,159 @@
 {% extends "layout.html" %}
 {% set page_title = "Dashboard" %}
-{% set page_subtitle = "Zentrale Übersicht für FilamentHub" %}
+{% set page_subtitle = "Live Übersicht aller Operationen" %}
 
 {% block extra_styles %}
-<link rel="stylesheet" href="{{ url_for('frontend_static', path='css/printers.css') }}">
+<style>
+    .live-status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .live-card {
+        background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.03), transparent 40%), var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: var(--shadow);
+    }
+    .live-card .big-number {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--accent);
+        margin: 8px 0;
+    }
+    .active-jobs-section {
+        margin-top: 24px;
+    }
+    .active-jobs-list {
+        display: grid;
+        gap: 12px;
+    }
+    .job-card {
+        background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.03), transparent 40%), var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        align-items: center;
+    }
+    .job-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .job-name {
+        font-weight: 600;
+        color: var(--text);
+        font-size: 14px;
+    }
+    .job-printer {
+        color: var(--text-dim);
+        font-size: 12px;
+        margin-top: 2px;
+    }
+    .job-progress {
+        grid-column: 1 / -1;
+    }
+    .progress-bar {
+        background: var(--panel-2);
+        border-radius: 8px;
+        height: 6px;
+        overflow: hidden;
+        margin-bottom: 4px;
+    }
+    .progress-fill {
+        background: linear-gradient(90deg, var(--accent-2), var(--accent-3));
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+    .progress-text {
+        font-size: 12px;
+        color: var(--text-dim);
+        display: flex;
+        justify-content: space-between;
+    }
+    .job-stats {
+        display: flex;
+        gap: 12px;
+        font-size: 12px;
+        color: var(--text-dim);
+        grid-column: 1 / -1;
+    }
+    .stat-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .stat-label {
+        color: var(--text-dim);
+        font-size: 10px;
+        text-transform: uppercase;
+        opacity: 0.7;
+    }
+    .stat-value {
+        color: var(--text);
+        font-weight: 500;
+    }
+</style>
 {% endblock %}
 
 {% block header_actions %}{% endblock %}
 
 {% block content %}
-<section class="card-grid">
-    <div class="panel">
-        <p class="eyebrow">Status</p>
-        <h3 style="margin:6px 0 10px 0;">System online</h3>
-        <p class="subtitle">Stelle hier später KPIs und Charts dar.</p>
+<!-- Live Status Cards -->
+<section class="live-status-grid">
+    <div class="live-card">
+        <p class="eyebrow">🟢 Online Drucker</p>
+        <div class="big-number" id="onlinePrinters">–</div>
+        <p class="subtitle" style="margin:0;" id="printerStats">0/0</p>
     </div>
-    <div class="panel">
-        <p class="eyebrow">Materialien</p>
-        <h3 style="margin:6px 0 10px 0;" id="statMaterials">0</h3>
-        <p class="subtitle">Gesamtzahl Materialien</p>
+    <div class="live-card">
+        <p class="eyebrow">📊 Laufende Jobs</p>
+        <div class="big-number" id="activeJobCount">–</div>
+        <p class="subtitle" style="margin:0;">Jobs in Druck</p>
     </div>
-    <div class="panel">
-        <p class="eyebrow">Spulen</p>
-        <h3 style="margin:6px 0 10px 0;" id="statSpools">0</h3>
-        <p class="subtitle">Gesamtzahl Spulen</p>
+    <div class="live-card">
+        <p class="eyebrow">⏱️ Durchschn. heute</p>
+        <div class="big-number" id="avgTimeTodayValue">–</div>
+        <p class="subtitle" style="margin:0;" id="avgTimeTodayLabel">Druckzeit</p>
     </div>
-    <div class="panel">
-        <p class="eyebrow">Drucker</p>
-        <h3 style="margin:6px 0 10px 0;" id="statPrinters">0</h3>
-        <p class="subtitle">Online / Gesamt</p>
+    <div class="live-card">
+        <p class="eyebrow">📈 Filament heute</p>
+        <div class="big-number" id="filamentTodayValue">–</div>
+        <p class="subtitle" style="margin:0;">Verbraucht</p>
     </div>
 </section>
 
-<section class="panel" style="margin-top:18px;">
-    <p class="eyebrow">Schnellzugriff</p>
-    <div class="actions">
-        <a class="btn primary" href="/materials">Material anlegen</a>
-        <a class="btn primary" href="/spools">Spule anlegen</a>
-        <a class="btn primary" href="/printers">Drucker anlegen</a>
+<!-- Active Print Jobs -->
+<section class="panel active-jobs-section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <p class="eyebrow">Aktive Drucke</p>
+        <span style="font-size: 12px; color: var(--text-dim);" id="refreshTime">Aktualisiert</span>
+    </div>
+    <div class="active-jobs-list" id="activeJobsList">
+        <p style="color: var(--text-dim); text-align: center; padding: 20px;">Keine aktiven Drucke</p>
     </div>
 </section>
+
+<!-- Upcoming & Alerts -->
+<section class="panel" style="margin-top:24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+    <div>
+        <p class="eyebrow">Nächste Jobs</p>
+        <div id="upcomingJobs" style="display: grid; gap: 8px;">
+            <p style="color: var(--text-dim); font-size: 12px;">Keine anstehenden Jobs</p>
+        </div>
+    </div>
+    <div>
+        <p class="eyebrow">⚠️ Alerts</p>
+        <div id="alertsList" style="display: grid; gap: 8px;">
+            <p style="color: var(--text-dim); font-size: 12px;">Keine Alerts</p>
+        </div>
+    </div>
+</section>
+
 {% endblock %}
 
 {% block extra_scripts %}

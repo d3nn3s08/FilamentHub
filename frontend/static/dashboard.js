@@ -11,97 +11,125 @@ let dashboardData = {
 
 // === INIT ===
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('[Dashboard] DOMContentLoaded - starting data load');
     loadDashboardData();
+    setupNotificationWebSocket();
     // Auto-refresh every 10 seconds
     setInterval(loadDashboardData, 10000);
 });
 
+// === NOTIFICATION WEBSOCKET ===
+function setupNotificationWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/api/notifications/ws`;
+    
+    let ws = null;
+    let reconnectTimeout = null;
+    
+    function connect() {
+        try {
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('[Notifications] WebSocket connected');
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('[Notifications] Received:', data);
+                    
+                    // Backend sendet {event: "notification_trigger", payload: {...}}
+                    if (data.event === 'notification_trigger' && data.payload) {
+                        const notification = data.payload;
+                        showNotification(
+                            notification.message || 'Benachrichtigung',
+                            notification.type || 'info'
+                        );
+                    }
+                } catch (err) {
+                    console.error('[Notifications] Parse error:', err);
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('[Notifications] WebSocket error:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('[Notifications] WebSocket closed, reconnecting in 5s...');
+                if (reconnectTimeout) clearTimeout(reconnectTimeout);
+                reconnectTimeout = setTimeout(connect, 5000);
+            };
+        } catch (err) {
+            console.error('[Notifications] Connection error:', err);
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
+            reconnectTimeout = setTimeout(connect, 5000);
+        }
+    }
+    
+    connect();
+}
+
 // === LOAD DATA ===
 async function loadDashboardData() {
     try {
-        await Promise.all([
-            loadStats(),
-            loadMaterials(),
-            loadSpools(),
-            loadPrinters()
+        console.log('[Dashboard] loadDashboardData started');
+        // Alle Daten parallel laden für bessere Performance
+        const [materials, spools, printers] = await Promise.all([
+            fetch('/api/materials/').then(r => r.json()),
+            fetch('/api/spools/').then(r => r.json()),
+            fetch('/api/printers/').then(r => r.json())
         ]);
+        
+        dashboardData.materials = materials;
+        dashboardData.spools = spools;
+        dashboardData.printers = printers;
+        
+        // Jetzt alle UI-Updates mit den Daten
+        updateStatsCards(materials, spools, printers);
+        renderMaterialsList(materials.slice(0, 5));
+        renderLowSpoolsList(spools.filter(s => {
+            if (s.is_empty) return false;
+            const remaining = s.weight_remaining || s.weight_full || 0;
+            return remaining < 200;
+        }).slice(0, 5));
+        renderPrintersList(printers);
+        
+        console.log('[Dashboard] All data loaded successfully');
     } catch (error) {
         console.error('Fehler beim Laden der Dashboard-Daten:', error);
     }
 }
 
-async function loadStats() {
-    try {
-        const materialsRes = await fetch('/api/materials/');
-        const materials = await materialsRes.json();
-        const statMaterials = document.getElementById('statMaterials');
-        if (statMaterials) statMaterials.textContent = materials.length;
-
-        const spoolsRes = await fetch('/api/spools/');
-        const spools = await spoolsRes.json();
-        const statSpools = document.getElementById('statSpools');
-        if (statSpools) statSpools.textContent = spools.length;
-
-        const activeSpools = spools.filter(s => !s.is_empty);
-        const statActiveSpools = document.getElementById('statActiveSpools');
-        if (statActiveSpools) statActiveSpools.textContent = activeSpools.length;
-
-        const totalWeight = spools.reduce((sum, s) => {
-            return sum + (s.weight_remaining || s.weight_full || 0);
-        }, 0);
-        const statTotalWeight = document.getElementById('statTotalWeight');
-        if (statTotalWeight) statTotalWeight.textContent = Math.round(totalWeight);
-
-    } catch (error) {
-        console.error('Fehler beim Laden der Statistiken:', error);
-    }
-}
-
-async function loadMaterials() {
-    try {
-        const response = await fetch('/api/materials/');
-        const materials = await response.json();
-        dashboardData.materials = materials;
-        renderMaterialsList(materials.slice(0, 5));
-    } catch (error) {
-        console.error('Fehler beim Laden der Materialien:', error);
-    }
-}
-
-async function loadSpools() {
-    try {
-        const response = await fetch('/api/spools/');
-        const spools = await response.json();
-        dashboardData.spools = spools;
-
-        const lowSpools = spools
-            .filter(s => {
-                if (s.is_empty) return false;
-                const remaining = s.weight_remaining || s.weight_full || 0;
-                return remaining < 200;
-            })
-            .slice(0, 5);
-
-        renderLowSpoolsList(lowSpools);
-    } catch (error) {
-        console.error('Fehler beim Laden der Spulen:', error);
-    }
-}
-
-async function loadPrinters() {
-    try {
-        const response = await fetch('/api/printers/');
-        if (!response.ok) throw new Error('Fehler beim Laden der Drucker');
-        const printers = await response.json();
-        dashboardData.printers = printers;
-        renderPrintersList(printers);
-    } catch (error) {
-        console.error('Fehler beim Laden der Drucker:', error);
-        const printersList = document.getElementById('printersList');
-        if (printersList) {
-            printersList.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🖨️</div><p>Keine Drucker konfiguriert</p></div>`;
-        }
-    }
+function updateStatsCards(materials, spools, printers) {
+    console.log('[Stats] Updating stat cards');
+    
+    // Materials
+    const statMaterials = document.getElementById('statMaterials');
+    if (statMaterials) statMaterials.textContent = materials.length;
+    
+    // Spools
+    const statSpools = document.getElementById('statSpools');
+    if (statSpools) statSpools.textContent = spools.length;
+    
+    // Active Spools
+    const activeSpools = spools.filter(s => !s.is_empty);
+    const statActiveSpools = document.getElementById('statActiveSpools');
+    if (statActiveSpools) statActiveSpools.textContent = activeSpools.length;
+    
+    // Total Weight
+    const totalWeight = spools.reduce((sum, s) => {
+        return sum + (s.weight_remaining || s.weight_full || 0);
+    }, 0);
+    const statTotalWeight = document.getElementById('statTotalWeight');
+    if (statTotalWeight) statTotalWeight.textContent = Math.round(totalWeight);
+    
+    // Printers
+    const onlineCount = printers.filter(p => p.online).length;
+    const totalCount = printers.length;
+    const statPrinters = document.getElementById('statPrinters');
+    if (statPrinters) statPrinters.textContent = `${onlineCount} / ${totalCount}`;
 }
 
 function renderMaterialsList(materials) {
@@ -225,14 +253,16 @@ function showNotification(message, type = 'info') {
     notification.textContent = message;
     notification.style.cssText = `
         position: fixed;
-        top: 20px;
-        right: 20px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
         padding: 15px 25px;
         background: var(--bg-card);
         border: 1px solid var(--accent);
         border-radius: 8px;
         color: var(--text);
         z-index: 10000;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
         animation: slideIn 0.3s ease;
     `;
     

@@ -6,7 +6,6 @@ from uuid import uuid4
 class MaterialBase(SQLModel):
     name: str
     brand: Optional[str] = None
-    color: Optional[str] = None  # HEX oder Text
     density: float = 1.24  # g/cm³, Standard PLA
     diameter: float = 1.75  # mm
     notes: Optional[str] = None
@@ -29,7 +28,6 @@ class MaterialCreateSchema(BaseModel):
 
     name: str
     brand: str | None = Field(None, alias="manufacturer")
-    color: str | None = None
     density: float = Field(1.24, gt=0)
     diameter: float = Field(1.75, ge=1.5, le=3.0)
     notes: str | None = None
@@ -57,7 +55,6 @@ class MaterialUpdateSchema(BaseModel):
 
     name: str | None = None
     brand: str | None = Field(None, alias="manufacturer")
-    color: str | None = None
     density: float | None = Field(None, gt=0)
     diameter: float | None = Field(None, ge=1.5, le=3.0)
     notes: str | None = None
@@ -71,7 +68,6 @@ class MaterialReadSchema(BaseModel):
     id: str
     name: str
     brand: str | None = None
-    color: str | None = None
     density: float
     diameter: float
     notes: str | None = None

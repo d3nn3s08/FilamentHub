@@ -1,0 +1,23 @@
+# Plan: MQTT Auto-Protokoll-Handling verbessern
+
+1. **Analyse & Anforderungen**
+   - Schnittstellen identifizieren: `PrinterAutoDetector.detect_mqtt_version`, `apply_auto_connect` in `mqtt_runtime`.
+   - Modelle/Protokolle: `X1C → v5`, `A1 mini → v311`.
+   - Ziel: Modell-basierte Defaults plus fallbackdetektion ohne gegenseitige Beeinflussung.
+
+2. **Implementierung**
+   - Erstelle Mapping `model_to_protocol` (z. B. in `printer_auto_detector` oder `mqtt_runtime`).
+   - Wenn Printer-Modell bekannt, wähle sofort zugeordnetes Protokoll, ohne `MQTTProtocolDetector`.
+   - Nur wenn Mapping fehlt, den Detektor aufrufen und Ergebnis für diesen Drucker verwenden.
+   - `apply_auto_connect` soll jedes Mal das passende Protokoll ermitteln (Modell → Mapping → Detektor → Konfigurationswert).
+
+3. **Fallback & Konfiguration**
+   - Optional: Über `config.yaml` oder DB erweiterbare Liste von Modell-Overrides (z. B. `mqtt_detector.defaults`).
+   - Sicherstellen, dass Laufzeit-Status für jeden Drucker getrennt bleibt (nicht global speichern).
+
+4. **Tests und Dokumentation**
+   - Beschreibe Verhalten im MQTT-Auto-Connect-Dokument (z. B. `mqtt_auto_md`).
+   - Tests: Szenario X1C + A1 mini manuell durchspielen, Logs prüfen.
+
+5. **Abschluss**
+   - Änderungen zusammenfassen, Plan markieren als erledigt.

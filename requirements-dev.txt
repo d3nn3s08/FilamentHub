@@ -9,3 +9,6 @@ httpx
 pytest-asyncio
 pytest-cov
 alembic
+websockets
+wsproto
+bcrypt

@@ -1,0 +1,437 @@
+// AMS Monitoring JavaScript
+
+let amsData = [];
+let spools = [];
+let materials = [];
+
+let isLoading = false;
+let singleAmsMode = true; // Single AMS Mode aktiviert
+
+// === INIT ===
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if multi-AMS mode was requested
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('mode') === 'multi') {
+        singleAmsMode = false;
+        localStorage.setItem('amsMode', 'multi');
+    } else if (urlParams.get('mode') === 'single') {
+        singleAmsMode = true;
+        localStorage.setItem('amsMode', 'single');
+    } else {
+        // Load from localStorage or default to single
+        const savedMode = localStorage.getItem('amsMode');
+        singleAmsMode = savedMode !== 'multi';
+    }
+    
+    applySingleAmsMode();
+    loadData();
+    
+    // Auto-refresh every 15 seconds (reduziert Server-Last)
+    setInterval(() => {
+        if (!isLoading) {
+            loadData();
+        }
+    }, 15000);
+    
+    // Setup AMS mode toggle listeners
+    setupAmsModeToogle();
+});
+
+// Apply Single AMS Mode styling
+function applySingleAmsMode() {
+    const amsGrid = document.querySelector('.ams-grid');
+    if (amsGrid && singleAmsMode) {
+        amsGrid.classList.add('single-mode');
+    } else if (amsGrid) {
+        amsGrid.classList.remove('single-mode');
+    }
+}
+
+// Setup AMS Mode Toggle
+function setupAmsModeToogle() {
+    // Find Single AMS and Multi AMS radio buttons by name
+    const amsRadios = document.querySelectorAll('input[name="ams_mode"]');
+    
+    amsRadios.forEach(radio => {
+        // Set initial checked state
+        if (radio.value === 'single' && singleAmsMode) {
+            radio.checked = true;
+        } else if (radio.value === 'multi' && !singleAmsMode) {
+            radio.checked = true;
+        }
+        
+        // Add change listener
+        radio.addEventListener('change', () => {
+            if (radio.checked) {
+                const newMode = radio.value;
+                localStorage.setItem('amsMode', newMode);
+                // Reload page with new mode
+                window.location.href = `/ams?mode=${newMode}`;
+            }
+        });
+    });
+}
+
+// === LOAD DATA ===
+async function loadData() {
+    if (isLoading) return;
+    
+    isLoading = true;
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    
+    // Zeige Loading nur beim ersten Mal
+    if (spools.length === 0 && loadingOverlay) {
+        loadingOverlay.style.display = 'flex';
+    }
+    
+    try {
+        // Lade Spools und Materials parallel (schneller)
+        await Promise.all([
+            loadSpools(),
+            loadMaterials()
+        ]);
+        
+        // Verarbeite AMS-Daten (basiert auf spools)
+        loadAMSData();
+        
+        updateStats();
+        renderAMSUnits();
+        renderAlerts();
+        
+    } catch (error) {
+        console.error('Fehler beim Laden der AMS-Daten:', error);
+        showNotification('Fehler beim Laden der AMS-Daten', 'error');
+    } finally {
+        isLoading = false;
+        if (loadingOverlay) {
+            loadingOverlay.style.display = 'none';
+        }
+    }
+}
+
+async function loadSpools() {
+    try {
+        const response = await fetch('/api/spools/');
+        spools = await response.json();
+    } catch (error) {
+        console.error('Fehler beim Laden der Spulen:', error);
+    }
+}
+
+async function loadMaterials() {
+    try {
+        const response = await fetch('/api/materials/');
+        materials = await response.json();
+    } catch (error) {
+        console.error('Fehler beim Laden der Materialien:', error);
+    }
+}
+
+function loadAMSData() {
+    // Generate AMS structure based on spools with ams_slot
+    // Single AMS Mode: Only create 1 AMS unit
+    // Multi AMS Mode: Create 4 AMS units
+    
+    if (singleAmsMode) {
+        amsData = [
+            { id: 1, online: false, slots: [], serial: 'AMS-001', firmware: 'v1.2.3', signal: '85%', printer: null }
+        ];
+    } else {
+        amsData = [
+            { id: 1, online: false, slots: [], serial: 'AMS-001', firmware: 'v1.2.3', signal: '85%', printer: null },
+            { id: 2, online: false, slots: [], serial: 'AMS-002', firmware: 'v1.2.3', signal: '–', printer: null },
+            { id: 3, online: false, slots: [], serial: 'AMS-003', firmware: 'v1.2.2', signal: '–', printer: null },
+            { id: 4, online: false, slots: [], serial: 'AMS-004', firmware: 'v1.2.3', signal: '–', printer: null }
+        ];
+    }
+    
+    // Map spools to AMS #1 slots (or distribute across multiple AMS in multi mode)
+    spools.forEach(spool => {
+        if (spool.ams_slot != null && spool.ams_slot !== '') {
+            const slotId = parseInt(spool.ams_slot);
+            
+            // For now, put all AMS spools in AMS #1
+            // Slot IDs: 0, 1, 2, 3 -> display as Slot 1, 2, 3, 4
+            if (slotId >= 0 && slotId <= 3) {
+                const ams = amsData[0]; // AMS #1
+                ams.online = true;
+                ams.printer = 'X1C'; // TODO: Get from backend
+                
+                const material = materials.find(m => m.id === spool.material_id);
+                
+                ams.slots[slotId] = {
+                    slot: slotId + 1, // Display as 1-based
+                    spool: spool,
+                    material: material
+                };
+            }
+        }
+    });
+}
+
+// === UPDATE STATS ===
+function updateStats() {
+    const onlineCount = amsData.filter(a => a.online).length;
+    const activeSlots = amsData.reduce((sum, ams) => sum + ams.slots.filter(s => s).length, 0);
+    
+    // Calculate available filament (kg)
+    let totalFilament = 0;
+    amsData.forEach(ams => {
+        ams.slots.forEach(slot => {
+            if (slot && slot.spool) {
+                totalFilament += getRemaining(slot.spool);
+            }
+        });
+    });
+    
+    // Count warnings (low spools in AMS)
+    let warnings = 0;
+    amsData.forEach(ams => {
+        ams.slots.forEach(slot => {
+            if (slot && slot.spool) {
+                const remaining = getRemaining(slot.spool);
+                const percentage = getPercentage(slot.spool);
+                if (percentage <= 20 || remaining < 200) {
+                    warnings++;
+                }
+            }
+        });
+    });
+    
+    document.getElementById('amsOnlineCount').textContent = onlineCount;
+    document.getElementById('amsActiveSlots').textContent = activeSlots;
+    document.getElementById('amsAvailableFilament').textContent = (totalFilament / 1000).toFixed(2) + 'kg';
+    
+    // Update warning count in KPI card
+    updateWarningCount();
+}
+
+// === RENDER AMS UNITS ===
+function renderAMSUnits() {
+    amsData.forEach((ams, index) => {
+        const amsId = index + 1;
+        const statusElement = document.getElementById(`amsStatus${amsId}`);
+        const slotsContainer = document.getElementById(`amsSlots${amsId}`);
+        
+        // Update AMS device info
+        const serialEl = document.getElementById(`amsSerial${amsId}`);
+        const firmwareEl = document.getElementById(`amsFirmware${amsId}`);
+        const connectionEl = document.getElementById(`amsConnection${amsId}`);
+        const signalEl = document.getElementById(`amsSignal${amsId}`);
+        const printerEl = document.getElementById(`amsPrinter${amsId}`);
+        
+        if (serialEl) serialEl.textContent = `SN: ${ams.serial || '–'}`;
+        if (firmwareEl) firmwareEl.textContent = `FW: ${ams.firmware || '–'}`;
+        if (signalEl) signalEl.textContent = ams.signal || '–';
+        if (printerEl) {
+            printerEl.innerHTML = ams.printer 
+                ? `<span class="printer-badge">${ams.printer}</span>`
+                : `<span class="printer-badge">Kein Drucker</span>`;
+        }
+        
+        // Update status badge
+        if (ams.online) {
+            statusElement.innerHTML = '<span class="status-badge status-online">Online</span>';
+        } else {
+            statusElement.innerHTML = '<span class="status-badge status-offline">Offline</span>';
+        }
+        
+        // Render slots
+        let slotsHTML = '';
+        for (let i = 0; i < 4; i++) {
+            const slotNumber = i + 1;
+            const slot = ams.slots[i];
+            
+            if (slot && slot.spool && slot.material) {
+                const spool = slot.spool;
+                const material = slot.material;
+                const remaining = getRemaining(spool);
+                const percentage = getPercentage(spool);
+                const color = spool.tray_color ? `#${spool.tray_color.substring(0, 6)}` : '#999';
+                
+                const isLow = percentage <= 20 || remaining < 200;
+                const progressClass = isLow ? 'low' : '';
+                
+                slotsHTML += `
+                    <div class="slot ${spool.is_empty ? 'slot-empty' : ''}">
+                        <div class="slot-color" style="background: ${color};"></div>
+                        <div class="slot-number">
+                            Slot ${slotNumber}
+                            ${spool.tray_uuid ? '<span class="slot-icon" title="RFID erkannt">🏷️</span>' : ''}
+                        </div>
+                        <div class="slot-material">${material.name}</div>
+                        ${material.brand ? `<div class="slot-brand">${material.brand}</div>` : ''}
+                        <div class="slot-weight">${Math.round(remaining)}g (${Math.round(percentage)}%)</div>
+                        <div class="slot-progress">
+                            <div class="slot-progress-bar ${progressClass}" style="width: ${percentage}%;"></div>
+                        </div>
+                        <div class="slot-actions">
+                            <button class="slot-action-btn" onclick="event.stopPropagation(); goToSpool('${spool.id}')" title="Spule öffnen">
+                                <span>📋</span>
+                            </button>
+                            <button class="slot-action-btn" onclick="event.stopPropagation(); refreshRFID(${amsId}, ${slotNumber})" title="RFID neu einlesen">
+                                <span>🔄</span>
+                            </button>
+                            <button class="slot-action-btn" onclick="event.stopPropagation(); changeSpoolDialog(${amsId}, ${slotNumber})" title="Spule wechseln">
+                                <span>↔️</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                slotsHTML += `
+                    <div class="slot-empty">
+                        <div class="slot-number">Slot ${slotNumber}</div>
+                        <div class="slot-label">Leer</div>
+                    </div>
+                `;
+            }
+        }
+        
+        slotsContainer.innerHTML = slotsHTML;
+    });
+}
+
+// === HELPER FUNCTIONS ===
+function updateWarningCount() {
+    const warningCountEl = document.getElementById('amsWarningCount');
+    if (!warningCountEl) return;
+    
+    // Count warnings
+    let warningCount = 0;
+    amsData.forEach((ams) => {
+        ams.slots.forEach((slot) => {
+            if (slot && slot.spool) {
+                const remaining = getRemaining(slot.spool);
+                const percentage = getPercentage(slot.spool);
+                if (percentage <= 20 || remaining < 200) {
+                    warningCount++;
+                }
+            }
+        });
+    });
+    
+    warningCountEl.textContent = warningCount;
+    
+    // Create/update alerts dropdown
+    createAlertsDropdown(warningCount);
+}
+
+function createAlertsDropdown(warningCount) {
+    const alertCard = document.querySelector('.stat-card-alerts');
+    if (!alertCard) return;
+    
+    // Remove existing dropdown
+    let dropdown = alertCard.querySelector('.alerts-dropdown');
+    if (!dropdown) {
+        dropdown = document.createElement('div');
+        dropdown.className = 'alerts-dropdown';
+        alertCard.appendChild(dropdown);
+    }
+    
+    if (warningCount === 0) {
+        dropdown.innerHTML = `
+            <div class="alerts-dropdown-header">System Status</div>
+            <div class="alerts-dropdown-empty">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">✅</div>
+                Alle Slots haben ausreichend Filament
+            </div>
+        `;
+        return;
+    }
+    
+    // Collect warning items
+    const items = [];
+    amsData.forEach((ams, i) => {
+        ams.slots.forEach((slot, idx) => {
+            if (slot && slot.spool) {
+                const remaining = getRemaining(slot.spool);
+                const percentage = getPercentage(slot.spool);
+                if (percentage <= 20 || remaining < 200) {
+                    items.push({
+                        ams: i + 1,
+                        slot: idx + 1,
+                        material: slot.material?.name || 'Unbekannt',
+                        remaining: Math.round(remaining),
+                        percent: Math.round(percentage),
+                        spoolId: slot.spool.id,
+                    });
+                }
+            }
+        });
+    });
+    
+    dropdown.innerHTML = `
+        <div class="alerts-dropdown-header">Niedrige Füllstände</div>
+        <div class="alerts-dropdown-list">
+            ${items.map(it => `
+                <div class="alert-item" onclick="goToSpool('${it.spoolId}')">
+                    <div class="alert-dot"></div>
+                    <div class="alert-text">AMS #${it.ams} · Slot ${it.slot} · ${it.material}</div>
+                    <div class="alert-meta">${it.remaining}g (${it.percent}%)</div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderAlerts() {
+    // This function is now integrated into updateWarningCount
+    // Keep it for compatibility but it does nothing
+}
+
+function getRemaining(spool) {
+    const wf = parseFloat(spool.weight_full) || 0;
+    const rp = parseFloat(spool.remain_percent);
+    
+    // Priorität: weight > weight_current > weight_remaining > berechnet aus remain_percent
+    const remaining = parseFloat(spool.weight) ?? 
+                     parseFloat(spool.weight_current) ?? 
+                     parseFloat(spool.weight_remaining) ?? 
+                     (rp != null && wf ? (rp / 100) * wf : wf);
+    
+    return remaining || 0;
+}
+
+function getPercentage(spool) {
+    const wf = parseFloat(spool.weight_full) || 0;
+    const rp = parseFloat(spool.remain_percent);
+    
+    if (rp != null) {
+        return Math.max(0, Math.min(100, rp));
+    }
+    
+    const remaining = getRemaining(spool);
+    return wf ? Math.max(0, Math.min(100, (remaining / wf) * 100)) : 0;
+}
+
+function goToSpool(spoolId) {
+    window.location.href = `/spools?highlight=${spoolId}`;
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.className = `notification notification-${type} show`;
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+    }, 3000);
+}
+
+// === SLOT ACTIONS ===
+function refreshRFID(amsId, slotNumber) {
+    showNotification(`RFID-Scan für AMS #${amsId} Slot ${slotNumber} wird ausgeführt...`, 'info');
+    // TODO: Backend-Call für RFID-Refresh
+    setTimeout(() => {
+        showNotification(`RFID erfolgreich aktualisiert`, 'success');
+        loadData(); // Refresh data
+    }, 1500);
+}
+
+function changeSpoolDialog(amsId, slotNumber) {
+    const confirmed = confirm(`Spule in AMS #${amsId} Slot ${slotNumber} wechseln?\n\nDies öffnet die Spulenverwaltung.`);
+    if (confirmed) {
+        window.location.href = '/spools';
+    }
+}

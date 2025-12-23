@@ -14,6 +14,7 @@ DEFAULTS = {
     "debug_ws_logging": "false",
     "debug_center_mode": "lite",
     "debug_center_pro_unlocked": "false",
+    "cost.electricity_price_kwh": "0.30",
 }
 PRO_CONFIG_DEFAULTS = {
     "debug.config.debug_logging_enabled": "false",
@@ -67,6 +68,16 @@ def _normalize_int(value: str | None, default: int, minimum: int | None = None) 
     return normalized
 
 
+def _normalize_float(value: str | None, default: float, minimum: float | None = None) -> float:
+    try:
+        normalized = float(str(value))
+    except (TypeError, ValueError):
+        return default
+    if minimum is not None and normalized < minimum:
+        return default
+    return normalized
+
+
 def _normalize_enum(value: str | None, allowed: set[str], default: str) -> str:
     if value is None:
         return default
@@ -98,6 +109,7 @@ def _ensure_runtime_settings(session: Session) -> None:
         "scanner.pro.fingerprint_enabled": str(scanner_defaults.get("fingerprint_enabled", False)).lower(),
         "fingerprint.enabled": str(fingerprint_defaults.get("enabled", False)).lower(),
         "fingerprint.timeout_ms": str(fingerprint_defaults.get("timeout_ms", 1500)),
+        "cost.electricity_price_kwh": DEFAULTS["cost.electricity_price_kwh"],
     }
     ports_default = fingerprint_defaults.get("ports", [8883, 6000, 7125])
     if not isinstance(ports_default, list):
@@ -117,6 +129,7 @@ def get_settings(session: Session = Depends(get_session)):
     debug_ws_logging = get_setting(session, "debug_ws_logging", DEFAULTS["debug_ws_logging"]) or DEFAULTS["debug_ws_logging"]
     debug_center_mode = get_setting(session, "debug_center_mode", DEFAULTS["debug_center_mode"]) or DEFAULTS["debug_center_mode"]
     pro_unlocked = get_setting(session, "debug_center_pro_unlocked", DEFAULTS["debug_center_pro_unlocked"]) or DEFAULTS["debug_center_pro_unlocked"]
+    electricity_price = get_setting(session, "cost.electricity_price_kwh", DEFAULTS["cost.electricity_price_kwh"]) or DEFAULTS["cost.electricity_price_kwh"]
     debug_logging_enabled = get_setting(session, "debug.config.debug_logging_enabled", PRO_CONFIG_DEFAULTS["debug.config.debug_logging_enabled"]) or PRO_CONFIG_DEFAULTS["debug.config.debug_logging_enabled"]
     latency_warning_threshold = get_setting(session, "debug.config.latency_warning_threshold_ms", PRO_CONFIG_DEFAULTS["debug.config.latency_warning_threshold_ms"]) or PRO_CONFIG_DEFAULTS["debug.config.latency_warning_threshold_ms"]
     scanner_probe_timeout = get_setting(session, "debug.config.scanner_probe_timeout_ms", PRO_CONFIG_DEFAULTS["debug.config.scanner_probe_timeout_ms"]) or PRO_CONFIG_DEFAULTS["debug.config.scanner_probe_timeout_ms"]
@@ -127,6 +140,7 @@ def get_settings(session: Session = Depends(get_session)):
         "debug_ws_logging": _normalize_bool(debug_ws_logging, default=False),
         "debug_center_mode": debug_center_mode if debug_center_mode in {"lite", "pro"} else DEFAULTS["debug_center_mode"],
         "debug_center_pro_unlocked": _normalize_bool(pro_unlocked, default=False),
+        "cost.electricity_price_kwh": _normalize_float(electricity_price, default=float(DEFAULTS["cost.electricity_price_kwh"]), minimum=0.0),
         "debug.config.debug_logging_enabled": _normalize_bool(debug_logging_enabled, default=False),
         "debug.config.latency_warning_threshold_ms": _normalize_int(
             latency_warning_threshold,
@@ -153,6 +167,7 @@ async def update_settings(payload: dict, session: Session = Depends(get_session)
         "debug_ws_logging",
         "debug_center_mode",
         "debug_center_pro_unlocked",
+        "cost.electricity_price_kwh",
         "debug.config.debug_logging_enabled",
         "debug.config.latency_warning_threshold_ms",
         "debug.config.scanner_probe_timeout_ms",
@@ -189,9 +204,24 @@ async def update_settings(payload: dict, session: Session = Depends(get_session)
         normalized = "true" if str(val).lower() in TRUE_VALUES else "false"
         set_setting(session, "debug.config.debug_logging_enabled", normalized)
 
-    if "debug.config.latency_warning_threshold_ms" in payload:
+    if "cost.electricity_price_kwh" in payload:
+        val = payload.get("cost.electricity_price_kwh")
+        if val is None:
+            raise HTTPException(status_code=400, detail="cost.electricity_price_kwh darf nicht leer sein.")
         try:
-            threshold = int(payload.get("debug.config.latency_warning_threshold_ms"))
+            price = float(val)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="cost.electricity_price_kwh muss eine Zahl sein.")
+        if price < 0:
+            raise HTTPException(status_code=400, detail="cost.electricity_price_kwh darf nicht negativ sein.")
+        set_setting(session, "cost.electricity_price_kwh", str(price))
+
+    if "debug.config.latency_warning_threshold_ms" in payload:
+        val = payload.get("debug.config.latency_warning_threshold_ms")
+        if val is None:
+            raise HTTPException(status_code=400, detail="latency_warning_threshold_ms darf nicht leer sein.")
+        try:
+            threshold = int(val)
         except (TypeError, ValueError):
             raise HTTPException(status_code=400, detail="latency_warning_threshold_ms muss eine Zahl sein.")
         if threshold < MIN_LATENCY_WARNING_MS:
@@ -201,8 +231,11 @@ async def update_settings(payload: dict, session: Session = Depends(get_session)
         set_setting(session, "debug.config.latency_warning_threshold_ms", str(threshold))
 
     if "debug.config.scanner_probe_timeout_ms" in payload:
+        val = payload.get("debug.config.scanner_probe_timeout_ms")
+        if val is None:
+            raise HTTPException(status_code=400, detail="scanner_probe_timeout_ms darf nicht leer sein.")
         try:
-            timeout = int(payload.get("debug.config.scanner_probe_timeout_ms"))
+            timeout = int(val)
         except (TypeError, ValueError):
             raise HTTPException(status_code=400, detail="scanner_probe_timeout_ms muss eine Zahl sein.")
         if timeout < MIN_SCANNER_PROBE_TIMEOUT_MS:

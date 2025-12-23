@@ -1,27 +1,28 @@
 import time
 from typing import Dict
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sqlalchemy import text
 from sqlmodel import Session
 
 from app.database import engine
 from app.monitoring.runtime_monitor import get_runtime_metrics
 from app.routes.config_routes import _load_config  # type: ignore
+from app.services.environment_info import build_environment_snapshot
 
 try:
     from app.routes.mqtt_routes import (
         mqtt_clients,
         active_connections,
-        last_ws_ping,
         last_connect_error,
         active_ws_clients,
         last_ws_activity_ts,
     )
 except Exception:  # pragma: no cover - fallback
-    mqtt_clients: Dict[str, object] = {}
+    import paho.mqtt.client as mqtt
+    mqtt_clients: Dict[str, mqtt.Client] = {}
     active_connections = set()
-    last_ws_ping = None
+    last_ws_ping = None  # Symbol existiert im Hauptmodul nicht, daher als Dummy belassen
     last_connect_error = None
     active_ws_clients = 0
     last_ws_activity_ts = None
@@ -30,13 +31,13 @@ router = APIRouter(prefix="/api/debug", tags=["Debug System"])
 
 
 @router.get("/system_status")
-def system_status():
+def system_status(request: Request):
     api_state = {"state": "online"}
 
     db_state = {"state": "error"}
     try:
         with Session(engine) as session:
-            session.exec(text("SELECT 1"))
+            session.execute(text("SELECT 1"))
             db_state["state"] = "connected"
     except Exception:
         db_state["state"] = "error"
@@ -55,7 +56,7 @@ def system_status():
             mqtt_state["port"] = int(port) if port and port.isdigit() else port
 
             try:
-                if client.is_connected():
+                if hasattr(client, "is_connected") and client.is_connected():
                     mqtt_state["state"] = "connected"
                 else:
                     mqtt_state["state"] = "disconnected"
@@ -103,11 +104,7 @@ def system_status():
             else:
                 # Kein aktiver Client, aber Endpoint existiert
                 ws_state = "listening"
-                if last_ws_ping:
-                    diff = round(now - last_ws_ping, 1)
-                    websocket_state["last_ping_s"] = diff
-                    if diff < 30:
-                        ws_state = "idle"
+                # last_ws_ping entfernt, da nicht vorhanden
                 websocket_state["state"] = ws_state
     except Exception:
         websocket_state = {"state": "offline"}
@@ -176,6 +173,8 @@ def system_status():
 
     system_health = {"status": health_status, "reasons": reasons}
 
+    environment_info = build_environment_snapshot(request)
+
     return {
         "api": api_state,
         "db": db_state,
@@ -183,4 +182,5 @@ def system_status():
         "websocket": websocket_state,
         "runtime": runtime_state,
         "system_health": system_health,
+        "environment": environment_info,
     }

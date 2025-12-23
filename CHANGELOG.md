@@ -4,11 +4,6 @@
 - MQTT-Tab: Pro-Cards (Subscriptions, Live Messages, Health & Statistik) verwenden jetzt die systemkonforme .panel/.panel-header/.panel-body Struktur. Eigene Card-Klassen entfernt.
 ## 2025-12-15
 - [Debug Center] MQTT-Tab: Lite-Modus aktiviert (auch im Lite-Modus sichtbar)
-- [Debug Center] MQTT-Übersicht: Card sichtbar gemacht und Layout an System Status angepasst
-- [Debug Center] MQTT-Tab mit Overview-Grundstruktur hinzugefügt (Pro-Modus)
-- [Debug Center] MQTT-Tab: Pro-Cards ergänzt (Struktur, Pro-Modus)
-- [Debug Center] MQTT Debug UI: Connect/Disconnect nutzt Runtime-Endpunkte (/api/mqtt/runtime/*)
-- [MQTT] UI zeigt echten Runtime-Status nach Connect/Disconnect
 - [MQTT] UI behandelt Validation-Fehler (HTTP 422) korrekt
 - [MQTT] Topics-Übersicht (Counts + Last Seen) im Pro-Tab ergänzt
 - [MQTT] Connect-Button baut echte MQTT-Verbindung auf

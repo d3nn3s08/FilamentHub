@@ -29,6 +29,12 @@ def _normalize_spool_payload(data: SpoolCreateSchema | SpoolUpdateSchema, *, is_
         # Falls kein aktuelles Gewicht explizit gesetzt wurde, auf weight_full setzen
         if payload.get("weight_current") is None:
             payload["weight_current"] = payload.get("weight_full")
+        # Neue Spulen: remain_percent auf 100% setzen (nicht leer)
+        if payload.get("remain_percent") is None:
+            payload["remain_percent"] = 100.0
+        # Neue Spulen: is_open auf True setzen (geöffnet)
+        if "is_open" not in payload:
+            payload["is_open"] = True
     return payload
 
 
@@ -48,9 +54,11 @@ def get_spool(spool_id: str, session: Session = Depends(get_session)):
 
 @router.post("/", response_model=SpoolReadSchema, status_code=status.HTTP_201_CREATED)
 def create_spool(data: SpoolCreateSchema, session: Session = Depends(get_session)):
-    exists = session.exec(select(Spool).where(Spool.label == data.label, Spool.material_id == data.material_id)).first()
-    if exists:
-        raise HTTPException(status_code=409, detail="Spule existiert bereits")
+    # Prüfe auf Duplikate nur wenn label gesetzt ist
+    if data.label:
+        exists = session.exec(select(Spool).where(Spool.label == data.label, Spool.material_id == data.material_id)).first()
+        if exists:
+            raise HTTPException(status_code=409, detail="Spule mit dieser Bezeichnung existiert bereits")
     try:
         payload = _normalize_spool_payload(data)
         spool = Spool(**payload)

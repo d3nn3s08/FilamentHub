@@ -33,9 +33,9 @@
 
 ## Phase 4 - Komfort/Verbindung
 
-- [ ] MQTT-Auto-Connect
+- [x] MQTT-Auto-Connect
 - [ ] MQTT-Protokoll wählbar (3.1.1 vs 5.0) pro Verbindung
-    - Debug-Panel: Dropdown "MQTT Version" (Default 3.1.1 f?r A1 mini, Option 5.0 f?r X1C)
+    - Debug-Panel: Dropdown "MQTT Version" (Default 3.1.1 für A1 mini, Option 5.0 für X1C)
     - /api/mqtt/connect akzeptiert `protocol_version` und setzt Client auf v3.1.1 oder v5
     - Optional: Auto-Default je nach Drucker-Modell
  Checkbox für Bambu-Drucker

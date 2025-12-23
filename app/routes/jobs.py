@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, SQLModel, select
 from typing import List, Optional
+from datetime import datetime
 from app.database import get_session
 from app.models.job import Job, JobCreate, JobRead, JobSpoolUsage
 from app.models.spool import Spool
+from app.models.printer import Printer
+from app.models.settings import Setting
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -37,16 +40,52 @@ def get_job_stats(session: Session = Depends(get_session)):
     total_jobs = len(jobs)
     total_filament_g = sum(job.filament_used_g for job in jobs)
     total_filament_m = sum(job.filament_used_mm for job in jobs) / 1000  # mm to m
-    
-    # Abgeschlossene Jobs
+
     completed_jobs = [job for job in jobs if job.finished_at is not None]
-    
+    active_jobs = total_jobs - len(completed_jobs)
+
+    # Energie-Berechnung
+    now = datetime.utcnow()
+    default_power_kw = 0.30  # Schätzung wenn kein Wert hinterlegt
+    power_exact_kwh = 0.0
+    power_est_kwh = 0.0
+    total_duration_h = 0.0
+
+    # Schnellzugriff: alle Printer laden
+    printers = {p.id: p for p in session.exec(select(Printer)).all()}
+
+    for job in jobs:
+        start = job.started_at
+        end = job.finished_at or now
+        duration_h = max((end - start).total_seconds(), 0) / 3600.0
+        total_duration_h += duration_h
+
+        printer = printers.get(job.printer_id)
+        power = printer.power_consumption_kw if printer else None
+        if power is not None:
+            power_exact_kwh += power * duration_h
+        else:
+            power_est_kwh += default_power_kw * duration_h
+
+    energy_kwh = power_exact_kwh + power_est_kwh
+
+    # Strompreis laden
+    price_setting = session.exec(select(Setting).where(Setting.key == "cost.electricity_price_kwh")).first()
+    price_kwh = float(price_setting.value) if price_setting and price_setting.value else None
+    energy_cost = energy_kwh * price_kwh if price_kwh is not None else None
+
     return {
         "total_jobs": total_jobs,
         "completed_jobs": len(completed_jobs),
-        "active_jobs": total_jobs - len(completed_jobs),
+        "active_jobs": active_jobs,
         "total_filament_g": round(total_filament_g, 2),
-        "total_filament_m": round(total_filament_m, 2)
+        "total_filament_m": round(total_filament_m, 2),
+        "total_duration_h": round(total_duration_h, 2),
+        "energy_kwh_exact": round(power_exact_kwh, 3),
+        "energy_kwh_estimated": round(power_est_kwh, 3),
+        "energy_kwh_total": round(energy_kwh, 3),
+        "energy_cost_total": round(energy_cost, 2) if energy_cost is not None else None,
+        "energy_price_kwh": price_kwh,
     }
 
 

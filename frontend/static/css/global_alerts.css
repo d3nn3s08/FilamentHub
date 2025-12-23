@@ -1,12 +1,15 @@
 .alert-container {
     position: fixed;
     top: 20px;
-    left: 900px;
+    left: 50%;
+    transform: translateX(-50%);
+    right: auto;
     display: flex;
     flex-direction: column;
     gap: 10px;
     z-index: 1200;
     pointer-events: none;
+    align-items: center;
 }
 
 .alert {

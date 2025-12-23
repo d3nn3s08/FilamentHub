@@ -2,7 +2,11 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FilamentHub Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/frontend/admin_panel.css">
 </head>
 <body>
@@ -19,29 +23,36 @@ try {
 </script>
 <div class="admin-wrapper">
     <aside class="admin-sidebar">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:2rem;">
-            <img src="/frontend/static/logo.svg" alt="FilamentHub" style="height:38px;width:38px;border-radius:8px;background:#ff6f3c;">
-            <span style="font-size:1.5rem;font-weight:600;color:#fff;letter-spacing:1px;">FilamentHub</span>
+        <div class="brand">
+            <img src="/frontend/static/logo.svg" alt="FilamentHub" class="brand-logo">
+            <div class="brand-copy">
+                <span class="brand-name">FilamentHub</span>
+                <span class="brand-tag">Admin Console</span>
+            </div>
         </div>
         <div class="sidebar-group">
             <div class="sidebar-label">ADMIN</div>
-            <button class="nav-btn active" onclick="document.getElementById('admin-migrations').scrollIntoView({behavior:'smooth'})">
+            <button class="nav-btn active" onclick="openAdminModal('modal-migrations')">
                 <svg width="22" height="22" fill="none" stroke="#ffb300" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg>
                 Migration
             </button>
-            <button class="nav-btn" onclick="document.getElementById('admin-delete').scrollIntoView({behavior:'smooth'})">
+            <button class="nav-btn" onclick="openAdminModal('modal-delete')">
                 <svg width="22" height="22" fill="none" stroke="#e53935" stroke-width="2" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="8" rx="2"/><path d="M9 11V7a3 3 0 0 1 6 0v4"/></svg>
                 Eintrag löschen
             </button>
-            <button class="nav-btn" onclick="document.getElementById('admin-welcome').scrollIntoView({behavior:'smooth'})">
+            <button class="nav-btn" onclick="openAdminModal('modal-welcome')">
                 <svg width="22" height="22" fill="none" stroke="#4fc3f7" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19V5"/><path d="M5 12h14"/></svg>
                 Begrüßungstext
             </button>
-            <button class="nav-btn" onclick="document.getElementById('admin-db').scrollIntoView({behavior:'smooth'})">
+            <button class="nav-btn" onclick="openAdminModal('modal-db')">
                 <svg width="22" height="22" fill="none" stroke="#8ecaff" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
                 DB-Editor
             </button>
-            <button class="nav-btn" onclick="window.location.href='/admin/notifications'">
+            <button class="nav-btn" onclick="openAdminModal('modal-tables')">
+                <svg width="22" height="22" fill="none" stroke="#4caf50" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                Tabellen
+            </button>
+            <button class="nav-btn" onclick="document.getElementById('admin-notifications').scrollIntoView({behavior:'smooth'})">
                 <svg width="22" height="22" fill="none" stroke="#ffc107" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 Benachrichtigungen
             </button>
@@ -55,82 +66,321 @@ try {
         </div>
     </aside>
     <main class="admin-content">
-        <div class="admin-grid">
-            <section class="admin-card" id="admin-migrations">
-                <h2>Migrations</h2>
-                <div class="note">Alembic upgrade head ausführen</div>
-                <button id="migrateBtn">Migration starten</button>
-                <div id="migrateStatus" class="status"></div>
-                <div style="color:#8ecaff;font-size:1em;margin-bottom:2px;">ℹ️ Noch keine Migration durchgeführt</div>
-                <div style="color:#8ecaff;font-size:1em;">⏩ Übersprungen (da vorhanden)</div>
-            </section>
-            <section class="admin-card" id="admin-delete">
-                <h2>Eintrag löschen</h2>
-                <div class="note">Datensatz per ID entfernen</div>
-                <label for="deleteTable">Tabelle</label>
-                <select id="deleteTable">
-                    <option value="material">material</option>
-                    <option value="spool">spool</option>
-                    <option value="printer">printer</option>
-                    <option value="job">job</option>
-                    <option value="userflag">userflag</option>
-                    <option value="setting">setting</option>
-                </select>
-                <label for="deleteId">ID</label>
-                <input id="deleteId" type="text" placeholder="UUID oder PK" />
-                <button id="deleteBtn" class="danger">Eintrag löschen</button>
-                <div id="deleteStatus" class="status"></div>
-            </section>
-            <section class="admin-card" id="admin-welcome">
-                <h2>Begrüßungstext bearbeiten</h2>
-                <textarea id="welcomeText" placeholder="Text für das Willkommens-Popup..."></textarea>
-                <div id="welcomeStatus" class="status"></div>
-                <button onclick="saveWelcomeText()">Speichern</button>
-                <button onclick="triggerWelcomePopup()">Popup auslösen</button>
-            </section>
-            <section class="admin-card" id="admin-db">
-                <h2>Datenbank-Editor</h2>
-                <p class="note">Führe beliebige SQL-Befehle aus (INSERT, UPDATE, DELETE, CREATE, ALTER, DROP). <b>Vorsicht:</b> Änderungen sind direkt wirksam!</p>
-                <textarea id="dbEditorQuery" style="min-height:120px;"></textarea>
-                <div style="display:flex;gap:10px;margin-bottom:10px;">
-                    <button id="dbEditorExecute" class="btn btn-primary">Ausführen</button>
-                    <button id="dbEditorClear" class="btn btn-secondary">Clear</button>
+        <div class="hero">
+            <div class="hero-text">
+                <p class="eyebrow">⚡ Systemsteuerung</p>
+                <h1>Admin Panel</h1>
+                <p class="lead">Migrationen ausführen, Datenbank pflegen, Begrüßungen anpassen und Coverage direkt im Browser.</p>
+                <div class="hero-pills">
+                    <span class="pill">🔒 Sicher • Auth-required</span>
+                    <span class="pill">🛠️ Server-Tools</span>
+                    <span class="pill">📊 Live-Status</span>
                 </div>
-                <div style="margin: 18px 0 8px 0;">
-                    <span style="color:#aaa;font-size:1.05em;font-weight:500;display:block;margin-bottom:0.7em;">Beispiele:</span>
-                    <div style="display:flex;gap:0.7em;justify-content:left;">
-                        <button type="button" class="btn btn-primary" style="min-width:90px;padding:0.5em 1.2em;font-size:1em;">UPDATE</button>
-                        <button type="button" class="btn btn-primary" style="min-width:90px;padding:0.5em 1.2em;font-size:1em;">INSERT</button>
-                        <button type="button" class="btn btn-primary" style="min-width:90px;padding:0.5em 1.2em;font-size:1em;">DELETE</button>
+            </div>
+            <div class="hero-actions">
+                <button class="btn-ghost" onclick="openAdminModal('modal-migrations')">🚀 Migration</button>
+                <button class="btn-ghost" onclick="openAdminModal('modal-db')">💾 DB-Editor</button>
+                <button class="btn-ghost" onclick="openAdminModal('modal-coverage')">📈 Coverage</button>
+            </div>
+        </div>
+
+        <div class="quick-grid">
+            <div class="quick-card">
+                <div class="quick-label">Migration</div>
+                <div class="quick-value">Alembic</div>
+                <div class="quick-meta">Upgrade Head & Logs</div>
+                <button class="btn-ghost" onclick="openAdminModal('modal-migrations')">Öffnen</button>
+            </div>
+            <div class="quick-card">
+                <div class="quick-label">Datenbank</div>
+                <div class="quick-value">SQL Editor</div>
+                <div class="quick-meta">INSERT · UPDATE · DELETE</div>
+                <button class="btn-ghost" onclick="openAdminModal('modal-db')">Öffnen</button>
+            </div>
+            <div class="quick-card">
+                <div class="quick-label">Coverage</div>
+                <div class="quick-value">QA</div>
+                <div class="quick-meta">Run & Report</div>
+                <button class="btn-ghost" onclick="openAdminModal('modal-coverage')">Öffnen</button>
+            </div>
+            <div class="quick-card">
+                <div class="quick-label">Willkommen</div>
+                <div class="quick-value">Popup</div>
+                <div class="quick-meta">Texte & Trigger</div>
+                <button class="btn-ghost" onclick="openAdminModal('modal-welcome')">Öffnen</button>
+            </div>
+            <div class="quick-card">
+                <div class="quick-label">Datenbank</div>
+                <div class="quick-value">Tables</div>
+                <div class="quick-meta">Schema & Preview</div>
+                <button class="btn-ghost" onclick="openAdminModal('modal-tables')">Öffnen</button>
+            </div>
+        </div>
+
+
+
+        <!-- MODALS -->
+        <div id="modal-migrations" class="admin-modal">
+            <div class="modal-overlay" onclick="closeAdminModal('modal-migrations')"></div>
+            <div class="modal-box">
+                <div class="modal-header">
+                    <h2>⏱️ Migrations</h2>
+                    <button class="modal-close" onclick="closeAdminModal('modal-migrations')">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="note">Alembic upgrade head ausführen</div>
+                    <button id="migrateBtn">🚀 MIGRATION STARTEN</button>
+                    <div id="migrateStatus" class="status" style="min-height:2.5em;"></div>
+                    <div id="migrationLog" class="status" style="margin-top:8px;font-size:0.85em;line-height:1.4em;min-height:3.5em;white-space:pre-wrap;">Kein Lauf protokolliert.</div>
+                    <div style="color:var(--accent);font-size:0.95em;margin-top:1rem;">ℹ️ Noch keine Migration durchgeführt</div>
+                    <div style="color:var(--accent);font-size:0.95em;">ℹ️ Übersprungen (da vorhanden)</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-delete" class="admin-modal">
+            <div class="modal-overlay" onclick="closeAdminModal('modal-delete')"></div>
+            <div class="modal-box">
+                <div class="modal-header">
+                    <h2>🗑️ Eintrag löschen</h2>
+                    <button class="modal-close" onclick="closeAdminModal('modal-delete')">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="note">Datensatz per ID entfernen</div>
+                    <label for="deleteTable">Tabelle</label>
+                    <select id="deleteTable">
+                        <option value="material">material</option>
+                        <option value="spool">spool</option>
+                        <option value="printer">printer</option>
+                        <option value="job">job</option>
+                        <option value="userflag">userflag</option>
+                        <option value="setting">setting</option>
+                    </select>
+                    <label for="deleteId">ID</label>
+                    <input id="deleteId" type="text" placeholder="UUID oder PK" />
+                    <button id="deleteBtn" class="danger" style="width:100%;margin-top:1rem;">🗑️ EINTRAG LÖSCHEN</button>
+                    <div id="deleteStatus" class="status"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-welcome" class="admin-modal">
+            <div class="modal-overlay" onclick="closeAdminModal('modal-welcome')"></div>
+            <div class="modal-box">
+                <div class="modal-header">
+                    <h2>👋 Begrüßungstext</h2>
+                    <button class="modal-close" onclick="closeAdminModal('modal-welcome')">✕</button>
+                </div>
+                <div class="modal-body">
+                    <label>Text für das Willkommens-Popup</label>
+                    <textarea id="welcomeText" placeholder="Text für das Willkommens-Popup..." style="min-height:120px;"></textarea>
+                    <div style="display:flex;gap:10px;margin-top:1rem;">
+                        <button style="flex:1;" onclick="saveWelcomeText()">💾 Speichern</button>
+                        <button style="flex:1;" onclick="triggerWelcomePopup()">▶️ Popup auslösen</button>
+                    </div>
+                    <div id="welcomeStatus" class="status" style="margin-top:1rem;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-db" class="admin-modal">
+            <div class="modal-overlay" onclick="closeAdminModal('modal-db')"></div>
+            <div class="modal-box modal-large">
+                <div class="modal-header">
+                    <h2>🗄️ Datenbank-Editor</h2>
+                    <button class="modal-close" onclick="closeAdminModal('modal-db')">✕</button>
+                </div>
+                <div class="modal-body">
+                    <p class="note">Führe beliebige SQL-Befehle aus (INSERT, UPDATE, DELETE, CREATE, ALTER, DROP). <b>Vorsicht:</b> Änderungen sind direkt wirksam!</p>
+                    <textarea id="dbEditorQuery" style="min-height:120px;margin-bottom:1rem;"></textarea>
+                    <div style="display:flex;gap:10px;margin-bottom:1rem;">
+                        <button id="dbEditorExecute">▶️ Ausführen</button>
+                        <button id="dbEditorClear">🗑️ Clear</button>
+                    </div>
+                    <div style="margin: 1rem 0;">
+                        <span style="color:var(--text-dim);font-size:0.95em;font-weight:500;display:block;margin-bottom:0.7em;">SQL-Beispiele:</span>
+                        <div style="display:flex;gap:0.7em;">
+                            <button type="button" data-sql-example="update" class="sql-example">UPDATE</button>
+                            <button type="button" data-sql-example="insert" class="sql-example">INSERT</button>
+                            <button type="button" data-sql-example="delete" class="sql-example">DELETE</button>
+                        </div>
+                    </div>
+                    <div id="dbEditorOutput" style="background:rgba(5,10,18,0.8);padding:12px;border-radius:8px;min-height:32px;margin-top:1rem;border:1px solid rgba(92,211,255,0.2);font-size:0.9em;color:var(--text-dim);"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-coverage" class="admin-modal">
+            <div class="modal-overlay" onclick="closeAdminModal('modal-coverage')"></div>
+            <div class="modal-box">
+                <div class="modal-header">
+                    <h2>📊 Coverage</h2>
+                    <button class="modal-close" onclick="closeAdminModal('modal-coverage')">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="note">Coverage-Auswertung ohne Terminal</div>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1rem;">
+                        <button id="coverageRunBtn">▶️ Coverage ausführen</button>
+                        <button id="coverageReportBtn" disabled>📄 Coverage-Report öffnen</button>
+                    </div>
+                    <div id="coverageStatus" class="status"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-tables" class="admin-modal">
+            <div class="modal-overlay" onclick="closeAdminModal('modal-tables')"></div>
+            <div class="modal-box modal-large">
+                <div class="modal-header">
+                    <h2>🗄️ Datenbank-Tabellen</h2>
+                    <button class="modal-close" onclick="closeAdminModal('modal-tables')">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="note">Schema-Übersicht mit Spalten, Typen und Datenvorschau</div>
+                    <div id="dbTables" style="color:var(--text-dim);min-height:100px;">Lädt...</div>
+                </div>
+            </div>
+        </div>
+
+        <section class="admin-card" id="admin-notifications" style="grid-column: 1 / -1;">
+                <div class="notif-header">
+                    <div>
+                        <p class="eyebrow">Benachrichtigungen</p>
+                        <h2>Globale Alerts</h2>
+                    </div>
+                    <div class="btn-group-compact">
+                        <button class="btn-compact" id="btn-save">💾 Speichern</button>
+                        <button class="btn-compact" id="btn-test">▶️ Testen</button>
+                        <button class="btn-compact" id="btn-trigger">⚡ Triggern</button>
+                    </div>
+                </div>
+                <div class="notif-container">
+                    <div class="notif-form">
+                        <h3 class="form-title">Neue Benachrichtigung</h3>
+                        <div class="form-group">
+                            <label for="notif-id">ID <span class="required">*</span></label>
+                            <input id="notif-id" type="text" placeholder="z.B. print_done">
+                        </div>
+                        <div class="form-group">
+                            <label for="notif-label">Label</label>
+                            <input id="notif-label" type="text" placeholder="Lesbarer Name">
+                        </div>
+                        <div class="form-group">
+                            <label for="notif-message">Nachricht <span class="required">*</span></label>
+                            <textarea id="notif-message" placeholder="Der Druck wurde erfolgreich abgeschlossen." style="min-height:80px;"></textarea>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="notif-type">Typ</label>
+                                <select id="notif-type">
+                                    <option value="success">✓ Success</option>
+                                    <option value="warn">⚠️ Warnung</option>
+                                    <option value="error">✕ Error</option>
+                                    <option value="info">ℹ️ Info</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="notif-trigger">Trigger</label>
+                                <select id="notif-trigger">
+                                    <option value="manual">Manuell</option>
+                                    <option value="print_done">Druck fertig</option>
+                                    <option value="error">Fehler</option>
+                                    <option value="material_low">Material niedrig</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-checkboxes">
+                            <label class="checkbox-label">
+                                <input id="notif-enabled" type="checkbox" checked>
+                                <span>Aktiv</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input id="notif-persistent" type="checkbox">
+                                <span>Persistent</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="notif-list">
+                        <h3 class="form-title">Gespeichert</h3>
+                        <div id="notification-list" class="notif-items"></div>
                     </div>
                 </div>
             </section>
-        </div>
-            <!-- Weiße Beispiel-Buttons entfernt -->
-        </div>
-        <div id="dbEditorOutput" class="output-box" style="background:#232323;padding:10px;border-radius:6px;min-height:32px;margin-bottom:10px;"></div>
-        <h3 style="margin-top:2rem;">Tables Overview</h3>
-        <div class="admin-table-wrapper">
-            <div id="dbTables" style="padding:6px; color:var(--text-dim);">Lädt...</div>
-        </div>
+        </main>
     </div>
     <script src="/frontend/admin_db_editor.js"></script>
+    <script src="/frontend/js/admin_notifications.js"></script>
     <script>
-    // Migration starten
-    document.getElementById('migrateBtn').onclick = async function() {
-        document.getElementById('migrateStatus').innerText = 'Migration wird ausgeführt...';
+    // ===== MODAL SYSTEM =====
+    function openAdminModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+    
+    function closeAdminModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+    }
+    
+    // Escape key closes modal
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const activeModals = document.querySelectorAll('.admin-modal.active');
+            if (activeModals.length > 0) {
+                const lastModal = activeModals[activeModals.length - 1];
+                closeAdminModal(lastModal.id);
+            }
+        }
+    });
+    
+    // ===== MIGRATION =====
+    const migrateBtn = document.getElementById('migrateBtn');
+    const migrateStatus = document.getElementById('migrateStatus');
+    const migrationLog = document.getElementById('migrationLog');
+
+    const updateMigrationLog = (text) => {
+        if (!migrationLog) return;
+        migrationLog.textContent = text || 'Keine Ausgabe';
+    };
+
+    const updateMigrationStatus = (message) => {
+        if (!migrateStatus) return;
+        migrateStatus.innerText = message;
+    };
+
+    migrateBtn?.addEventListener('click', async function () {
+        if (!migrateBtn) return;
+        const originalLabel = migrateBtn.innerText;
+        migrateBtn.disabled = true;
+        migrateBtn.innerText = 'Migration läuft…';
+        updateMigrationStatus('Migration wird ausgeführt...');
+        updateMigrationLog('Befehl wird gestartet…');
+
         try {
             const res = await fetch('/api/admin/migrate', { method: 'POST' });
             const data = await res.json();
-            if(data.success) {
-                document.getElementById('migrateStatus').innerText = 'Migration abgeschlossen!';
+            if (data.success) {
+                updateMigrationStatus('Migration abgeschlossen!');
+                updateMigrationLog(data.output?.trim() || 'Keine Ausgabe.');
             } else {
-                document.getElementById('migrateStatus').innerText = 'Fehler: ' + (data.error || 'Unbekannt');
+                updateMigrationStatus('Fehler: ' + (data.error || 'Unbekannt'));
+                updateMigrationLog(data.error || 'Fehler beim Ausführen.');
             }
-        } catch(e) {
-            document.getElementById('migrateStatus').innerText = 'Fehler beim Ausführen!';
+        } catch (e) {
+            updateMigrationStatus('Fehler beim Ausführen!');
+            updateMigrationLog(e.message || 'Netzwerkfehler oder Timeout.');
+        } finally {
+            migrateBtn.disabled = false;
+            migrateBtn.innerText = originalLabel;
         }
-    };
+    });
     // Eintrag löschen
     document.getElementById('deleteBtn').onclick = async function() {
         const table = document.getElementById('deleteTable').value;
@@ -209,7 +459,50 @@ try {
                 window.location.href = '/admin';
             });
     }
-    window.addEventListener('DOMContentLoaded', loadWelcomeText);
+    const coverageRunBtn = document.getElementById('coverageRunBtn');
+    const coverageReportBtn = document.getElementById('coverageReportBtn');
+    const coverageStatus = document.getElementById('coverageStatus');
+
+    async function refreshCoverageReportButton() {
+        if (!coverageReportBtn) {
+            return;
+        }
+        try {
+            const res = await fetch('/api/admin/coverage/report', { method: 'HEAD' });
+            coverageReportBtn.disabled = !res.ok;
+        } catch (e) {
+            coverageReportBtn.disabled = true;
+        }
+    }
+
+    coverageRunBtn?.addEventListener('click', async function () {
+        if (!coverageRunBtn) return;
+        coverageRunBtn.disabled = true;
+        coverageRunBtn.innerText = 'Coverage läuft …';
+        coverageStatus.innerText = 'Coverage läuft …';
+        try {
+            const res = await fetch('/api/admin/coverage/run', { method: 'POST' });
+            const data = await res.json();
+            coverageStatus.innerText = data.message || 'Coverage beendet';
+            if (data.success) {
+                await refreshCoverageReportButton();
+            }
+        } catch (e) {
+            coverageStatus.innerText = 'Fehler beim Coverage-Lauf';
+        } finally {
+            coverageRunBtn.disabled = false;
+            coverageRunBtn.innerText = 'Coverage ausführen';
+        }
+    });
+
+    coverageReportBtn?.addEventListener('click', function () {
+        window.open('/api/admin/coverage/report', '_blank');
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        loadWelcomeText();
+        refreshCoverageReportButton();
+    });
     </script>
 </body>
 </html>

@@ -11,6 +11,9 @@ class PrinterBase(SQLModel):
     model: str = Field(default="X1C", max_length=32)  # z.B. X1C, A1MINI, P1S, H2D
     mqtt_version: str = Field(default="311", max_length=8)  # MQTT Protocol Version
 
+    power_consumption_kw: Optional[float] = Field(default=None)  # Durchschnittliche Leistungsaufnahme
+    maintenance_cost_yearly: Optional[float] = Field(default=None)  # Wartungskosten pro Jahr
+
     cloud_serial: Optional[str] = None  # Bambu Cloud Seriennummer
     api_key: Optional[str] = None  # z.B. Moonraker Token
     active: bool = True  # wird beim Start berücksichtigt

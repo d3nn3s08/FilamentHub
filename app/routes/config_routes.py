@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from app.database import get_session
+from app.logging.runtime import reconfigure_logging
 from app.models.settings import Setting
 
 
@@ -27,8 +28,18 @@ DEFAULT_CONFIG = {
         },
     },
     "logging": {
-        "level": "basic",
-        "file_enabled": False,
+        "enabled": True,
+        "level": "DEBUG",
+        "keep_days": 14,
+        "max_size_mb": 10,
+        "backup_count": 3,
+        "modules": {
+            "app": {"enabled": True},
+            "bambu": {"enabled": True},
+            "errors": {"enabled": True},
+            "klipper": {"enabled": False},
+            "mqtt": {"enabled": False},
+        },
     },
     "logging_status": {},
     "scanner": {
@@ -135,12 +146,25 @@ def _ensure_settings_seed(session: Session, merged: dict) -> None:
         "fingerprint.enabled": "true" if fp.get("enabled", False) else "false",
         "fingerprint.timeout_ms": str(fp.get("timeout_ms", 1500)),
         "fingerprint.ports": json.dumps(fp.get("ports", DEFAULT_CONFIG["fingerprint"]["ports"])),
+        "logging.enabled": "true" if log_cfg.get("enabled", DEFAULT_CONFIG["logging"]["enabled"]) else "false",
         "logging.level": log_cfg.get("level", DEFAULT_CONFIG["logging"]["level"]),
-        "logging.file_enabled": "true" if log_cfg.get("file_enabled", False) else "false",
+        "logging.keep_days": str(log_cfg.get("keep_days", DEFAULT_CONFIG["logging"]["keep_days"])),
+        "logging.max_size_mb": str(log_cfg.get("max_size_mb", DEFAULT_CONFIG["logging"]["max_size_mb"])),
+        "logging.backup_count": str(log_cfg.get("backup_count", DEFAULT_CONFIG["logging"]["backup_count"])),
         "json_inspector.max_size_mb": str(json_inspector.get("max_size_mb", DEFAULT_CONFIG["json_inspector"]["max_size_mb"])),
         "json_inspector.max_depth": str(json_inspector.get("max_depth", DEFAULT_CONFIG["json_inspector"]["max_depth"])),
         "json_inspector.allow_override": "true" if json_inspector.get("allow_override", False) else "false",
     }
+    modules_cfg = log_cfg.get("modules", DEFAULT_CONFIG["logging"]["modules"])
+    if not isinstance(modules_cfg, dict):
+        modules_cfg = DEFAULT_CONFIG["logging"]["modules"]
+    for module_name, module_def in DEFAULT_CONFIG["logging"]["modules"].items():
+        raw_entry = modules_cfg.get(module_name, module_def)
+        if isinstance(raw_entry, dict):
+            module_enabled = raw_entry.get("enabled", module_def["enabled"])
+        else:
+            module_enabled = raw_entry
+        seeds[f"logging.modules.{module_name}"] = "true" if module_enabled else "false"
     for k, v in seeds.items():
         _persist_setting(session, k, v, overwrite=False)
 
@@ -172,12 +196,58 @@ def _validate_config(raw: dict) -> dict:
 
     # Logging
     log_cfg = cfg.get("logging", {})
-    level_raw = (log_cfg.get("level") or "").lower()
-    if level_raw not in {"off", "basic", "verbose"}:
+    logging_enabled = _to_bool(log_cfg.get("enabled"), DEFAULT_CONFIG["logging"]["enabled"], "logging.enabled")
+    level_raw = (log_cfg.get("level") or "").upper()
+    if level_raw not in {"DEBUG", "INFO", "WARNING", "ERROR"}:
         logger.warning("Config fallback applied for logging.level")
         level_raw = DEFAULT_CONFIG["logging"]["level"]
-    file_enabled = _to_bool(log_cfg.get("file_enabled"), DEFAULT_CONFIG["logging"]["file_enabled"], "logging.file_enabled")
-    cfg["logging"] = {"level": level_raw, "file_enabled": file_enabled}
+    keep_days = _to_int(log_cfg.get("keep_days"), DEFAULT_CONFIG["logging"]["keep_days"], "logging.keep_days")
+    if keep_days < 1:
+        logger.warning("Config fallback applied for logging.keep_days")
+        keep_days = DEFAULT_CONFIG["logging"]["keep_days"]
+    max_size_mb = _to_int(log_cfg.get("max_size_mb"), DEFAULT_CONFIG["logging"]["max_size_mb"], "logging.max_size_mb")
+    if max_size_mb < 1:
+        logger.warning("Config fallback applied for logging.max_size_mb")
+        max_size_mb = DEFAULT_CONFIG["logging"]["max_size_mb"]
+    backup_count = _to_int(log_cfg.get("backup_count"), DEFAULT_CONFIG["logging"]["backup_count"], "logging.backup_count")
+    if backup_count < 1:
+        logger.warning("Config fallback applied for logging.backup_count")
+        backup_count = DEFAULT_CONFIG["logging"]["backup_count"]
+    modules_input = log_cfg.get("modules", {})
+    if not isinstance(modules_input, dict):
+        modules_input = {}
+    normalized_modules = {}
+    for module_name, module_def in DEFAULT_CONFIG["logging"]["modules"].items():
+        raw_entry = modules_input.get(module_name, module_def)
+        if isinstance(raw_entry, dict):
+            module_value = raw_entry.get("enabled")
+        else:
+            module_value = raw_entry
+        module_enabled = _to_bool(module_value, module_def["enabled"], f"logging.modules.{module_name}.enabled")
+        normalized_modules[module_name] = {"enabled": module_enabled}
+    cfg["logging"] = {
+        "enabled": logging_enabled,
+        "level": level_raw,
+        "keep_days": keep_days,
+        "max_size_mb": max_size_mb,
+        "backup_count": backup_count,
+        "modules": normalized_modules,
+    }
+
+    if isinstance(raw, dict) and "logging" in raw and isinstance(raw["logging"], dict):
+        incoming_modules = raw["logging"].get("modules")
+        if isinstance(incoming_modules, dict):
+            determined_modules = {}
+            for module_name in cfg["logging"]["modules"].keys():
+                incoming_entry = incoming_modules.get(module_name, {})
+                if isinstance(incoming_entry, dict):
+                    candidate = incoming_entry.get("enabled", cfg["logging"]["modules"][module_name]["enabled"])
+                else:
+                    candidate = incoming_entry
+                determined_modules[module_name] = {
+                    "enabled": bool(candidate if candidate is not None else cfg["logging"]["modules"][module_name]["enabled"])
+                }
+            cfg["logging"]["modules"] = determined_modules
     cfg["logging_status"] = {}
 
     # Runtime
@@ -255,7 +325,7 @@ def _validate_config(raw: dict) -> dict:
         "health_latency_warn_ms": cfg["debug"]["system_health"]["warn_latency_ms"],
         "health_latency_error_ms": cfg["debug"]["system_health"]["error_latency_ms"],
         "log_level": cfg["logging"]["level"],
-        "log_to_file": cfg["logging"]["file_enabled"],
+        "log_to_file": cfg["logging"]["enabled"],
         "runtime_enabled": cfg["debug"]["runtime"]["enabled"],
         "runtime_poll_interval_ms": cfg["debug"]["runtime"]["poll_interval_ms"],
         "scanner_deep_probe": cfg["scanner"]["pro"]["deep_probe"],
@@ -345,14 +415,36 @@ def _load_config(session: Session | None = None) -> dict:
             merged["fingerprint"] = {"enabled": fp_enabled_setting, "ports": fp_ports, "timeout_ms": fp_timeout}
 
             # Logging overlay
-            level_setting = (settings.get("logging.level") or "").lower()
-            if level_setting in {"off", "basic", "verbose"}:
-                merged["logging"]["level"] = level_setting
-            file_setting_raw = settings.get("logging.file_enabled")
-            if file_setting_raw is not None:
-                merged["logging"]["file_enabled"] = _to_bool(
-                    file_setting_raw, merged["logging"]["file_enabled"], "logging.file_enabled"
-                )
+            log_cfg = merged.get("logging", {})
+            enabled_setting = settings.get("logging.enabled")
+            if enabled_setting is not None:
+                log_cfg["enabled"] = _to_bool(enabled_setting, log_cfg["enabled"], "logging.enabled")
+            level_setting = settings.get("logging.level")
+            if isinstance(level_setting, str):
+                level_upper = level_setting.upper()
+                if level_upper in {"DEBUG", "INFO", "WARNING", "ERROR"}:
+                    log_cfg["level"] = level_upper
+            keep_days_setting = _to_int(settings.get("logging.keep_days"), log_cfg.get("keep_days", DEFAULT_CONFIG["logging"]["keep_days"]), "logging.keep_days")
+            if keep_days_setting < 1:
+                keep_days_setting = log_cfg.get("keep_days", DEFAULT_CONFIG["logging"]["keep_days"])
+            log_cfg["keep_days"] = keep_days_setting
+            max_size_setting = _to_int(settings.get("logging.max_size_mb"), log_cfg.get("max_size_mb", DEFAULT_CONFIG["logging"]["max_size_mb"]), "logging.max_size_mb")
+            if max_size_setting < 1:
+                max_size_setting = log_cfg.get("max_size_mb", DEFAULT_CONFIG["logging"]["max_size_mb"])
+            log_cfg["max_size_mb"] = max_size_setting
+            backup_count_setting = _to_int(settings.get("logging.backup_count"), log_cfg.get("backup_count", DEFAULT_CONFIG["logging"]["backup_count"]), "logging.backup_count")
+            if backup_count_setting < 1:
+                backup_count_setting = log_cfg.get("backup_count", DEFAULT_CONFIG["logging"]["backup_count"])
+            log_cfg["backup_count"] = backup_count_setting
+            modules_cfg = log_cfg.get("modules", {})
+            if not isinstance(modules_cfg, dict):
+                modules_cfg = {}
+            for module_name, module_def in DEFAULT_CONFIG["logging"]["modules"].items():
+                key = f"logging.modules.{module_name}"
+                module_enabled = _to_bool(settings.get(key), modules_cfg.get(module_name, {}).get("enabled", module_def["enabled"]), key)
+                modules_cfg.setdefault(module_name, {})["enabled"] = module_enabled
+            log_cfg["modules"] = modules_cfg
+            merged["logging"] = log_cfg
 
             # JSON Inspector overlay
             json_max_size = _to_int(
@@ -385,7 +477,7 @@ def _load_config(session: Session | None = None) -> dict:
                 "health_latency_warn_ms": merged["debug"]["system_health"]["warn_latency_ms"],
                 "health_latency_error_ms": merged["debug"]["system_health"]["error_latency_ms"],
                 "log_level": merged["logging"]["level"],
-                "log_to_file": merged["logging"]["file_enabled"],
+                "log_to_file": merged["logging"]["enabled"],
                 "runtime_enabled": merged["debug"]["runtime"]["enabled"],
                 "runtime_poll_interval_ms": merged["debug"]["runtime"]["poll_interval_ms"],
                 "scanner_deep_probe": merged["scanner"]["pro"]["deep_probe"],
@@ -416,10 +508,21 @@ def _validate_payload(payload: dict) -> dict:
     data = payload or {}
     out = {}
     if "logging" in data and isinstance(data.get("logging"), dict):
+        logging_payload = data["logging"]
+        flat_modules = {}
+        if isinstance(logging_payload.get("modules"), dict):
+            flat_modules = {
+                f"logging.modules.{module_name}": logging_payload["modules"].get(module_name)
+                for module_name in DEFAULT_CONFIG["logging"]["modules"].keys()
+            }
         data = {
             **data,
-            "logging.level": data["logging"].get("level"),
-            "logging.file_enabled": data["logging"].get("file_enabled"),
+            "logging.enabled": logging_payload.get("enabled"),
+            "logging.level": logging_payload.get("level"),
+            "logging.keep_days": logging_payload.get("keep_days"),
+            "logging.max_size_mb": logging_payload.get("max_size_mb"),
+            "logging.backup_count": logging_payload.get("backup_count"),
+            **flat_modules,
         }
     if "debug.system_health" in data and isinstance(data.get("debug.system_health"), dict):
         data = {
@@ -443,11 +546,30 @@ def _validate_payload(payload: dict) -> dict:
             err = min_err
         out["debug.system_health.error_latency_ms"] = err
 
+    if "logging.enabled" in data:
+        out["logging.enabled"] = _to_bool(data.get("logging.enabled"), DEFAULT_CONFIG["logging"]["enabled"], "logging.enabled")
     if "logging.level" in data:
-        level_raw = (data.get("logging.level") or "").lower()
-        out["logging.level"] = level_raw if level_raw in {"off", "basic", "verbose"} else DEFAULT_CONFIG["logging"]["level"]
-    if "logging.file_enabled" in data:
-        out["logging.file_enabled"] = _to_bool(data.get("logging.file_enabled"), False, "logging.file_enabled")
+        level_raw = (data.get("logging.level") or "").upper()
+        out["logging.level"] = level_raw if level_raw in {"DEBUG", "INFO", "WARNING", "ERROR"} else DEFAULT_CONFIG["logging"]["level"]
+    if "logging.keep_days" in data:
+        keep_days_val = _to_int(data.get("logging.keep_days"), DEFAULT_CONFIG["logging"]["keep_days"], "logging.keep_days")
+        if keep_days_val < 1:
+            keep_days_val = DEFAULT_CONFIG["logging"]["keep_days"]
+        out["logging.keep_days"] = keep_days_val
+    if "logging.max_size_mb" in data:
+        max_size_val = _to_int(data.get("logging.max_size_mb"), DEFAULT_CONFIG["logging"]["max_size_mb"], "logging.max_size_mb")
+        if max_size_val < 1:
+            max_size_val = DEFAULT_CONFIG["logging"]["max_size_mb"]
+        out["logging.max_size_mb"] = max_size_val
+    if "logging.backup_count" in data:
+        backup_val = _to_int(data.get("logging.backup_count"), DEFAULT_CONFIG["logging"]["backup_count"], "logging.backup_count")
+        if backup_val < 1:
+            backup_val = DEFAULT_CONFIG["logging"]["backup_count"]
+        out["logging.backup_count"] = backup_val
+    for module_name in DEFAULT_CONFIG["logging"]["modules"].keys():
+        key = f"logging.modules.{module_name}"
+        if key in data:
+            out[key] = _to_bool(data.get(key), DEFAULT_CONFIG["logging"]["modules"][module_name]["enabled"], f"{key}")
 
     if "debug.runtime.enabled" in data:
         out["debug.runtime.enabled"] = _to_bool(data.get("debug.runtime.enabled"), True, "debug.runtime.enabled")
@@ -512,37 +634,9 @@ def _persist_payload(session: Session, validated: dict) -> None:
             _persist_setting(session, key, str(val), overwrite=True)
 
 
-def _level_to_logging(level_str: str) -> int:
-    lvl = (level_str or "").lower()
-    if lvl == "off":
-        return logging.CRITICAL + 10
-    if lvl == "verbose":
-        return logging.DEBUG
-    return logging.INFO
-
 
 def _apply_logging_settings(merged: dict) -> dict:
-    log_cfg = merged.get("logging", {})
-    base_level = _level_to_logging(log_cfg.get("level"))
-    file_enabled = log_cfg.get("file_enabled", False)
-
-    module_levels = {
-        "": base_level,  # root/app
-        "bambu": base_level,
-        "klipper": base_level,
-        "mqtt": base_level,
-    }
-    statuses = {}
-    for name, lvl in module_levels.items():
-        logger_obj = logging.getLogger(name)
-        logger_obj.setLevel(lvl)
-        statuses[name or "app"] = lvl < (logging.CRITICAL + 10)
-        # File handler toggle: if disabled, remove file handlers
-        if not file_enabled:
-            for h in list(logger_obj.handlers):
-                if isinstance(h, logging.FileHandler):
-                    logger_obj.removeHandler(h)
-        # if enabled, keep existing handlers; no new file handler auto-added
+    statuses = reconfigure_logging(merged.get("logging", {}))
     merged["logging_status"] = statuses
     return statuses
 

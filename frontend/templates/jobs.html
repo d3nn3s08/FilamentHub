@@ -2,25 +2,189 @@
 {% set page_title = "Jobs" %}
 {% set page_subtitle = "Verwalte laufende und vergangene Druckaufträge" %}
 
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='jobs.css') }}">
+{% endblock %}
+
 {% block header_actions %}
 <div class="actions">
-    <button class="btn primary">Job importieren</button>
+    <button class="btn btn-primary" onclick="openAddModal()">
+        ➕ Neuer Job
+    </button>
 </div>
 {% endblock %}
 
 {% block content %}
-<section class="card-grid">
-    <div class="panel">
-        <p class="eyebrow">Aktive Jobs</p>
-        <p class="subtitle">Hier erscheinen laufende Druckaufträge.</p>
+
+<!-- Statistiken -->
+<section class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-content">
+            <div class="stat-label">Gesamt Jobs</div>
+            <div class="stat-value" id="totalJobs">0</div>
+        </div>
     </div>
-    <div class="panel">
-        <p class="eyebrow">Historie</p>
-        <p class="subtitle">Archivierte Jobs folgen.</p>
+    
+    <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-content">
+            <div class="stat-label">Abgeschlossen</div>
+            <div class="stat-value" id="completedJobs">0</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">🔄</div>
+        <div class="stat-content">
+            <div class="stat-label">Aktiv</div>
+            <div class="stat-value" id="activeJobs">0</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">🧵</div>
+        <div class="stat-content">
+            <div class="stat-label">Filament (g)</div>
+            <div class="stat-value" id="totalFilament">0g</div>
+        </div>
     </div>
 </section>
+
+<!-- Filter & Search -->
+<section class="filter-section">
+    <div class="filter-group">
+        <input type="text" id="searchInput" placeholder="🔍 Suchen..." class="search-input">
+        
+        <select id="filterPrinter" class="filter-select">
+            <option value="">Alle Drucker</option>
+        </select>
+        
+        <select id="filterStatus" class="filter-select">
+            <option value="">Alle Status</option>
+            <option value="active">Aktiv</option>
+            <option value="completed">Abgeschlossen</option>
+        </select>
+        
+        <button class="btn btn-secondary" onclick="clearFilters()">
+            🔄 Filter zurücksetzen
+        </button>
+    </div>
+    
+    <div class="result-count">
+        <span id="jobCount">0</span> Jobs
+    </div>
+</section>
+
+<!-- Jobs Tabelle -->
+<section class="table-section">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Job Name</th>
+                    <th>Drucker</th>
+                    <th>Spule(n)</th>
+                    <th>Verbrauch</th>
+                    <th>Status</th>
+                    <th>Dauer</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody id="jobsTable">
+                <!-- Wird von JavaScript gefüllt -->
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Add/Edit Modal -->
+<div id="jobModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Neuer Job</h2>
+            <button class="modal-close" onclick="closeAddModal()">✕</button>
+        </div>
+        <form id="jobForm" onsubmit="saveJob(event)">
+            <div class="form-group">
+                <label for="jobName">Job Name*</label>
+                <input type="text" id="jobName" required placeholder="z.B. Benchy">
+            </div>
+            
+            <div class="form-group">
+                <label for="jobPrinter">Drucker*</label>
+                <select id="jobPrinter" required>
+                    <option value="">-- Drucker wählen --</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="jobSpool">Spule</label>
+                <select id="jobSpool">
+                    <option value="">-- Keine Spule --</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="startedAt">Startzeit*</label>
+                <input type="datetime-local" id="startedAt" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="finishedAt">Endzeit</label>
+                <input type="datetime-local" id="finishedAt">
+            </div>
+            
+            <div class="form-group">
+                <label for="filamentUsedMm">Filament (mm)</label>
+                <input type="number" id="filamentUsedMm" step="0.1" placeholder="0.0">
+            </div>
+            
+            <div class="form-group">
+                <label for="filamentUsedG">Filament (g)</label>
+                <input type="number" id="filamentUsedG" step="0.1" placeholder="0.0">
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Speichern</button>
+                <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Abbrechen</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal" style="display: none;">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>Job löschen?</h2>
+            <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+        </div>
+        <p>Möchtest du diesen Job wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</p>
+        <div class="form-actions">
+            <button class="btn btn-primary btn-danger" onclick="confirmDelete()">Löschen</button>
+            <button class="btn btn-secondary" onclick="closeDeleteModal()">Abbrechen</button>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Toast -->
+<div id="notification" class="notification"></div>
+
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('frontend_static', path='js/jobs.js') }}"></script>
+<script src="{{ url_for('frontend_static', path='jobs.js') }}"></script>
+<script>
+// Notification System
+function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.className = `notification notification-${type} show`;
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+    }, 3000);
+}
+</script>
 {% endblock %}

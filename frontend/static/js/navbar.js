@@ -48,8 +48,14 @@ function initUserMenu() {
     const dropdown = menu.querySelector(".user-menu__dropdown");
     const themeToggle = menu.querySelector('[data-action="theme-toggle"]');
     const about = menu.querySelector('[data-action="about"]');
+    const settingsBtn = menu.querySelector('[data-action="settings"]');
     const amsRadios = menu.querySelectorAll('input[name="ams_mode"][data-setting="ams_mode"]');
     const debugCheckbox = menu.querySelector('input[type="checkbox"][data-setting="debug_ws_logging"]');
+
+    const settingsModal = document.getElementById("settingsModal");
+    const settingsSaveBtn = document.getElementById("settingsSaveBtn");
+    const settingsElectricityPrice = document.getElementById("settingsElectricityPrice");
+    const settingsClosers = document.querySelectorAll('[data-close-settings]');
 
     // Restore theme on load
     const stored = localStorage.getItem("fh_theme");
@@ -83,6 +89,47 @@ function initUserMenu() {
     about?.addEventListener("click", () => {
         alert("FilamentHub – lokale Instance. Weitere Infos folgen.");
         closeAll();
+    });
+
+    const closeSettings = () => {
+        if (!settingsModal) return;
+        settingsModal.classList.remove("show");
+        settingsModal.setAttribute("aria-hidden", "true");
+    };
+
+    const openSettings = async () => {
+        dropdown.classList.remove("open");
+        if (!settingsModal) return;
+        try {
+            const settings = await fetchSettings();
+            if (settingsElectricityPrice) {
+                const price = parseFloat(settings?.["cost.electricity_price_kwh"] ?? settings?.electricity_price_kwh);
+                settingsElectricityPrice.value = Number.isFinite(price) ? price : "";
+            }
+        } catch (e) {
+            console.warn("Settings modal load failed", e);
+        }
+        settingsModal.classList.add("show");
+        settingsModal.setAttribute("aria-hidden", "false");
+    };
+
+    settingsBtn?.addEventListener("click", (e) => {
+        e.preventDefault();
+        openSettings();
+    });
+    settingsClosers.forEach(btn => btn.addEventListener("click", closeSettings));
+
+    // close when clicking backdrop
+    settingsModal?.addEventListener("click", (e) => {
+        if (e.target === settingsModal) closeSettings();
+    });
+
+    settingsSaveBtn?.addEventListener("click", async () => {
+        if (!settingsElectricityPrice) return;
+        const val = settingsElectricityPrice.value;
+        const price = val === "" ? null : Number(val);
+        await updateSetting({ "cost.electricity_price_kwh": price });
+        closeSettings();
     });
 
     themeToggle?.addEventListener("click", () => {
