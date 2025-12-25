@@ -48,26 +48,6 @@ function applyConfigEnableStates() {
     if (el) el.disabled = !runtimeEnabled;
   });
 
-  // Scanner gate: Save/Cancel aktiv, wenn mindestens eine Option aktivierbar ist (Checkboxen selbst bleiben immer aktiv)
-  const scannerDeep = document.getElementById('cfg_scanner_deep_probe')?.checked;
-  const scannerFp = document.getElementById('cfg_scanner_fingerprint')?.checked;
-  const scannerEnabled = !!(scannerDeep || scannerFp);
-  ['cfg_scanner_cancel', 'cfg_scanner_save'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.disabled = !scannerEnabled;
-  });
-
-  // Fingerprint gate
-  const fpEnabled = document.getElementById('cfg_fingerprint_enabled')?.checked;
-  ['cfg_fingerprint_ports', 'cfg_fingerprint_timeout'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.disabled = !fpEnabled;
-  });
-  ['cfg_fingerprint_cancel', 'cfg_fingerprint_save'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.disabled = !fpEnabled;
-  });
-
   // JSON Inspector gate: Buttons immer aktiv wenn Felder gesetzt
   const jsonMaxSize = document.getElementById('cfg_json_max_size')?.value;
   const jsonMaxDepth = document.getElementById('cfg_json_max_depth')?.value;
@@ -320,14 +300,6 @@ function populateConfigFields(data) {
   setCheckbox('cfg_runtime_enabled', runtime.enabled ?? cm.runtime_enabled);
   setInputValue('cfg_runtime_poll_interval', runtime.poll_interval_ms ?? cm.runtime_poll_interval_ms);
 
-  setCheckbox('cfg_scanner_deep_probe', scannerPro.deep_probe ?? cm.scanner_deep_probe);
-  setCheckbox('cfg_scanner_fingerprint', scannerPro.fingerprint_enabled ?? cm.scanner_fingerprint);
-
-  setCheckbox('cfg_fingerprint_enabled', fp.enabled);
-  const portsVal = Array.isArray(fp.ports) ? fp.ports.join(', ') : '';
-  setInputValue('cfg_fingerprint_ports', portsVal);
-  setInputValue('cfg_fingerprint_timeout', fp.timeout_ms);
-
   setInputValue('cfg_json_max_size', jsonInspector.max_size_mb);
   setInputValue('cfg_json_max_depth', jsonInspector.max_depth);
   setCheckbox('cfg_json_allow_override', jsonInspector.allow_override);
@@ -368,11 +340,6 @@ function populateConfigFields(data) {
     system_logging_module_mqtt: systemLoggingModules.mqtt?.enabled ?? false,
     runtime_enabled: runtime.enabled ?? cm.runtime_enabled,
     runtime_poll_interval: runtime.poll_interval_ms ?? cm.runtime_poll_interval_ms,
-    scanner_deep_probe: scannerPro.deep_probe ?? cm.scanner_deep_probe,
-    scanner_fingerprint: scannerPro.fingerprint_enabled ?? cm.scanner_fingerprint,
-    fingerprint_enabled: fp.enabled,
-    fingerprint_ports: Array.isArray(fp.ports) ? fp.ports.join(', ') : '',
-    fingerprint_timeout: fp.timeout_ms,
     json_max_size: jsonInspector.max_size_mb,
     json_max_depth: jsonInspector.max_depth,
     json_allow_override: jsonInspector.allow_override,
@@ -412,15 +379,6 @@ function resetConfigCard(card) {
     setCheckbox('cfg_runtime_enabled', configSnapshot.runtime_enabled);
     setInputValue('cfg_runtime_poll_interval', configSnapshot.runtime_poll_interval);
   }
-  if (card === 'scanner' || card === 'all') {
-    setCheckbox('cfg_scanner_deep_probe', configSnapshot.scanner_deep_probe);
-    setCheckbox('cfg_scanner_fingerprint', configSnapshot.scanner_fingerprint);
-  }
-  if (card === 'fingerprint' || card === 'all') {
-    setCheckbox('cfg_fingerprint_enabled', configSnapshot.fingerprint_enabled);
-    setInputValue('cfg_fingerprint_ports', configSnapshot.fingerprint_ports);
-    setInputValue('cfg_fingerprint_timeout', configSnapshot.fingerprint_timeout);
-  }
   if (card === 'json' || card === 'all') {
     setInputValue('cfg_json_max_size', configSnapshot.json_max_size);
     setInputValue('cfg_json_max_depth', configSnapshot.json_max_depth);
@@ -439,12 +397,6 @@ function resetConfigCard(card) {
     setCheckbox('cfg_mqtt_full_payload', configSnapshot.mqtt_full_payload);
     updateMqttTriggerUI();
   }
-}
-
-function parsePortsInput(val) {
-  if (!val) return [];
-  const parts = val.split(',').map(p => p.trim()).filter(Boolean);
-  return parts.map(p => parseInt(p, 10)).filter(p => Number.isInteger(p));
 }
 
 function parseIntOrUndefined(val) {
@@ -475,15 +427,6 @@ async function saveConfigSection(section) {
   if (section === 'runtime') {
     payload['debug.runtime.enabled'] = document.getElementById('cfg_runtime_enabled').checked;
     payload['debug.runtime.poll_interval_ms'] = parseInt(document.getElementById('cfg_runtime_poll_interval').value, 10);
-  }
-  if (section === 'scanner') {
-    payload['scanner.pro.deep_probe'] = document.getElementById('cfg_scanner_deep_probe').checked;
-    payload['scanner.pro.fingerprint_enabled'] = document.getElementById('cfg_scanner_fingerprint').checked;
-  }
-  if (section === 'fingerprint') {
-    payload['fingerprint.enabled'] = document.getElementById('cfg_fingerprint_enabled').checked;
-    payload['fingerprint.ports'] = parsePortsInput(document.getElementById('cfg_fingerprint_ports').value);
-    payload['fingerprint.timeout_ms'] = parseInt(document.getElementById('cfg_fingerprint_timeout').value, 10);
   }
   if (section === 'json') {
     payload['json_inspector.max_size_mb'] = parseInt(document.getElementById('cfg_json_max_size').value, 10);
@@ -522,7 +465,7 @@ async function saveConfigSection(section) {
 
 
 async function loadConfigData() {
-  if (!document.body.classList.contains('debug-pro')) return;
+  if (!document.body.classList.contains('pro-mode')) return;
   if (configLoaded) return;
   try {
     const res = await fetch('/api/config/current');
@@ -597,10 +540,6 @@ function initConfigActions() {
   bind('cfg_health_save', 'health', saveConfigSection);
   bind('cfg_runtime_cancel', 'runtime', () => resetConfigCard('runtime'));
   bind('cfg_runtime_save', 'runtime', saveConfigSection);
-  bind('cfg_scanner_cancel', 'scanner', () => resetConfigCard('scanner'));
-  bind('cfg_scanner_save', 'scanner', saveConfigSection);
-  bind('cfg_fingerprint_cancel', 'fingerprint', () => resetConfigCard('fingerprint'));
-  bind('cfg_fingerprint_save', 'fingerprint', saveConfigSection);
   bind('cfg_json_cancel', 'json', () => resetConfigCard('json'));
   bind('cfg_json_save', 'json', saveConfigSection);
   bind('cfg_mqtt_cancel', 'mqtt_logging', () => resetConfigCard('mqtt_logging'));
@@ -609,9 +548,6 @@ function initConfigActions() {
   bind('cfg_system_logging_save', 'system_logging', saveConfigSection);
   watch('cfg_health_enabled');
   watch('cfg_runtime_enabled');
-  watch('cfg_scanner_deep_probe');
-  watch('cfg_scanner_fingerprint');
-  watch('cfg_fingerprint_enabled');
 
   // MQTT Smart Logging UI watchers
   const smartLoggingCheckbox = document.getElementById('cfg_mqtt_smart_logging');
@@ -1032,7 +968,7 @@ function updateProbeUI(data) {
 function updateProbeButtonState() {
   const probeBtn = document.getElementById('proProbeStart');
   const fpBtn = document.getElementById('proFingerprintStart');
-  const enabled = document.body.classList.contains('debug-pro') && probeTarget && probeTarget.ip;
+  const enabled = document.body.classList.contains('pro-mode') && probeTarget && probeTarget.ip;
   if (probeBtn) {
     probeBtn.disabled = !enabled;
     probeBtn.title = enabled ? '' : 'Probe nur im Pro-Modus nach Port-Test verfuegbar';
@@ -1059,7 +995,6 @@ function findFirstScannerTarget() {
 
 async function handleProbe(btn) {
   if (!btn) return;
-  if (!document.body.classList.contains('debug-pro')) return;
   let target = probeTarget;
   if (!target) {
     target = findFirstScannerTarget();
@@ -1145,7 +1080,6 @@ function updateFingerprintUI(data) {
 
 async function handleFingerprint(btn) {
   if (!btn) return;
-  if (!document.body.classList.contains('debug-pro')) return;
   let target = probeTarget || findFirstScannerTarget();
   if (target) {
     probeTarget = target;
@@ -1657,7 +1591,7 @@ function renderSystemHealth(statusData) {
       li.textContent = msg;
       reasonsEl.appendChild(li);
     });
-    reasonsEl.style.display = document.body.classList.contains('debug-pro') ? '' : 'none';
+    reasonsEl.style.display = document.body.classList.contains('pro-mode') ? '' : 'none';
   }
 }
 
@@ -1685,11 +1619,12 @@ function stopPerformancePolling() {
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  if (typeof initDebugModeUI === 'function') {
-    initDebugModeUI();
-  } else {
-    console.warn('[debug.js] initDebugModeUI fehlt – übersprungen');
-  }
+  // DEPRECATED: initDebugModeUI wurde durch bindDebugModeToggle im HTML ersetzt
+  // if (typeof initDebugModeUI === 'function') {
+  //   initDebugModeUI();
+  // } else {
+  //   console.warn('[debug.js] initDebugModeUI fehlt – übersprungen');
+  // }
 
   if (typeof initTabs === 'function') {
     initTabs();

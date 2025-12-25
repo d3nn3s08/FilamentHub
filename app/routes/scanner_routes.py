@@ -800,30 +800,9 @@ async def fingerprint_printer(payload: FingerprintRequest, session: Session = De
     """
     Ermittelt Port-Erreichbarkeit fuer Bambu (8883/6000) und Klipper (7125).
     Keine echten Credentials, nur TCP + Hinweis bei Auth-Anforderung.
+    Immer aktiv sobald ein Drucker gefunden wurde (Teil der 3-Stufen Debug-Logik).
     """
     settings_map = _load_settings_map(session)
-    pro_enabled = _get_bool(settings_map, "scanner.pro.fingerprint_enabled", False)
-    if not pro_enabled:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "ok": False,
-                "error": "pro_feature_disabled",
-                "message": "Device fingerprinting is a Pro feature",
-            },
-        )
-
-    fingerprint_enabled = _get_bool(settings_map, "fingerprint.enabled", False)
-    if not fingerprint_enabled:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "ok": False,
-                "error": "pro_feature_disabled",
-                "message": "Device fingerprinting is a Pro feature",
-            },
-        )
-
     host = (payload.host or "").strip()
     if not host:
         raise HTTPException(status_code=400, detail="host required")

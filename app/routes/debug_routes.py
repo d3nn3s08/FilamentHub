@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 import logging
 from pydantic import BaseModel
 import sqlite3
@@ -6,6 +6,9 @@ import yaml
 import os
 import logging
 import inspect
+from sqlmodel import Session
+from app.database import get_session
+from app.models.settings import Setting
 
 router = APIRouter(prefix="/api/debug", tags=["Debug & Config"])
 
@@ -463,3 +466,28 @@ def _clear_logs_impl(module: str):
     except Exception as exc:
         logging.getLogger("app").exception(f"Log-Clear fehlgeschlagen: module={module}, error={exc}")
         return {"status": "fail", "message": "Logdatei konnte nicht geleert werden", "details": str(exc)}
+
+
+# -----------------------------
+# PRO MODE CONFIRMATION
+# -----------------------------
+@router.get("/pro-mode/status")
+def get_pro_mode_status(session: Session = Depends(get_session)):
+    """Prüft ob User Pro-Mode bereits bestätigt hat"""
+    setting = session.get(Setting, "debug.pro_mode_accepted")
+    accepted = setting.value.lower() in ("true", "1", "yes") if setting and setting.value else False
+    return {"accepted": accepted}
+
+
+@router.post("/pro-mode/accept")
+def accept_pro_mode(session: Session = Depends(get_session)):
+    """Speichert dass User Pro-Mode bestätigt hat (nur einmal)"""
+    setting = session.get(Setting, "debug.pro_mode_accepted")
+    if setting:
+        setting.value = "true"
+    else:
+        setting = Setting(key="debug.pro_mode_accepted", value="true")
+        session.add(setting)
+    session.commit()
+    logging.getLogger("app").info("Pro-Mode wurde vom User bestätigt")
+    return {"success": True, "accepted": True}
