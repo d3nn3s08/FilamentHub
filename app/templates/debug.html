@@ -388,7 +388,7 @@
             </div>
 
             <!-- Pro-Mode Warndialog -->
-            <div id="proModeWarningDialog" class="modal-overlay" style="display:none;">
+            <div id="proModeWarningDialog" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
                 <div class="modal-dialog" style="max-width: 500px;">
                     <div class="modal-header" style="background: linear-gradient(135deg, #ff9966, #ff5e62); color: white;">
                         <h3 style="display: flex; align-items: center; gap: 10px;">
@@ -725,7 +725,7 @@
                     switchPanel(initial);
                 })();
                 // Pro/Lite Mode Umschalter: toggelt .pro-mode auf <body>
-                (function bindDebugModeToggle(){
+                document.addEventListener('DOMContentLoaded', function bindDebugModeToggle(){
                     const btnLite = document.getElementById('debugModeLite');
                     const btnPro = document.getElementById('debugModePro');
                     const label = document.getElementById('debugModeLabel');
@@ -742,11 +742,30 @@
                             if (btnPro) btnPro.classList.add('active');
                             if (btnLite) btnLite.classList.remove('active');
                             if (label) label.textContent = 'Mode: Pro';
+
+                            // Aktiviere Scanner Pro Cards (visuell)
+                            document.querySelectorAll('.scanner-pro-card').forEach(card => {
+                                card.classList.remove('pro-disabled-card');
+                            });
+
+                            // Button-Status wird von updateProbeButtonState() gesteuert
+                            // (aktiviert nur wenn probeTarget vorhanden)
+                            if (typeof updateProbeButtonState === 'function') {
+                                updateProbeButtonState();
+                            }
                         } else {
                             b.classList.remove('pro-mode');
                             if (btnLite) btnLite.classList.add('active');
                             if (btnPro) btnPro.classList.remove('active');
                             if (label) label.textContent = 'Mode: Lite';
+
+                            // Deaktiviere Scanner Pro Cards und Buttons
+                            document.querySelectorAll('.scanner-pro-card').forEach(card => {
+                                card.classList.add('pro-disabled-card');
+                            });
+                            document.querySelectorAll('#proProbeStart, #proFingerprintStart').forEach(btn => {
+                                btn.disabled = true;
+                            });
                         }
                     };
 
@@ -755,12 +774,20 @@
 
                     // Pro Mode: nur mit Warnung (beim ersten Mal)
                     btnPro?.addEventListener('click', async () => {
+                        console.log('[Pro-Mode] Button clicked, proModeAccepted:', proModeAccepted);
                         if (proModeAccepted) {
+                            console.log('[Pro-Mode] Already accepted, activating directly');
                             setMode('pro');
                             return;
                         }
                         // Zeige Warndialog
-                        if (dialog) dialog.style.display = 'flex';
+                        console.log('[Pro-Mode] Showing warning dialog');
+                        if (dialog) {
+                            dialog.style.display = 'flex';
+                            console.log('[Pro-Mode] Dialog display set to flex');
+                        } else {
+                            console.error('[Pro-Mode] Dialog element not found!');
+                        }
                     });
 
                     // Dialog Abbrechen
@@ -798,7 +825,7 @@
 
                     // Initial: Lite
                     setMode('lite');
-                })();
+                });
                 // Einfacher Hinweis-Toast
                 (function(){
                     const ensureToastHost = () => {
