@@ -697,13 +697,13 @@ body {
 .pro-only {
     display: none !important;
 }
-body.debug-pro .pro-only {
+body.pro-mode .pro-only {
     display: block !important;
 }
 .pro-only-inline {
     display: none !important;
 }
-body.debug-pro .pro-only-inline {
+body.pro-mode .pro-only-inline {
     display: inline-flex !important;
 }
 .debug-panel {
@@ -715,13 +715,13 @@ body.debug-pro .pro-only-inline {
 .debug-panel:not(.active-panel) {
     display: none !important;
 }
-body.debug-pro .debug-panel:not(.active-panel) {
+body.pro-mode .debug-panel:not(.active-panel) {
     display: none !important;
 }
-body.debug-pro .debug-panel.active-panel {
+body.pro-mode .debug-panel.active-panel {
     display: block !important;
 }
-body:not(.debug-pro) .debug-panel.pro-only {
+body:not(.pro-mode) .debug-panel.pro-only {
     display: none !important;
 }
 .health-details {
@@ -816,7 +816,7 @@ body:not(.debug-pro) .debug-panel.pro-only {
 .pro-only-inline {
     display: none;
 }
-body.debug-pro .pro-only-inline {
+body.pro-mode .pro-only-inline {
     display: inline-flex;
 }
 
