@@ -62,8 +62,8 @@ failed_logins: Dict[str, dict] = {}
 MAX_FAILED = 5
 BLOCK_SECONDS = 10 * 60
 
-# Cookie security: always secure in production; per requirement secure=True
-COOKIE_SECURE = True
+# Cookie security: read from environment, default to False for local/HTTP deployments
+COOKIE_SECURE = os.environ.get("ADMIN_COOKIE_SECURE", "false").lower() in ("true", "1", "yes")
 
 # --- Audit Logger ---
 _audit_logger = logging.getLogger("admin.audit")
@@ -317,3 +317,24 @@ async def set_user_flag(user_id: str, flag: str, request: Request, session: Sess
     session.commit()
     audit("admin_userflag_set", {"user_id": user_id, "flag": flag, "value": bool(value)})
     return {"success": True}
+
+# Reset Pro-Mode Warnung (Admin)
+@router.post("/api/admin/debug/reset-pro-mode")
+def reset_pro_mode_warning(request: Request, session: Session = Depends(get_session)):
+    """Setzt die Pro-Mode Warnung zurück (Admin-Funktion)"""
+    token = request.cookies.get("admin_token")
+    _cleanup_expired_tokens()
+    if not is_token_active(token):
+        audit("admin_reset_promode_denied", {"ip": client_ip(request)})
+        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Nicht authentifiziert")
+
+    setting = session.get(Setting, "debug.pro_mode_accepted")
+    if setting:
+        session.delete(setting)
+        session.commit()
+        audit("admin_reset_promode", {"ip": client_ip(request), "previous_value": setting.value})
+        logging.getLogger("app").info("Pro-Mode Warnung wurde vom Admin zurückgesetzt")
+        return {"success": True, "message": "Pro-Mode Warnung wurde zurückgesetzt"}
+    else:
+        audit("admin_reset_promode", {"ip": client_ip(request), "previous_value": None})
+        return {"success": True, "message": "Pro-Mode Warnung war bereits zurückgesetzt"}

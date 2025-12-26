@@ -56,6 +56,10 @@ try {
                 <svg width="22" height="22" fill="none" stroke="#ffc107" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 Benachrichtigungen
             </button>
+            <button class="nav-btn" onclick="openAdminModal('modal-debug-settings')">
+                <svg width="22" height="22" fill="none" stroke="#9c27b0" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m6.36 6.36l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m6.36-6.36l4.24-4.24"/></svg>
+                Debug-Einstellungen
+            </button>
         </div>
         <div class="sidebar-group" style="margin-top:2rem;">
             <div class="sidebar-label">SYSTEM</div>
@@ -238,6 +242,33 @@ try {
                 <div class="modal-body">
                     <div class="note">Schema-Übersicht mit Spalten, Typen und Datenvorschau</div>
                     <div id="dbTables" style="color:var(--text-dim);min-height:100px;">Lädt...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-debug-settings" class="admin-modal">
+            <div class="modal-overlay" onclick="closeAdminModal('modal-debug-settings')"></div>
+            <div class="modal-box">
+                <div class="modal-header">
+                    <h2>⚙️ Debug-Einstellungen</h2>
+                    <button class="modal-close" onclick="closeAdminModal('modal-debug-settings')">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="note">Verwaltung von Debug-bezogenen Benutzereinstellungen</div>
+
+                    <div style="margin-top:20px;padding:16px;background:rgba(156,39,176,0.1);border:1px solid rgba(156,39,176,0.3);border-radius:8px;">
+                        <h3 style="margin:0 0 8px 0;font-size:16px;color:#ce93d8;">Pro-Mode Warnung</h3>
+                        <p style="margin:0 0 12px 0;color:var(--text-dim);font-size:14px;">
+                            Status: <span id="proModeStatus" style="font-weight:600;color:#ce93d8;">Lädt...</span>
+                        </p>
+                        <p style="margin:0 0 16px 0;color:var(--text-muted);font-size:13px;">
+                            Setzt die "Ich weiß was ich mache" Bestätigung zurück. Der Warndialog wird beim nächsten Aktivieren von Pro-Mode erneut angezeigt.
+                        </p>
+                        <button id="btnResetProMode" class="admin-btn" onclick="resetProModeWarning()">
+                            🔄 Warnung zurücksetzen
+                        </button>
+                        <div id="proModeResult" style="margin-top:12px;font-size:13px;"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -499,9 +530,60 @@ try {
         window.open('/api/admin/coverage/report', '_blank');
     });
 
+    // ===== DEBUG SETTINGS =====
+    async function loadProModeStatus() {
+        try {
+            const res = await fetch('/api/debug/pro-mode/status');
+            const data = await res.json();
+            const statusEl = document.getElementById('proModeStatus');
+            if (statusEl) {
+                statusEl.textContent = data.accepted ? 'Bestätigt ✓' : 'Nicht bestätigt';
+                statusEl.style.color = data.accepted ? '#4caf50' : '#ff9800';
+            }
+        } catch (e) {
+            console.error('Fehler beim Laden des Pro-Mode Status:', e);
+        }
+    }
+
+    async function resetProModeWarning() {
+        const btn = document.getElementById('btnResetProMode');
+        const resultEl = document.getElementById('proModeResult');
+
+        if (!btn || !resultEl) return;
+
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '⏳ Wird zurückgesetzt...';
+        resultEl.textContent = '';
+
+        try {
+            const res = await fetch('/api/admin/debug/reset-pro-mode', { method: 'POST' });
+            const data = await res.json();
+
+            if (data.success) {
+                resultEl.innerHTML = '<span style="color:#4caf50;">✓ Warnung wurde zurückgesetzt</span>';
+                await loadProModeStatus();
+            } else {
+                resultEl.innerHTML = '<span style="color:#f44336;">✗ Fehler: ' + (data.error || 'Unbekannt') + '</span>';
+            }
+        } catch (e) {
+            resultEl.innerHTML = '<span style="color:#f44336;">✗ Fehler beim Zurücksetzen</span>';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
         loadWelcomeText();
         refreshCoverageReportButton();
+    });
+
+    // Load Pro-Mode status when debug settings modal opens
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('[onclick*="modal-debug-settings"]')) {
+            setTimeout(loadProModeStatus, 100);
+        }
     });
     </script>
 </body>
