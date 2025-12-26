@@ -42,13 +42,22 @@
         .info-value { font-size:16px; font-weight:700; opacity:0.95; }
         /* Data-Mode System: Verstecke Pro-Elemente in Lite-Mode */
         body:not([data-mode="pro"]) [data-mode="pro"] { display: none !important; }
+        /* Im Pro-Mode: Zeige nur Tabs/Buttons/kleine Panels - NICHT debug-panel (wird von switchPanel gesteuert) */
+        body[data-mode="pro"] .debug-tab[data-mode="pro"] { display: block !important; }
+        body[data-mode="pro"] button[data-mode="pro"]:not(.pro-btn-disabled) { display: inline-block !important; }
+        body[data-mode="pro"] .panel[data-mode="pro"] { display: block !important; }
+        body[data-mode="pro"] .pro-coming[data-mode="pro"] { display: block !important; }
 
-        /* MQTT PRO Grid Exception */
-        body[data-mode="pro"] #panel-mqtt .mqtt-pro-grid { display: grid !important; }
+        /* MQTT Panel: NUR im MQTT-Tab sichtbar (überschreibt switchPanel) */
+        #panel-mqtt { display: none !important; }
+        body.tab-mqtt #panel-mqtt { display: block !important; }
 
-        /* MQTT-only: Nur im MQTT-Panel sichtbar */
+        /* MQTT PRO Grid Exception - NUR wenn MQTT-Tab aktiv */
+        body[data-mode="pro"].tab-mqtt #panel-mqtt .mqtt-pro-grid { display: grid !important; }
+
+        /* MQTT-only: Nur im MQTT-Tab sichtbar */
         .mqtt-only { display: none !important; }
-        body[data-mode="pro"] #panel-mqtt .mqtt-only { display: block !important; }
+        body[data-mode="pro"].tab-mqtt #panel-mqtt .mqtt-only { display: block !important; }
     </style>
 
     <div class="debug-tabs">
@@ -734,11 +743,46 @@
 
                     let proModeAccepted = false; // wird beim Laden geprüft
 
-                    const setMode = (mode) => {
+                    const setMode = async (mode) => {
                         const b = document.body;
 
                         // Setze data-mode Attribut auf body
                         b.dataset.mode = mode;
+
+                        // Speichere Einstellung in Datenbank
+                        try {
+                            await fetch('/api/settings', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ debug_center_mode: mode })
+                            });
+                            console.log(`[Debug] Mode ${mode} gespeichert`);
+                        } catch (err) {
+                            console.error('[Debug] Fehler beim Speichern des Modes:', err);
+                        }
+
+                        // JAVASCRIPT-BASIERTE SICHTBARKEIT (umgeht CSS-Cache-Probleme!)
+                        // Zeige/Verstecke alle Elemente mit data-mode="pro"
+                        document.querySelectorAll('[data-mode="pro"]').forEach(el => {
+                            if (mode === 'pro') {
+                                // Pro-Mode: Zeige Pro-Elemente
+                                if (el.classList.contains('debug-panel')) {
+                                    // Debug-Panels nicht anzeigen - werden von switchPanel gesteuert
+                                } else if (el.closest('.debug-panel')) {
+                                    // Elemente INNERHALB eines debug-panel ignorieren - Panel-Sichtbarkeit wird von switchPanel gesteuert
+                                } else if (el.classList.contains('mqtt-only') || el.classList.contains('mqtt-pro-grid') || el.closest('.mqtt-only')) {
+                                    // MQTT-only Elemente: Nur im MQTT-Tab sichtbar (CSS-gesteuert)
+                                } else {
+                                    el.style.display = '';  // Entferne inline style, nutze CSS
+                                    el.removeAttribute('hidden');
+                                }
+                            } else {
+                                // Lite-Mode: Verstecke Pro-Elemente
+                                if (!el.classList.contains('debug-panel') && !el.closest('.debug-panel')) {
+                                    el.style.display = 'none';
+                                }
+                            }
+                        });
 
                         // Update Button States
                         if (mode === 'pro') {
@@ -824,8 +868,9 @@
                         }
                     })();
 
-                    // Initial: Lite
-                    setMode('lite');
+                    // Initial: Lade Mode vom Server (data-mode Attribut)
+                    const initialMode = document.body.dataset.mode || 'lite';
+                    setMode(initialMode);
                 });
                 // Einfacher Hinweis-Toast
                 (function(){
