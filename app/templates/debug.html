@@ -40,26 +40,27 @@
         .info-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:16px; }
         .info-label { font-size:12px; opacity:0.65; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px; }
         .info-value { font-size:16px; font-weight:700; opacity:0.95; }
-        /* Pro-Mode default: alles mit .pro-only verstecken, nur bei .pro-mode anzeigen */
-        .pro-only { display: none !important; }
-        .pro-mode .pro-only { display: block !important; }
+        /* Data-Mode System: Verstecke Pro-Elemente standardmäßig */
+        [data-mode="pro"] { display: none !important; }
+        body[data-mode="pro"] [data-mode="pro"] { display: block !important; }
+
         /* MQTT PRO Grid Exception */
-        .pro-mode #panel-mqtt .mqtt-pro-grid { display: grid !important; }
-        /* Sichtbarkeit: Elemente nur im MQTT-Panel anzeigen (robust, tab-unabhängig) */
+        body[data-mode="pro"] #panel-mqtt .mqtt-pro-grid { display: grid !important; }
+
+        /* MQTT-only: Nur im MQTT-Panel sichtbar */
         .mqtt-only { display: none !important; }
-        #panel-mqtt .mqtt-only { display: block !important; }
-        .debug-panel:not(#panel-mqtt) .mqtt-only { display: none !important; }
+        body[data-mode="pro"] #panel-mqtt .mqtt-only { display: block !important; }
     </style>
 
     <div class="debug-tabs">
-        <div class="debug-tab active" data-tab="system" data-mode="lite">System Status</div>
-        <div class="debug-tab" data-tab="performance" data-mode="lite">Performance</div>
-        <div class="debug-tab" data-tab="scanner" data-mode="lite">Printer Scanner</div>
-        <div class="debug-tab" data-tab="mqtt" data-mode="lite">MQTT</div>
-        <div class="debug-tab pro-only" data-tab="json" data-mode="pro">JSON Inspector</div>
-        <div class="debug-tab pro-only" data-tab="logs" data-mode="pro" style="display:none;">Log Viewer</div>
-        <div class="debug-tab pro-only" data-tab="config" data-mode="pro" style="display:none;">Config Manager</div>
-        <div class="debug-tab pro-only" data-tab="services" data-mode="pro" style="display:none;">Services</div>
+        <div class="debug-tab active" data-tab="system">System Status</div>
+        <div class="debug-tab" data-tab="performance">Performance</div>
+        <div class="debug-tab" data-tab="scanner">Printer Scanner</div>
+        <div class="debug-tab" data-tab="mqtt">MQTT</div>
+        <div class="debug-tab" data-tab="json" data-mode="pro">JSON Inspector</div>
+        <div class="debug-tab" data-tab="logs" data-mode="pro">Log Viewer</div>
+        <div class="debug-tab" data-tab="config" data-mode="pro">Config Manager</div>
+        <div class="debug-tab" data-tab="services" data-mode="pro">Services</div>
     </div>
     <div class="debug-mode-toggle">
         <div class="debug-mode-pill">
@@ -77,7 +78,7 @@
                     <span id="healthBadge" class="status-badge status-warn">Warning</span>
                     <span id="healthText" class="health-text">Some services require attention</span>
                 </div>
-                <ul id="healthReasons" class="health-reasons pro-only">
+                <ul id="healthReasons" class="health-reasons">
                     <li>System is operating normally</li>
                 </ul>
             </div>
@@ -117,7 +118,7 @@
                     </div>
                 </div>
 
-                <div class="panel pro-only">
+                <div class="panel" data-mode="pro">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <p class="eyebrow">API Detail</p>
                         <span class="status-badge status-ok pro-badge">PRO</span>
@@ -126,7 +127,7 @@
                     <div>Response: <span id="proApiLatency">-</span></div>
                 </div>
 
-                <div class="panel pro-only">
+                <div class="panel" data-mode="pro">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <p class="eyebrow">DB Detail</p>
                         <span class="status-badge status-ok pro-badge">PRO</span>
@@ -135,7 +136,7 @@
                     <div>Type: <span id="proDbType">-</span></div>
                 </div>
 
-                <div class="panel pro-only">
+                <div class="panel" data-mode="pro">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <p class="eyebrow">WebSocket Detail</p>
                         <span class="status-badge status-ok pro-badge">PRO</span>
@@ -146,10 +147,9 @@
 
                 <!-- Hinweis: MQTT-Detail-Karte ist separat im MQTT-Tab platziert und dort sichtbar -->
 
-                <div class="panel pro-only">
+                <div class="panel">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <p class="eyebrow">Warum Warnung?</p>
-                        <span class="status-badge status-ok pro-badge">PRO</span>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                         <span id="whyBadgePro" class="status-badge status-ok">OK</span>
@@ -160,14 +160,14 @@
                     </ul>
                 </div>
             </div>
-            <div class="pro-only pro-coming">
+            <div class="pro-coming" data-mode="pro">
                 <div class="debug-card">
                     <p class="eyebrow">AMS Detail</p>
                     <div>Coming soon</div>
                 </div>
                 <div class="debug-card">
-                    <p class="eyebrow">JSON Inspect</p>
-                    <div>Coming soon</div>
+                    <p class="eyebrow">Weitere Pro-Funktionen</p>
+                    <div>Pro-Funktion - folgt in Kuerze</div>
                 </div>
             </div>
         </div>
@@ -232,7 +232,7 @@
         </div>
         
         <!-- Pro: JSON Inspector Panel -->
-        <div id="panel-json" class="debug-panel pro-only" data-mode="pro" style="display:none;">
+        <div id="panel-json" class="debug-panel" data-mode="pro" style="display:none;">
             <div class="panel">
                 <div class="card-header">
                     <h3>JSON Inspector</h3>
@@ -288,10 +288,10 @@
                     <div class="badge badge-idle">No printers detected</div>
                 </div>
             </div>
-            <div class="panel pro-only" data-mode="pro" style="margin-top:12px;">
+            <div class="panel" style="margin-top:12px;">
                 <p class="eyebrow">Scanner Pro</p>
                 <div class="system-grid" style="margin-top:6px;">
-                    <div class="panel scanner-pro-card pro-disabled-card pro-only" data-mode="pro">
+                    <div class="panel scanner-pro-card pro-disabled-card">
                         <div class="scanner-pro-head">
                             <span class="pro-icon fa fa-network-wired" aria-hidden="true"></span>
                             <span><strong>Deep Probe</strong></span>
@@ -300,7 +300,7 @@
                         </div>
                         <p class="subtitle">Führt eine erweiterte Verbindungs- und Erreichbarkeitsprüfung für das ausgewählte Gerät durch.</p>
                         <div style="margin-top:8px;">
-                            <button id="proProbeStart" class="btn btn-secondary pro-btn-disabled pro-only-inline" disabled>Probe starten</button>
+                            <button id="proProbeStart" class="btn btn-secondary pro-btn-disabled" data-mode="pro" disabled>Probe starten</button>
                         </div>
                         <div style="margin-top:6px;color:var(--text-dim);" id="proProbeStatus">Noch keine Probe-Daten vorhanden.</div>
                         <div style="margin-top:4px;color:var(--text-dim);" id="proProbeLatency">Antwortzeit: -</div>
@@ -309,7 +309,7 @@
                         <div style="margin-top:4px;color:var(--text-dim);" id="proProbeHttp">HTTP-Status: -</div>
                         <div style="margin-top:4px;color:var(--text-dim);" id="proProbeMessage">Hinweis: -</div>
                     </div>
-                    <div class="panel scanner-pro-card pro-disabled-card pro-only" data-mode="pro">
+                    <div class="panel scanner-pro-card pro-disabled-card">
                         <div class="scanner-pro-head">
                             <span class="pro-icon fa fa-fingerprint" aria-hidden="true"></span>
                             <span><strong>Geraete-Fingerprint</strong></span>
@@ -317,7 +317,7 @@
                         </div>
                         <p class="subtitle">Ermittelt den tatsaechlichen Geraetetyp anhand technischer Merkmale.</p>
                         <div style="margin-top:8px;">
-                            <button id="proFingerprintStart" class="btn btn-secondary pro-btn-disabled pro-only-inline" disabled>Fingerprint starten</button>
+                            <button id="proFingerprintStart" class="btn btn-secondary pro-btn-disabled" data-mode="pro" disabled>Fingerprint starten</button>
                         </div>
                         <div style="margin-top:6px;color:var(--text-dim);" id="proFingerprintStatus">Status: -</div>
                         <div style="margin-top:4px;color:var(--text-dim);" id="proFingerprintType">Erkannt: -</div>
@@ -327,7 +327,7 @@
                             <li>-</li>
                         </ul>
                     </div>
-                    <div class="panel scanner-pro-card pro-disabled-card pro-only" data-mode="pro">
+                    <div class="panel scanner-pro-card pro-disabled-card">
                         <div class="scanner-pro-head">
                             <span class="pro-icon fa fa-code" aria-hidden="true"></span>
                             <span><strong>Rohdaten / JSON-Ansicht</strong></span>
@@ -335,7 +335,7 @@
                         </div>
                         <p class="subtitle">Einmalige Rohdaten-Aufnahme zur Analyse und Fehlersuche.</p>
                         <div style="margin-top:8px;">
-                            <button class="btn btn-secondary pro-btn-disabled pro-only-inline" disabled title="Pro-Funktion - folgt in Kuerze">Snapshot erfassen</button>
+                            <button class="btn btn-secondary pro-btn-disabled" data-mode="pro" disabled title="Pro-Funktion - folgt in Kuerze">Snapshot erfassen</button>
                         </div>
                         <div class="pro-hint">Pro-Funktion - folgt in Kuerze</div>
                         <div style="margin-top:6px;color:var(--text-dim);">Es wurde noch kein Snapshot erstellt.</div>
@@ -423,7 +423,7 @@
                 </div>
             </div>
         </div>
-        <div id="panel-config" class="debug-panel pro-only" data-mode="pro" style="display:none;">
+        <div id="panel-config" class="debug-panel" data-mode="pro" style="display:none;">
             <div class="system-grid" style="margin-top:10px;">
                 <div class="panel">
                     <p class="eyebrow">System Health</p>
@@ -507,7 +507,7 @@
             </div>
             <p class="subtitle" style="margin-top:10px;">Änderungen speichern – folgt in späterer Pro-Version</p>
         </div>
-        <div id="panel-services" class="debug-panel pro-only" data-mode="pro" style="display:none;">
+        <div id="panel-services" class="debug-panel" data-mode="pro" style="display:none;">
             <div class="system-grid">
                 <!-- Panel 1: Runtime & Process -->
                 <div class="panel">
@@ -609,7 +609,7 @@
                 </div>
             </div>
         </div>
-                <div id="panel-logs" class="debug-panel pro-only" data-mode="pro" style="display:none;">
+                <div id="panel-logs" class="debug-panel" data-mode="pro" style="display:none;">
                     <!-- Log Viewer Header Panel -->
                     <div class="panel" style="margin-bottom:16px;">
                         <p class="eyebrow">Log Viewer</p>
@@ -737,8 +737,12 @@
 
                     const setMode = (mode) => {
                         const b = document.body;
+
+                        // Setze data-mode Attribut auf body
+                        b.dataset.mode = mode;
+
+                        // Update Button States
                         if (mode === 'pro') {
-                            b.classList.add('pro-mode');
                             if (btnPro) btnPro.classList.add('active');
                             if (btnLite) btnLite.classList.remove('active');
                             if (label) label.textContent = 'Mode: Pro';
@@ -749,12 +753,10 @@
                             });
 
                             // Button-Status wird von updateProbeButtonState() gesteuert
-                            // (aktiviert nur wenn probeTarget vorhanden)
                             if (typeof updateProbeButtonState === 'function') {
                                 updateProbeButtonState();
                             }
                         } else {
-                            b.classList.remove('pro-mode');
                             if (btnLite) btnLite.classList.add('active');
                             if (btnPro) btnPro.classList.remove('active');
                             if (label) label.textContent = 'Mode: Lite';
@@ -1037,8 +1039,8 @@
             </div>
 
             <!-- MQTT PRO Cards: Nebeneinander unter der Übersicht -->
-            <div class="pro-only mqtt-pro-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
-                <div class="panel mqtt-only" data-mode="pro">
+            <div class="mqtt-pro-grid" data-mode="pro" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
+                <div class="panel mqtt-only">
                     <div class="card-header">
                         <h3>MQTT Detail</h3>
                         <span class="pro-badge">PRO</span>
@@ -1072,7 +1074,7 @@
                     </div>
                 </div>
                 
-                <div class="panel mqtt-only" data-mode="pro">
+                <div class="panel mqtt-only">
                     <div class="card-header">
                         <h3>Health & Statistik</h3>
                         <span class="pro-badge">PRO</span>
@@ -1124,8 +1126,8 @@
                 </div>
             </div>
 
-            <!-- Pro-Modus: Zwei-Spalten-Layout für Pro-Features -->
-            <div class="pro-only" data-mode="pro">
+            <!-- Pro-Modus: Zwei-Spalten-Layout für Pro-Features - NUR im MQTT Tab -->
+            <div class="mqtt-only" data-mode="pro">
                 <div class="config-layout">
                     <!-- Linke Spalte: Connection Card -->
                     <div class="config-left">
@@ -1246,7 +1248,7 @@
                             </div>
                         </div>
                         <!-- Entfernt: MQTT Detail und Health & Statistik Karten (siehe Backup) -->
-                        <div class="panel pro-only">
+                        <div class="panel" data-mode="pro">
                             <div class="card-title">Weitere Pro-Funktionen</div>
                             <div style="color:var(--text-dim);margin-top:8px;">Pro-Funktion – folgt in Kürze</div>
                         </div>

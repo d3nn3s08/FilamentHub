@@ -694,18 +694,14 @@ body {
     border: 1px solid rgba(34,197,94,0.35);
 }
 
-.pro-only {
+/* Data-Mode System (neue Implementierung) */
+[data-mode="pro"] {
     display: none !important;
 }
-body.pro-mode .pro-only {
+body[data-mode="pro"] [data-mode="pro"] {
     display: block !important;
 }
-.pro-only-inline {
-    display: none !important;
-}
-body.pro-mode .pro-only-inline {
-    display: inline-flex !important;
-}
+
 .debug-panel {
     display: none;
 }
@@ -713,15 +709,6 @@ body.pro-mode .pro-only-inline {
     display: block;
 }
 .debug-panel:not(.active-panel) {
-    display: none !important;
-}
-body.pro-mode .debug-panel:not(.active-panel) {
-    display: none !important;
-}
-body.pro-mode .debug-panel.active-panel {
-    display: block !important;
-}
-body:not(.pro-mode) .debug-panel.pro-only {
     display: none !important;
 }
 .health-details {
