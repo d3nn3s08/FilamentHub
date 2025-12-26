@@ -9,4 +9,6 @@ alembic
 python-multipart
 pyyaml
 websockets
+wsproto
 bcrypt
+python-dotenv

@@ -122,11 +122,16 @@ async def runtime_metrics_middleware(request: Request, call_next):
     return response
 
 # -----------------------------------------------------
-# TESTENDPUNKT
+# TESTENDPUNKT & HEALTH CHECK
 # -----------------------------------------------------
 @app.get('/ping')
 async def ping():
     return {'status': 'ok'}
+
+@app.get('/health')
+async def health():
+    """Health check endpoint for Docker container monitoring"""
+    return {'status': 'healthy', 'service': 'filamenthub'}
 
 # app.add_event_handler("startup", init_db)
 

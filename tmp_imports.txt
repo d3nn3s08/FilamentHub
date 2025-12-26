@@ -1,4 +1,0 @@
-from app.routes.debug_system_routes import router as debug_system_router
-from app.routes.debug_network_routes import router as debug_network_router
-from app.routes.notification_routes import router as notification_router
-from app.routes.debug_log_routes import router as debug_log_router

@@ -2,7 +2,7 @@ FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 
-# Build-Tools f�r ARM installieren
+# Build-Tools für ARM installieren + curl für healthcheck
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -10,11 +10,11 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     libffi-dev \
     libssl-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir websockets wsproto
 
 # Copy application files explicitly
 COPY app/ /app/app/
@@ -26,6 +26,7 @@ COPY entrypoint.sh /app/
 COPY run.py /app/
 COPY config.yaml /app/
 COPY frontend/ /app/frontend/
+COPY .env /app/.env
 
 EXPOSE 8085
 

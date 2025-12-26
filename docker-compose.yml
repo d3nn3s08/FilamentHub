@@ -1,19 +1,21 @@
 services:
   filamenthub:
     container_name: filamenthub
-    build: .
+    image: filamenthub:latest
     restart: unless-stopped
-    ports:
-      - "8085:8085"
-
-
     network_mode: host
-
-
+    env_file:
+      - .env
     environment:
       FILAMENTHUB_DB_PATH: /app/data/filamenthub.db
       PYTHONPATH: /app
     volumes:
       - /mnt/user/appdata/filamenthub/data:/app/data
       - /mnt/user/appdata/filamenthub/logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     entrypoint: ["./entrypoint.sh"]

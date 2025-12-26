@@ -1,27 +1,17 @@
 import pytest
 import os
-from sqlmodel import SQLModel
-from app.database import get_engine  # falls vorhanden
-
-@pytest.fixture
-def test_db(tmp_path):
-    db_path = tmp_path / "test.db"
-    os.environ["FILAMENTHUB_DB_PATH"] = str(db_path)
-
-    engine = get_engine()
-    SQLModel.metadata.create_all(engine)
-
-    yield engine
-
-    engine.dispose()
+import sys
+from pathlib import Path
+from sqlmodel import SQLModel, create_engine
+from sqlalchemy.sql.elements import BinaryExpression
 
 test_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(test_root))
 
-import pytest
-from sqlalchemy.sql.elements import BinaryExpression
+# Test database path
+TEST_DB_PATH = os.path.join(test_root, "data", "test_filamenthub.db")
+
 from app.database import engine
-from sqlmodel import SQLModel
 
 import app.models.job  # ensure SQLModel metadata registered
 import app.models.material

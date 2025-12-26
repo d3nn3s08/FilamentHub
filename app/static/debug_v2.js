@@ -149,11 +149,11 @@ function normalizePrinterType(val) {
 
 function setDebugMode(mode) {
   window.DEBUG_MODE = mode === 'pro' ? 'pro' : 'lite';
-  document.body.classList.remove('debug-lite', 'debug-pro', 'pro-mode');
-  const modeClass = window.DEBUG_MODE === 'pro' ? 'debug-pro' : 'debug-lite';
-  document.body.classList.add(modeClass);
+  document.body.classList.remove('debug-lite', 'pro-mode');
   if (window.DEBUG_MODE === 'pro') {
     document.body.classList.add('pro-mode');
+  } else {
+    document.body.classList.add('debug-lite');
   }
   const btnLite = document.getElementById('debugModeLite');
   const btnPro = document.getElementById('debugModePro');

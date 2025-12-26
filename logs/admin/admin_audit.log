@@ -1,6 +1,18 @@
-{"ts": "2025-12-23T23:02:04Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
-{"ts": "2025-12-23T23:02:09Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
-{"ts": "2025-12-23T23:02:09Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
-{"ts": "2025-12-23T23:02:09Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
-{"ts": "2025-12-23T23:02:09Z", "event": "admin_coverage_report", "details": {"ip": "127.0.0.1"}}
-{"ts": "2025-12-23T23:02:12Z", "event": "admin_coverage_run", "details": {"ip": "127.0.0.1", "success": false, "stdout": "", "stderr": "ImportError while loading conftest 'C:\\Users\\Denis\\Desktop\\FilamentHub_Projekt\\FilamentHub\\tests\\conftest.py'.\ntests\\conftest.py:4: in <module>\n    from app.database import get_engine  # falls vorhanden\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   ImportError: cannot import name 'get_engine' from 'app.database' (C:\\Users\\Denis\\Desktop\\FilamentHub_Projekt\\FilamentHub\\app\\database.py)\n"}}
+{"ts": "2025-12-25T23:02:21Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:02:21Z", "event": "admin_auth_required_failed", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:02:21Z", "event": "admin_auth_required_failed", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:02:22Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:02:25Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:02:25Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:02:26Z", "event": "admin_coverage_report", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:02:26Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:18:27Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:18:27Z", "event": "admin_auth_required_failed", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:18:27Z", "event": "admin_auth_required_failed", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:18:27Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:18:31Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:18:31Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:18:31Z", "event": "admin_coverage_report", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:18:31Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-25T23:31:59Z", "event": "admin_coverage_run", "details": {"ip": "127.0.0.1", "success": false, "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.13.9, pytest-9.0.1, pluggy-1.6.0\nrootdir: C:\\Users\\Denis\\Desktop\\FilamentHub_Projekt\\FilamentHub\nplugins: anyio-4.12.0, asyncio-1.3.0, cov-7.0.0\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 55 items\n\ntests\\test_ams_end_to_end.py ...                                         [  5%]\ntests\\test_ams_mapper.py .......                                         [ 18%]\ntests\\test_ams_mapper_multi.py ......                                    [ 29%]\ntests\\test_ams_parser.py .......                                         [ 41%]\ntests\\test_ams_sync.py FF..                                              [ 49%]\ntests\\test_database_routes_api.py ....                                   [ 56%]\ntests\\test_health.py ...                                                 [ 61%]\ntests\\test_mapper_generic.py .                ", "stderr": ""}}
+{"ts": "2025-12-25T23:32:01Z", "event": "admin_coverage_report", "details": {"ip": "127.0.0.1"}}

@@ -72,9 +72,20 @@ Debug/Service-Tab oeffnen (Browser auf Port 8080), dort Backup-Button testen: ZI
 
 ## Quickstart (Docker)
 ```bash
+# Von Docker Hub (empfohlen für Nutzer)
+docker pull d3nn3s08/filamenthub:latest
+docker-compose up -d
+
+# Oder selbst bauen (für Entwickler)
 docker build -t filamenthub .
-docker run -d -p 8080:8080 -v $(pwd)/data:/app/data filamenthub
+docker-compose up -d
+
+# App öffnen
+# http://localhost:8085
 ```
+
+> **Hinweis:** Die App funktioniert vollständig ohne Admin-Zugang!
+> Der Admin-Bereich ist nur für den Entwickler vorgesehen und wird auf Anfrage freigegeben.
 
 ---
 

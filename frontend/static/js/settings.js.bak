@@ -1,3 +1,0 @@
-document.addEventListener("DOMContentLoaded", () => {
-    console.info("Settings JS geladen - hier folgen Theme/Language Toggles.");
-});

@@ -26,6 +26,12 @@ Thumbs.db
 # App runtime output
 logs/
 
+# Database files
+data/filamenthub.db
+data/filamenthub.db-*
+data/*.db
+data/backups/
+
 # Local backups folder
 Backup/
 
@@ -43,4 +49,6 @@ scripts/_tmp_*
 **/*.backup*
 
 # Environment file (local secrets)
-.env
+# HINWEIS: .env wird MIT ins Repository aufgenommen (mit Fake-Hash)
+# Produktions-.env mit echtem Hash wird über .env.local überschrieben
+.env.local

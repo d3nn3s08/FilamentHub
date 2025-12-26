@@ -2764,3 +2764,496 @@
 2025-12-24 00:02:34,216 [INFO] 3D_drucker - {"ts": "2025-12-23T23:02:34.216690+00:00", "topic": "device/00M09A372601070/report", "payload": "{\n    \"print\": {\n        \"3D\": {\n            \"layer_num\": 0,\n            \"total_layer_num\": 0\n        },\n        \"ams\": {\n            \"ams\": [\n                {\n                    \"dry_time\": 0,\n                    \"humidity\": \"3\",\n                    \"humidity_raw\": \"32\",\n                    \"id\": \"0\",\n                    \"info\": \"1001\",\n                    \"temp\": \"20.5\",\n                    \"tray\": [\n                        {\n                            \"bed_temp\": \"0\",\n                            \"bed_temp_type\": \"0\",\n                            \"cali_idx\": -1,\n                            \"cols\": [\n                                \"000000FF\"\n                            ],\n                            \"ctype\": 0,\n                            \"drying_temp\": \"55\",\n                            \"drying_time\": \"8\",\n                            \"id\": \"0\",\n                            \"nozzle_temp_max\": \"230\",\n                            \"nozzle_temp_min\": \"190\",\n                            \"re...[truncated]"}
 2025-12-24 00:02:35,324 [INFO] 3D_drucker - {"ts": "2025-12-23T23:02:35.324376+00:00", "topic": "device/00M09A372601070/report", "payload": "{\n    \"print\": {\n        \"3D\": {\n            \"layer_num\": 0,\n            \"total_layer_num\": 0\n        },\n        \"ams\": {\n            \"ams\": [\n                {\n                    \"dry_time\": 0,\n                    \"humidity\": \"3\",\n                    \"humidity_raw\": \"32\",\n                    \"id\": \"0\",\n                    \"info\": \"1001\",\n                    \"temp\": \"20.5\",\n                    \"tray\": [\n                        {\n                            \"bed_temp\": \"0\",\n                            \"bed_temp_type\": \"0\",\n                            \"cali_idx\": -1,\n                            \"cols\": [\n                                \"000000FF\"\n                            ],\n                            \"ctype\": 0,\n                            \"drying_temp\": \"55\",\n                            \"drying_time\": \"8\",\n                            \"id\": \"0\",\n                            \"nozzle_temp_max\": \"230\",\n                            \"nozzle_temp_min\": \"190\",\n                            \"re...[truncated]"}
 2025-12-24 00:02:36,439 [INFO] 3D_drucker - {"ts": "2025-12-23T23:02:36.439179+00:00", "topic": "device/00M09A372601070/report", "payload": "{\n    \"print\": {\n        \"3D\": {\n            \"layer_num\": 0,\n            \"total_layer_num\": 0\n        },\n        \"ams\": {\n            \"ams\": [\n                {\n                    \"dry_time\": 0,\n                    \"humidity\": \"3\",\n                    \"humidity_raw\": \"32\",\n                    \"id\": \"0\",\n                    \"info\": \"1001\",\n                    \"temp\": \"20.5\",\n                    \"tray\": [\n                        {\n                            \"bed_temp\": \"0\",\n                            \"bed_temp_type\": \"0\",\n                            \"cali_idx\": -1,\n                            \"cols\": [\n                                \"000000FF\"\n                            ],\n                            \"ctype\": 0,\n                            \"drying_temp\": \"55\",\n                            \"drying_time\": \"8\",\n                            \"id\": \"0\",\n                            \"nozzle_temp_max\": \"230\",\n                            \"nozzle_temp_min\": \"190\",\n                            \"re...[truncated]"}
+2025-12-25 20:50:26,575 [INFO] httpx - HTTP Request: GET http://testserver/api/database/info "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,593 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,599 [INFO] httpx - HTTP Request: GET http://testserver/api/database/query?sql=SELECT+%2A+FROM+material+WHERE+id%3D%27m2%27 "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,614 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,619 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 404 Not Found"
+2025-12-25 20:50:26,630 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 400 Bad Request"
+2025-12-25 20:50:26,686 [INFO] httpx - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,701 [INFO] httpx - HTTP Request: GET http://testserver/docs "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,705 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-25 20:50:26,712 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,744 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,752 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,757 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,761 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,771 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-25 20:50:26,783 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-25 20:50:26,789 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/abe54893-fa07-47da-b378-bb44e321649e "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,792 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-25 20:50:26,797 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,803 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/abe54893-fa07-47da-b378-bb44e321649e "HTTP/1.1 200 OK"
+2025-12-25 20:50:26,813 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-25 20:50:26,818 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 409 Conflict"
+2025-12-25 22:12:45,338 [INFO] uvicorn.error - Started server process [23344]
+2025-12-25 22:12:45,338 [INFO] uvicorn.error - Started server process [23344]
+2025-12-25 22:12:45,339 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-25 22:12:45,339 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-25 22:12:45,349 [INFO] uvicorn.error - Application startup complete.
+2025-12-25 22:12:45,349 [INFO] uvicorn.error - Application startup complete.
+2025-12-25 22:12:45,350 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-25 22:12:45,350 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-25 22:12:45,690 [INFO] uvicorn.error - 127.0.0.1:41542 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:12:45,690 [INFO] uvicorn.error - 127.0.0.1:41542 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:12:45,691 [INFO] uvicorn.error - connection open
+2025-12-25 22:12:45,691 [INFO] uvicorn.error - connection open
+2025-12-25 22:12:52,393 [INFO] uvicorn.error - 127.0.0.1:6621 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:12:52,393 [INFO] uvicorn.error - 127.0.0.1:6621 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:12:52,393 [INFO] uvicorn.error - connection open
+2025-12-25 22:12:52,393 [INFO] uvicorn.error - connection open
+2025-12-25 22:12:53,986 [INFO] uvicorn.error - connection closed
+2025-12-25 22:12:53,986 [INFO] uvicorn.error - connection closed
+2025-12-25 22:12:54,307 [INFO] uvicorn.error - 127.0.0.1:65500 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:12:54,307 [INFO] uvicorn.error - 127.0.0.1:65500 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:12:54,308 [INFO] uvicorn.error - connection open
+2025-12-25 22:12:54,308 [INFO] uvicorn.error - connection open
+2025-12-25 22:12:59,173 [INFO] uvicorn.error - connection closed
+2025-12-25 22:12:59,173 [INFO] uvicorn.error - connection closed
+2025-12-25 22:12:59,482 [INFO] uvicorn.error - 127.0.0.1:24463 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:12:59,482 [INFO] uvicorn.error - 127.0.0.1:24463 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:12:59,482 [INFO] uvicorn.error - connection open
+2025-12-25 22:12:59,482 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:05,810 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:05,810 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:06,136 [INFO] uvicorn.error - 127.0.0.1:2455 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:06,136 [INFO] uvicorn.error - 127.0.0.1:2455 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:06,136 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:06,136 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:12,248 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:12,248 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:12,567 [INFO] uvicorn.error - 127.0.0.1:44709 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:12,567 [INFO] uvicorn.error - 127.0.0.1:44709 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:12,568 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:12,568 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:13,813 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:13,813 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:14,130 [INFO] uvicorn.error - 127.0.0.1:47290 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:14,130 [INFO] uvicorn.error - 127.0.0.1:47290 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:14,131 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:14,131 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:20,633 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:20,633 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:20,953 [INFO] uvicorn.error - 127.0.0.1:2054 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:20,953 [INFO] uvicorn.error - 127.0.0.1:2054 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:20,954 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:20,954 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:22,488 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:22,488 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:22,791 [INFO] uvicorn.error - 127.0.0.1:14791 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:22,791 [INFO] uvicorn.error - 127.0.0.1:14791 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:22,791 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:22,791 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:23,168 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:23,168 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:23,497 [INFO] uvicorn.error - 127.0.0.1:23638 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:23,497 [INFO] uvicorn.error - 127.0.0.1:23638 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:23,497 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:23,497 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:24,888 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:24,888 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:25,263 [INFO] uvicorn.error - 127.0.0.1:45563 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:25,263 [INFO] uvicorn.error - 127.0.0.1:45563 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:25,264 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:25,264 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:28,944 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:28,944 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:29,246 [INFO] uvicorn.error - 127.0.0.1:59650 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:29,246 [INFO] uvicorn.error - 127.0.0.1:59650 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:29,247 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:29,247 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:34,850 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:34,850 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:37,262 [INFO] uvicorn.error - 127.0.0.1:64200 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:37,262 [INFO] uvicorn.error - 127.0.0.1:64200 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:37,262 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:37,262 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:40,985 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:40,985 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:41,317 [INFO] uvicorn.error - 127.0.0.1:5500 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:41,317 [INFO] uvicorn.error - 127.0.0.1:5500 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 22:13:41,318 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:41,318 [INFO] uvicorn.error - connection open
+2025-12-25 22:13:52,672 [INFO] uvicorn.error - connection closed
+2025-12-25 22:13:52,672 [INFO] uvicorn.error - connection closed
+2025-12-25 22:23:37,124 [INFO] uvicorn.error - connection closed
+2025-12-25 22:23:37,124 [INFO] uvicorn.error - connection closed
+2025-12-25 23:01:04,509 [INFO] uvicorn.error - Shutting down
+2025-12-25 23:01:04,509 [INFO] uvicorn.error - Shutting down
+2025-12-25 23:01:04,620 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-25 23:01:04,620 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-25 23:01:04,621 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-25 23:01:04,621 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-25 23:01:04,621 [INFO] uvicorn.error - Finished server process [23344]
+2025-12-25 23:01:04,621 [INFO] uvicorn.error - Finished server process [23344]
+2025-12-25 23:06:05,537 [INFO] uvicorn.error - Started server process [19708]
+2025-12-25 23:06:05,537 [INFO] uvicorn.error - Started server process [19708]
+2025-12-25 23:06:05,537 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-25 23:06:05,537 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-25 23:06:05,549 [INFO] uvicorn.error - Application startup complete.
+2025-12-25 23:06:05,549 [INFO] uvicorn.error - Application startup complete.
+2025-12-25 23:06:05,549 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-25 23:06:05,549 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-25 23:06:41,418 [INFO] uvicorn.error - 127.0.0.1:12071 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:06:41,418 [INFO] uvicorn.error - 127.0.0.1:12071 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:06:41,419 [INFO] uvicorn.error - connection open
+2025-12-25 23:06:41,419 [INFO] uvicorn.error - connection open
+2025-12-25 23:06:43,408 [INFO] uvicorn.error - connection closed
+2025-12-25 23:06:43,408 [INFO] uvicorn.error - connection closed
+2025-12-25 23:06:43,753 [INFO] uvicorn.error - 127.0.0.1:10788 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:06:43,753 [INFO] uvicorn.error - 127.0.0.1:10788 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:06:43,753 [INFO] uvicorn.error - connection open
+2025-12-25 23:06:43,753 [INFO] uvicorn.error - connection open
+2025-12-25 23:08:15,315 [INFO] uvicorn.error - connection closed
+2025-12-25 23:08:15,315 [INFO] uvicorn.error - connection closed
+2025-12-25 23:08:15,673 [INFO] uvicorn.error - 127.0.0.1:33895 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:08:15,673 [INFO] uvicorn.error - 127.0.0.1:33895 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:08:15,673 [INFO] uvicorn.error - connection open
+2025-12-25 23:08:15,673 [INFO] uvicorn.error - connection open
+2025-12-25 23:17:03,719 [INFO] uvicorn.error - Started server process [24740]
+2025-12-25 23:17:03,719 [INFO] uvicorn.error - Started server process [24740]
+2025-12-25 23:17:03,719 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-25 23:17:03,719 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-25 23:17:03,729 [INFO] uvicorn.error - Application startup complete.
+2025-12-25 23:17:03,729 [INFO] uvicorn.error - Application startup complete.
+2025-12-25 23:17:03,730 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-25 23:17:03,730 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-25 23:17:07,641 [INFO] uvicorn.error - 127.0.0.1:1069 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:17:07,641 [INFO] uvicorn.error - 127.0.0.1:1069 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:17:07,641 [INFO] uvicorn.error - connection open
+2025-12-25 23:17:07,641 [INFO] uvicorn.error - connection open
+2025-12-25 23:18:47,690 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:18:47,690 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:18:47,691 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:18:47,691 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:19:07,696 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:19:07,696 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:19:07,697 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:19:07,697 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:19:27,708 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:19:27,708 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:19:27,708 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:19:27,708 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:19:47,711 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:19:47,711 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:19:47,712 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:19:47,712 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:20:07,722 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:20:07,722 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:20:07,723 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:20:07,723 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:20:27,732 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:20:27,732 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:20:27,733 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:20:27,733 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:20:47,744 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:20:47,744 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:20:47,745 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:20:47,745 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:21:07,757 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:21:07,757 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:21:07,758 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:21:07,758 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:21:27,771 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:21:27,771 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:21:27,772 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:21:27,772 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:21:47,775 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:21:47,775 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:21:47,776 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:21:47,776 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:22:07,777 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:22:07,777 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:22:07,778 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:22:07,778 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:22:27,782 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:22:27,782 [DEBUG] uvicorn.error - % sending keepalive ping
+2025-12-25 23:22:27,783 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:22:27,783 [DEBUG] uvicorn.error - % received keepalive pong
+2025-12-25 23:23:08,352 [INFO] uvicorn.error - Started server process [25660]
+2025-12-25 23:23:08,352 [INFO] uvicorn.error - Started server process [25660]
+2025-12-25 23:23:08,352 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-25 23:23:08,352 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-25 23:23:08,362 [INFO] uvicorn.error - Application startup complete.
+2025-12-25 23:23:08,362 [INFO] uvicorn.error - Application startup complete.
+2025-12-25 23:23:08,363 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-25 23:23:08,363 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-25 23:23:09,478 [INFO] uvicorn.error - 127.0.0.1:52981 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:23:09,478 [INFO] uvicorn.error - 127.0.0.1:52981 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:23:09,479 [INFO] uvicorn.error - connection open
+2025-12-25 23:23:09,479 [INFO] uvicorn.error - connection open
+2025-12-25 23:23:15,627 [INFO] uvicorn.error - connection closed
+2025-12-25 23:23:15,627 [INFO] uvicorn.error - connection closed
+2025-12-25 23:23:16,078 [INFO] uvicorn.error - 127.0.0.1:26174 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:23:16,078 [INFO] uvicorn.error - 127.0.0.1:26174 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:23:16,078 [INFO] uvicorn.error - connection open
+2025-12-25 23:23:16,078 [INFO] uvicorn.error - connection open
+2025-12-25 23:24:23,043 [INFO] uvicorn.error - Shutting down
+2025-12-25 23:24:23,043 [INFO] uvicorn.error - Shutting down
+2025-12-25 23:24:23,044 [INFO] uvicorn.error - connection closed
+2025-12-25 23:24:23,044 [INFO] uvicorn.error - connection closed
+2025-12-25 23:24:23,153 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-25 23:24:23,153 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-25 23:24:23,154 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-25 23:24:23,154 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-25 23:24:23,154 [INFO] uvicorn.error - Finished server process [25660]
+2025-12-25 23:24:23,154 [INFO] uvicorn.error - Finished server process [25660]
+2025-12-25 23:28:59,399 [INFO] httpx - HTTP Request: GET http://testserver/api/database/info "HTTP/1.1 200 OK"
+2025-12-25 23:28:59,419 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 200 OK"
+2025-12-25 23:28:59,425 [INFO] httpx - HTTP Request: GET http://testserver/api/database/query?sql=SELECT+%2A+FROM+material+WHERE+id%3D%27m2%27 "HTTP/1.1 200 OK"
+2025-12-25 23:28:59,443 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 200 OK"
+2025-12-25 23:28:59,448 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 404 Not Found"
+2025-12-25 23:28:59,460 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 400 Bad Request"
+2025-12-25 23:28:59,484 [INFO] httpx - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-12-25 23:28:59,489 [INFO] httpx - HTTP Request: GET http://testserver/docs "HTTP/1.1 200 OK"
+2025-12-25 23:28:59,493 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-25 23:28:59,500 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-25 23:28:59,527 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-25 23:28:59,537 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-25 23:28:59,541 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-25 23:28:59,546 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-25 23:28:59,559 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-25 23:28:59,566 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 409 Conflict"
+2025-12-25 23:28:59,575 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-25 23:28:59,581 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 409 Conflict"
+2025-12-25 23:29:10,680 [INFO] uvicorn.error - Started server process [17040]
+2025-12-25 23:29:10,680 [INFO] uvicorn.error - Started server process [17040]
+2025-12-25 23:29:10,681 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-25 23:29:10,681 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-25 23:29:10,690 [INFO] uvicorn.error - Application startup complete.
+2025-12-25 23:29:10,690 [INFO] uvicorn.error - Application startup complete.
+2025-12-25 23:29:10,690 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-25 23:29:10,690 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-25 23:29:16,142 [INFO] uvicorn.error - 127.0.0.1:17831 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:29:16,142 [INFO] uvicorn.error - 127.0.0.1:17831 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:29:16,143 [INFO] uvicorn.error - connection open
+2025-12-25 23:29:16,143 [INFO] uvicorn.error - connection open
+2025-12-25 23:32:51,514 [INFO] uvicorn.error - connection closed
+2025-12-25 23:32:51,514 [INFO] uvicorn.error - connection closed
+2025-12-25 23:32:51,946 [INFO] uvicorn.error - 127.0.0.1:43141 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:32:51,946 [INFO] uvicorn.error - 127.0.0.1:43141 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:32:51,946 [INFO] uvicorn.error - connection open
+2025-12-25 23:32:51,946 [INFO] uvicorn.error - connection open
+2025-12-25 23:34:30,208 [INFO] uvicorn.error - connection closed
+2025-12-25 23:34:30,208 [INFO] uvicorn.error - connection closed
+2025-12-25 23:34:30,609 [INFO] uvicorn.error - 127.0.0.1:29865 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:34:30,609 [INFO] uvicorn.error - 127.0.0.1:29865 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:34:30,610 [INFO] uvicorn.error - connection open
+2025-12-25 23:34:30,610 [INFO] uvicorn.error - connection open
+2025-12-25 23:34:35,727 [INFO] uvicorn.error - connection closed
+2025-12-25 23:34:35,727 [INFO] uvicorn.error - connection closed
+2025-12-25 23:34:36,126 [INFO] uvicorn.error - 127.0.0.1:20342 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:34:36,126 [INFO] uvicorn.error - 127.0.0.1:20342 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:34:36,127 [INFO] uvicorn.error - connection open
+2025-12-25 23:34:36,127 [INFO] uvicorn.error - connection open
+2025-12-25 23:34:41,905 [INFO] uvicorn.error - connection closed
+2025-12-25 23:34:41,905 [INFO] uvicorn.error - connection closed
+2025-12-25 23:34:42,287 [INFO] uvicorn.error - 127.0.0.1:33928 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:34:42,287 [INFO] uvicorn.error - 127.0.0.1:33928 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:34:42,288 [INFO] uvicorn.error - connection open
+2025-12-25 23:34:42,288 [INFO] uvicorn.error - connection open
+2025-12-25 23:35:32,978 [INFO] uvicorn.error - Shutting down
+2025-12-25 23:35:32,978 [INFO] uvicorn.error - Shutting down
+2025-12-25 23:35:32,979 [INFO] uvicorn.error - connection closed
+2025-12-25 23:35:32,979 [INFO] uvicorn.error - connection closed
+2025-12-25 23:35:33,089 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-25 23:35:33,089 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-25 23:35:33,090 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-25 23:35:33,090 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-25 23:35:33,090 [INFO] uvicorn.error - Finished server process [17040]
+2025-12-25 23:35:33,090 [INFO] uvicorn.error - Finished server process [17040]
+2025-12-25 23:35:45,940 [INFO] uvicorn.error - Started server process [30292]
+2025-12-25 23:35:45,940 [INFO] uvicorn.error - Started server process [30292]
+2025-12-25 23:35:45,941 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-25 23:35:45,941 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-25 23:35:45,949 [INFO] uvicorn.error - Application startup complete.
+2025-12-25 23:35:45,949 [INFO] uvicorn.error - Application startup complete.
+2025-12-25 23:35:45,950 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-25 23:35:45,950 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-25 23:35:47,911 [INFO] uvicorn.error - 127.0.0.1:40775 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:35:47,911 [INFO] uvicorn.error - 127.0.0.1:40775 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:35:47,912 [INFO] uvicorn.error - connection open
+2025-12-25 23:35:47,912 [INFO] uvicorn.error - connection open
+2025-12-25 23:35:51,544 [INFO] uvicorn.error - connection closed
+2025-12-25 23:35:51,544 [INFO] uvicorn.error - connection closed
+2025-12-25 23:35:51,937 [INFO] uvicorn.error - 127.0.0.1:49046 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:35:51,937 [INFO] uvicorn.error - 127.0.0.1:49046 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:35:51,938 [INFO] uvicorn.error - connection open
+2025-12-25 23:35:51,938 [INFO] uvicorn.error - connection open
+2025-12-25 23:35:55,909 [INFO] uvicorn.error - connection closed
+2025-12-25 23:35:55,909 [INFO] uvicorn.error - connection closed
+2025-12-25 23:35:56,278 [INFO] uvicorn.error - 127.0.0.1:47937 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:35:56,278 [INFO] uvicorn.error - 127.0.0.1:47937 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:35:56,279 [INFO] uvicorn.error - connection open
+2025-12-25 23:35:56,279 [INFO] uvicorn.error - connection open
+2025-12-25 23:36:48,306 [INFO] uvicorn.error - connection closed
+2025-12-25 23:36:48,306 [INFO] uvicorn.error - connection closed
+2025-12-25 23:36:48,732 [INFO] uvicorn.error - 127.0.0.1:62138 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:36:48,732 [INFO] uvicorn.error - 127.0.0.1:62138 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:36:48,733 [INFO] uvicorn.error - connection open
+2025-12-25 23:36:48,733 [INFO] uvicorn.error - connection open
+2025-12-25 23:38:05,824 [INFO] uvicorn.error - connection closed
+2025-12-25 23:38:05,824 [INFO] uvicorn.error - connection closed
+2025-12-25 23:38:06,220 [INFO] uvicorn.error - 127.0.0.1:11069 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:38:06,220 [INFO] uvicorn.error - 127.0.0.1:11069 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:38:06,221 [INFO] uvicorn.error - connection open
+2025-12-25 23:38:06,221 [INFO] uvicorn.error - connection open
+2025-12-25 23:38:08,757 [INFO] uvicorn.error - connection closed
+2025-12-25 23:38:08,757 [INFO] uvicorn.error - connection closed
+2025-12-25 23:38:09,174 [INFO] uvicorn.error - 127.0.0.1:37143 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:38:09,174 [INFO] uvicorn.error - 127.0.0.1:37143 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:38:09,174 [INFO] uvicorn.error - connection open
+2025-12-25 23:38:09,174 [INFO] uvicorn.error - connection open
+2025-12-25 23:40:34,692 [INFO] uvicorn.error - connection closed
+2025-12-25 23:40:34,692 [INFO] uvicorn.error - connection closed
+2025-12-25 23:40:35,089 [INFO] uvicorn.error - 127.0.0.1:3214 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:40:35,089 [INFO] uvicorn.error - 127.0.0.1:3214 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:40:35,090 [INFO] uvicorn.error - connection open
+2025-12-25 23:40:35,090 [INFO] uvicorn.error - connection open
+2025-12-25 23:40:46,608 [INFO] uvicorn.error - connection closed
+2025-12-25 23:40:46,608 [INFO] uvicorn.error - connection closed
+2025-12-25 23:40:46,998 [INFO] uvicorn.error - 127.0.0.1:16002 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:40:46,998 [INFO] uvicorn.error - 127.0.0.1:16002 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:40:46,998 [INFO] uvicorn.error - connection open
+2025-12-25 23:40:46,998 [INFO] uvicorn.error - connection open
+2025-12-25 23:45:13,267 [INFO] uvicorn.error - connection closed
+2025-12-25 23:45:13,267 [INFO] uvicorn.error - connection closed
+2025-12-25 23:45:13,663 [INFO] uvicorn.error - 127.0.0.1:1228 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:45:13,663 [INFO] uvicorn.error - 127.0.0.1:1228 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:45:13,664 [INFO] uvicorn.error - connection open
+2025-12-25 23:45:13,664 [INFO] uvicorn.error - connection open
+2025-12-25 23:45:35,035 [INFO] uvicorn.error - 127.0.0.1:1157 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:45:35,035 [INFO] uvicorn.error - 127.0.0.1:1157 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:45:35,036 [INFO] uvicorn.error - connection open
+2025-12-25 23:45:35,036 [INFO] uvicorn.error - connection open
+2025-12-25 23:45:40,052 [INFO] uvicorn.error - connection closed
+2025-12-25 23:45:40,052 [INFO] uvicorn.error - connection closed
+2025-12-25 23:45:44,809 [INFO] admin.audit - {"ts": "2025-12-25T22:45:44Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-25 23:45:49,126 [INFO] admin.audit - {"ts": "2025-12-25T22:45:49Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
+2025-12-25 23:45:49,137 [INFO] admin.audit - {"ts": "2025-12-25T22:45:49Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-25 23:45:49,242 [INFO] admin.audit - {"ts": "2025-12-25T22:45:49Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
+2025-12-25 23:45:49,246 [INFO] admin.audit - {"ts": "2025-12-25T22:45:49Z", "event": "admin_coverage_report", "details": {"ip": "127.0.0.1"}}
+2025-12-25 23:49:35,118 [INFO] uvicorn.error - connection closed
+2025-12-25 23:49:35,118 [INFO] uvicorn.error - connection closed
+2025-12-25 23:49:35,556 [INFO] uvicorn.error - 127.0.0.1:61999 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:49:35,556 [INFO] uvicorn.error - 127.0.0.1:61999 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:49:35,556 [INFO] uvicorn.error - connection open
+2025-12-25 23:49:35,556 [INFO] uvicorn.error - connection open
+2025-12-25 23:50:17,778 [INFO] uvicorn.error - connection closed
+2025-12-25 23:50:17,778 [INFO] uvicorn.error - connection closed
+2025-12-25 23:50:18,187 [INFO] uvicorn.error - 127.0.0.1:44832 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:50:18,187 [INFO] uvicorn.error - 127.0.0.1:44832 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:50:18,188 [INFO] uvicorn.error - connection open
+2025-12-25 23:50:18,188 [INFO] uvicorn.error - connection open
+2025-12-25 23:50:22,372 [INFO] uvicorn.error - connection closed
+2025-12-25 23:50:22,372 [INFO] uvicorn.error - connection closed
+2025-12-25 23:50:22,762 [INFO] uvicorn.error - 127.0.0.1:52027 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:50:22,762 [INFO] uvicorn.error - 127.0.0.1:52027 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:50:22,763 [INFO] uvicorn.error - connection open
+2025-12-25 23:50:22,763 [INFO] uvicorn.error - connection open
+2025-12-25 23:55:05,434 [INFO] uvicorn.error - connection closed
+2025-12-25 23:55:05,434 [INFO] uvicorn.error - connection closed
+2025-12-25 23:55:05,835 [INFO] uvicorn.error - 127.0.0.1:52466 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:55:05,835 [INFO] uvicorn.error - 127.0.0.1:52466 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-25 23:55:05,835 [INFO] uvicorn.error - connection open
+2025-12-25 23:55:05,835 [INFO] uvicorn.error - connection open
+2025-12-25 23:58:57,475 [INFO] admin.audit - {"ts": "2025-12-25T22:58:57Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-25 23:58:57,569 [INFO] admin.audit - {"ts": "2025-12-25T22:58:57Z", "event": "admin_auth_required_failed", "details": {"ip": "127.0.0.1"}}
+2025-12-25 23:58:57,570 [INFO] admin.audit - {"ts": "2025-12-25T22:58:57Z", "event": "admin_auth_required_failed", "details": {"ip": "127.0.0.1"}}
+2025-12-25 23:58:57,577 [INFO] admin.audit - {"ts": "2025-12-25T22:58:57Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-25 23:59:00,111 [INFO] admin.audit - {"ts": "2025-12-25T22:59:00Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
+2025-12-25 23:59:00,128 [INFO] admin.audit - {"ts": "2025-12-25T22:59:00Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-25 23:59:00,202 [INFO] admin.audit - {"ts": "2025-12-25T22:59:00Z", "event": "admin_coverage_report", "details": {"ip": "127.0.0.1"}}
+2025-12-25 23:59:00,203 [INFO] admin.audit - {"ts": "2025-12-25T22:59:00Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
+2025-12-26 00:02:21,917 [INFO] admin.audit - {"ts": "2025-12-25T23:02:21Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-26 00:02:21,991 [INFO] admin.audit - {"ts": "2025-12-25T23:02:21Z", "event": "admin_auth_required_failed", "details": {"ip": "127.0.0.1"}}
+2025-12-26 00:02:21,994 [INFO] admin.audit - {"ts": "2025-12-25T23:02:21Z", "event": "admin_auth_required_failed", "details": {"ip": "127.0.0.1"}}
+2025-12-26 00:02:22,000 [INFO] admin.audit - {"ts": "2025-12-25T23:02:22Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-26 00:02:25,972 [INFO] admin.audit - {"ts": "2025-12-25T23:02:25Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
+2025-12-26 00:02:25,983 [INFO] admin.audit - {"ts": "2025-12-25T23:02:25Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-26 00:02:26,005 [INFO] admin.audit - {"ts": "2025-12-25T23:02:26Z", "event": "admin_coverage_report", "details": {"ip": "127.0.0.1"}}
+2025-12-26 00:02:26,006 [INFO] admin.audit - {"ts": "2025-12-25T23:02:26Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
+2025-12-26 00:04:04,557 [INFO] uvicorn.error - connection closed
+2025-12-26 00:04:04,557 [INFO] uvicorn.error - connection closed
+2025-12-26 00:04:04,949 [INFO] uvicorn.error - 127.0.0.1:15523 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:04:04,949 [INFO] uvicorn.error - 127.0.0.1:15523 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:04:04,950 [INFO] uvicorn.error - connection open
+2025-12-26 00:04:04,950 [INFO] uvicorn.error - connection open
+2025-12-26 00:04:35,225 [INFO] uvicorn.error - connection closed
+2025-12-26 00:04:35,225 [INFO] uvicorn.error - connection closed
+2025-12-26 00:04:35,601 [INFO] uvicorn.error - 127.0.0.1:8996 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:04:35,601 [INFO] uvicorn.error - 127.0.0.1:8996 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:04:35,602 [INFO] uvicorn.error - connection open
+2025-12-26 00:04:35,602 [INFO] uvicorn.error - connection open
+2025-12-26 00:04:44,951 [INFO] uvicorn.error - connection closed
+2025-12-26 00:04:44,951 [INFO] uvicorn.error - connection closed
+2025-12-26 00:04:45,278 [INFO] uvicorn.error - 127.0.0.1:25224 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:04:45,278 [INFO] uvicorn.error - 127.0.0.1:25224 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:04:45,279 [INFO] uvicorn.error - connection open
+2025-12-26 00:04:45,279 [INFO] uvicorn.error - connection open
+2025-12-26 00:04:51,422 [INFO] uvicorn.error - connection closed
+2025-12-26 00:04:51,422 [INFO] uvicorn.error - connection closed
+2025-12-26 00:04:51,757 [INFO] uvicorn.error - 127.0.0.1:39464 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:04:51,757 [INFO] uvicorn.error - 127.0.0.1:39464 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:04:51,758 [INFO] uvicorn.error - connection open
+2025-12-26 00:04:51,758 [INFO] uvicorn.error - connection open
+2025-12-26 00:05:38,686 [INFO] uvicorn.error - connection closed
+2025-12-26 00:05:38,686 [INFO] uvicorn.error - connection closed
+2025-12-26 00:05:38,991 [INFO] uvicorn.error - 127.0.0.1:51673 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:05:38,991 [INFO] uvicorn.error - 127.0.0.1:51673 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:05:38,991 [INFO] uvicorn.error - connection open
+2025-12-26 00:05:38,991 [INFO] uvicorn.error - connection open
+2025-12-26 00:18:27,570 [INFO] admin.audit - {"ts": "2025-12-25T23:18:27Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-26 00:18:27,633 [INFO] admin.audit - {"ts": "2025-12-25T23:18:27Z", "event": "admin_auth_required_failed", "details": {"ip": "127.0.0.1"}}
+2025-12-26 00:18:27,635 [INFO] admin.audit - {"ts": "2025-12-25T23:18:27Z", "event": "admin_auth_required_failed", "details": {"ip": "127.0.0.1"}}
+2025-12-26 00:18:27,636 [INFO] admin.audit - {"ts": "2025-12-25T23:18:27Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-26 00:18:31,563 [INFO] admin.audit - {"ts": "2025-12-25T23:18:31Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
+2025-12-26 00:18:31,573 [INFO] admin.audit - {"ts": "2025-12-25T23:18:31Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-26 00:18:31,603 [INFO] admin.audit - {"ts": "2025-12-25T23:18:31Z", "event": "admin_coverage_report", "details": {"ip": "127.0.0.1"}}
+2025-12-26 00:18:31,603 [INFO] admin.audit - {"ts": "2025-12-25T23:18:31Z", "event": "admin_greeting_get", "details": {"ip": "127.0.0.1"}}
+2025-12-26 00:31:58,235 [INFO] httpx - HTTP Request: GET http://testserver/api/database/info "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,257 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,263 [INFO] httpx - HTTP Request: GET http://testserver/api/database/query?sql=SELECT+%2A+FROM+material+WHERE+id%3D%27m2%27 "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,284 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,290 [INFO] httpx - HTTP Request: DELETE http://testserver/api/database/row?table=material&id=m1 "HTTP/1.1 404 Not Found"
+2025-12-26 00:31:58,305 [INFO] httpx - HTTP Request: POST http://testserver/api/database/editor "HTTP/1.1 400 Bad Request"
+2025-12-26 00:31:58,328 [INFO] httpx - HTTP Request: GET http://testserver/ "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,334 [INFO] httpx - HTTP Request: GET http://testserver/docs "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,338 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-26 00:31:58,344 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,371 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,381 [INFO] httpx - HTTP Request: POST http://testserver/api/services/dependencies/install "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,388 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,393 [INFO] httpx - HTTP Request: POST http://testserver/api/services/docker/compose/up "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,406 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-26 00:31:58,419 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 201 Created"
+2025-12-26 00:31:58,425 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/9c06e72e-46ee-4b51-9c9f-8d45237ca4d7 "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,428 [INFO] httpx - HTTP Request: GET http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-26 00:31:58,434 [INFO] httpx - HTTP Request: GET http://testserver/api/materials/ "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,443 [INFO] httpx - HTTP Request: PUT http://testserver/api/materials/9c06e72e-46ee-4b51-9c9f-8d45237ca4d7 "HTTP/1.1 200 OK"
+2025-12-26 00:31:58,455 [INFO] httpx - HTTP Request: POST http://testserver/api/materials "HTTP/1.1 307 Temporary Redirect"
+2025-12-26 00:31:58,461 [INFO] httpx - HTTP Request: POST http://testserver/api/materials/ "HTTP/1.1 409 Conflict"
+2025-12-26 00:31:59,827 [INFO] admin.audit - {"ts": "2025-12-25T23:31:59Z", "event": "admin_coverage_run", "details": {"ip": "127.0.0.1", "success": false, "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.13.9, pytest-9.0.1, pluggy-1.6.0\nrootdir: C:\\Users\\Denis\\Desktop\\FilamentHub_Projekt\\FilamentHub\nplugins: anyio-4.12.0, asyncio-1.3.0, cov-7.0.0\nasyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 55 items\n\ntests\\test_ams_end_to_end.py ...                                         [  5%]\ntests\\test_ams_mapper.py .......                                         [ 18%]\ntests\\test_ams_mapper_multi.py ......                                    [ 29%]\ntests\\test_ams_parser.py .......                                         [ 41%]\ntests\\test_ams_sync.py FF..                                              [ 49%]\ntests\\test_database_routes_api.py ....                                   [ 56%]\ntests\\test_health.py ...                                                 [ 61%]\ntests\\test_mapper_generic.py .                ", "stderr": ""}}
+2025-12-26 00:32:01,953 [INFO] admin.audit - {"ts": "2025-12-25T23:32:01Z", "event": "admin_coverage_report", "details": {"ip": "127.0.0.1"}}
+2025-12-26 00:45:21,412 [INFO] uvicorn.error - 127.0.0.1:20978 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:45:21,412 [INFO] uvicorn.error - 127.0.0.1:20978 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:45:21,412 [INFO] uvicorn.error - connection open
+2025-12-26 00:45:21,412 [INFO] uvicorn.error - connection open
+2025-12-26 00:45:23,596 [INFO] uvicorn.error - connection closed
+2025-12-26 00:45:23,596 [INFO] uvicorn.error - connection closed
+2025-12-26 00:45:23,948 [INFO] uvicorn.error - 127.0.0.1:13899 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:45:23,948 [INFO] uvicorn.error - 127.0.0.1:13899 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:45:23,948 [INFO] uvicorn.error - connection open
+2025-12-26 00:45:23,948 [INFO] uvicorn.error - connection open
+2025-12-26 00:49:27,702 [INFO] uvicorn.error - connection closed
+2025-12-26 00:49:27,702 [INFO] uvicorn.error - connection closed
+2025-12-26 00:49:28,096 [INFO] uvicorn.error - 127.0.0.1:37747 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:49:28,096 [INFO] uvicorn.error - 127.0.0.1:37747 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:49:28,097 [INFO] uvicorn.error - connection open
+2025-12-26 00:49:28,097 [INFO] uvicorn.error - connection open
+2025-12-26 00:49:44,952 [INFO] uvicorn.error - connection closed
+2025-12-26 00:49:44,952 [INFO] uvicorn.error - connection closed
+2025-12-26 00:49:45,383 [INFO] uvicorn.error - 127.0.0.1:36067 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:49:45,383 [INFO] uvicorn.error - 127.0.0.1:36067 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-26 00:49:45,383 [INFO] uvicorn.error - connection open
+2025-12-26 00:49:45,383 [INFO] uvicorn.error - connection open
