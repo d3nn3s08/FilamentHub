@@ -119,37 +119,55 @@ Der Name ist geblieben – das Projekt ist weitergewachsen.
   - Logrotation & Säuberung
 # 🖼️ Screenshots
 
-## 📊 Dashboard / Alpa
 <p align="center">
-  <img src="data/screenshots/dashboard.png" width="800" />
+  <a href="data/screenshots/Dashboard.png">
+    <img src="data/screenshots/Dashboard.png" width="320" alt="Dashboard">
+  </a>
+  <a href="data/screenshots/Material.png">
+    <img src="data/screenshots/Material.png" width="320" alt="Materialverwaltung">
+   </a>
+  <a href="data/screenshots/AMS_übersicht.png">
+    <img src="data/screenshots/AMS_übersicht.png" width="300">
+  </a>
+  <a href="data/screenshots/Spulen.png">
+    <img src="data/screenshots/Spulen.png" width="320" alt="Spulenverwaltung">
+  </a>
 </p>
 
----
-
-## 🖨️ Druckerübersicht
 <p align="center">
-  <img src="data/screenshots/printers.png" width="800" />
+  <sub>
+    Dashboard · Material · Spulen
+  </sub>
 </p>
 
----
-
-## 🧵 Filamentverwaltung
 <p align="center">
-  <img src="data/screenshots/filament.png" width="800" />
+  <a href="data/screenshots/statistiken.png">
+    <img src="data/screenshots/statistiken.png" width="300" alt="Statistiken">
+  </a>
+  <a href="data/screenshots/statistiken_02.png">
+    <img src="data/screenshots/statistiken_02.png" width="300" alt="Statistiken Detail">
+  </a>
+  <a href="data/screenshots/jobs.png">
+    <img src="data/screenshots/jobs.png" width="300" alt="Jobs Übersicht">
+  </a>
 </p>
 
----
-
-## 🧰 System / Debug-Center
 <p align="center">
-  <img src="data/screenshots/debug.png" width="800" />
+  <sub>
+    Statistiken · Details · Jobs
+  </sub>
 </p>
-  ---
-
-# 🧱 AMS Übersicht
 
 <p align="center">
-  <img src="data/screenshots/AMS_übersicht.png" width="720" alt="Systemarchitektur von FilamentHub">
+  <a href="data/screenshots/mini_user_menu.png">
+    <img src="data/screenshots/mini_user_menu.png" width="280" alt="Mini User Menü">
+  </a>
+</p>
+
+<p align="center">
+  <sub>
+    UI-Details · Benutzer-Menü
+  </sub>
 </p>
 
 
