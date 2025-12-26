@@ -40,9 +40,8 @@
         .info-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:16px; }
         .info-label { font-size:12px; opacity:0.65; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px; }
         .info-value { font-size:16px; font-weight:700; opacity:0.95; }
-        /* Data-Mode System: Verstecke Pro-Elemente standardmäßig */
-        [data-mode="pro"] { display: none !important; }
-        body[data-mode="pro"] [data-mode="pro"] { display: block !important; }
+        /* Data-Mode System: Verstecke Pro-Elemente in Lite-Mode */
+        body:not([data-mode="pro"]) [data-mode="pro"] { display: none !important; }
 
         /* MQTT PRO Grid Exception */
         body[data-mode="pro"] #panel-mqtt .mqtt-pro-grid { display: grid !important; }

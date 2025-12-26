@@ -695,11 +695,8 @@ body {
 }
 
 /* Data-Mode System (neue Implementierung) */
-[data-mode="pro"] {
+body:not([data-mode="pro"]) [data-mode="pro"] {
     display: none !important;
-}
-body[data-mode="pro"] [data-mode="pro"] {
-    display: block !important;
 }
 
 .debug-panel {
