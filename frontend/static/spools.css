@@ -160,10 +160,11 @@ thead th {
 }
 
 /* Spaltenbreiten optimieren */
-thead th:nth-child(1) { width: 35%; } /* Material */
-thead th:nth-child(2) { width: 20%; } /* Restgewicht */
-thead th:nth-child(3) { width: 20%; } /* Status */
-thead th:nth-child(4) { width: 25%; } /* Aktionen */
+thead th:nth-child(1) { width: 10%; } /* # (Spulen-Nummer) */
+thead th:nth-child(2) { width: 30%; } /* Material */
+thead th:nth-child(3) { width: 20%; } /* Restgewicht */
+thead th:nth-child(4) { width: 15%; } /* Status */
+thead th:nth-child(5) { width: 25%; } /* Aktionen */
 
 tbody tr {
     border-bottom: 1px solid var(--border);
@@ -222,6 +223,35 @@ tbody td:nth-child(3) { /* Status */
     transition: width 0.3s ease;
     background: var(--accent);
     border-radius: 4px;
+}
+
+
+/* Spulen-Nummern-Badges (NEU) */
+.spool-number-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.manual-badge {
+    background: linear-gradient(135deg, rgba(243, 156, 18, 0.2) 0%, rgba(230, 126, 34, 0.15) 100%);
+    color: var(--accent);
+    border: 1px solid rgba(243, 156, 18, 0.3);
+    box-shadow: 0 2px 4px rgba(243, 156, 18, 0.1);
+}
+
+.rfid-badge {
+    background: linear-gradient(135deg, rgba(52, 152, 219, 0.2) 0%, rgba(41, 128, 185, 0.15) 100%);
+    color: #3498db;
+    border: 1px solid rgba(52, 152, 219, 0.3);
+    box-shadow: 0 2px 4px rgba(52, 152, 219, 0.1);
 }
 
 /* Status Badges */

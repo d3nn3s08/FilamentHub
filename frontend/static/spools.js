@@ -199,6 +199,7 @@ function renderSpools(spoolsToRender) {
             <table>
                 <thead>
                     <tr>
+                        <th>#</th>
                         <th>Material</th>
                         <th>Restgewicht</th>
                         <th>Status</th>
@@ -231,6 +232,7 @@ function renderSpools(spoolsToRender) {
 
                         return `
                             <tr>
+                                <td>${numberDisplay}</td>
                                 <td>
                                     ${material ? `
                                         <div style="display: flex; align-items: center; gap: 8px;">
