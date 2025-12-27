@@ -151,20 +151,31 @@ function loadAMSData() {
     const hasLiveState = Object.keys(liveState).length > 0;
     let amsOnline = false;
     let amsInfo = null;
+    let deviceSerial = null;
+    let printerName = 'Kein Drucker';
 
     if (hasLiveState) {
         // Nehme den ersten Drucker aus Live-State
         const deviceKey = Object.keys(liveState)[0];
         const deviceData = liveState[deviceKey];
+        deviceSerial = deviceKey; // z.B. "00M09A372601070"
 
         if (deviceData && deviceData.payload && deviceData.payload.print) {
             const ams = deviceData.payload.print.ams;
             if (ams && ams.ams && ams.ams.length > 0) {
                 amsOnline = true;
                 amsInfo = ams.ams[0]; // Erstes AMS
-                console.log('[AMS] Online! Serial:', amsInfo.id || 'unknown', 'Temp:', amsInfo.temp, 'Humidity:', amsInfo.humidity);
+                console.log('[AMS] Online! Device:', deviceSerial, 'AMS ID:', amsInfo.id, 'Temp:', amsInfo.temp, 'Humidity:', amsInfo.humidity, 'Trays:', amsInfo.tray?.length || 0);
             }
         }
+    }
+
+    // Finde den Drucker-Namen aus der Spulen-Liste (Quick-Hack, sollte später aus Drucker-API kommen)
+    const firstSpool = spools.find(s => s.ams_slot != null);
+    if (firstSpool && firstSpool.printer_name) {
+        printerName = firstSpool.printer_name;
+    } else if (deviceSerial) {
+        printerName = `Bambu ${deviceSerial.substring(0, 8)}...`;
     }
 
     if (singleAmsMode) {
@@ -173,10 +184,10 @@ function loadAMSData() {
                 id: 1,
                 online: amsOnline,
                 slots: [],
-                serial: amsInfo?.id || 'AMS-001',
+                serial: deviceSerial || (amsInfo?.id ? `AMS-${amsInfo.id}` : 'AMS-001'),
                 firmware: amsInfo?.info || 'v1.2.3',
                 signal: '85%',
-                printer: null,
+                printer: printerName,
                 temp: amsInfo?.temp || null,
                 humidity: amsInfo?.humidity || null
             }
@@ -187,10 +198,10 @@ function loadAMSData() {
                 id: 1,
                 online: amsOnline,
                 slots: [],
-                serial: amsInfo?.id || 'AMS-001',
+                serial: deviceSerial || (amsInfo?.id ? `AMS-${amsInfo.id}` : 'AMS-001'),
                 firmware: amsInfo?.info || 'v1.2.3',
                 signal: '85%',
-                printer: null,
+                printer: printerName,
                 temp: amsInfo?.temp || null,
                 humidity: amsInfo?.humidity || null
             },
@@ -205,6 +216,7 @@ function loadAMSData() {
 
     // 1. Füge Live-State Spulen hinzu (wenn vorhanden)
     if (amsInfo && amsInfo.tray) {
+        console.log('[AMS] Processing', amsInfo.tray.length, 'trays from live-state');
         amsInfo.tray.forEach((tray, index) => {
             if (tray && tray.tray_type && tray.tray_type !== '') {
                 const ams = amsData[0];
@@ -216,6 +228,8 @@ function loadAMSData() {
                 );
 
                 const material = matchingSpool ? materials.find(m => m.id === matchingSpool.material_id) : null;
+
+                console.log(`[AMS] Slot ${index + 1}:`, tray.tray_type, tray.tray_color, `${tray.remain}g`, matchingSpool ? '(DB Match)' : '(Live-State only)');
 
                 ams.slots[index] = {
                     slot: index + 1,
@@ -234,6 +248,8 @@ function loadAMSData() {
                 };
             }
         });
+    } else {
+        console.log('[AMS] No trays found in live-state');
     }
 
     // 2. Ergänze manuell zugewiesene Spulen (wenn nicht schon durch Live-State besetzt)
