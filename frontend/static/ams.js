@@ -3,6 +3,7 @@
 let amsData = [];
 let spools = [];
 let materials = [];
+let liveState = {}; // Live-State von MQTT
 
 let isLoading = false;
 let singleAmsMode = true; // Single AMS Mode aktiviert
@@ -85,15 +86,16 @@ async function loadData() {
     }
     
     try {
-        // Lade Spools und Materials parallel (schneller)
+        // Lade Spools, Materials und Live-State parallel (schneller)
         await Promise.all([
             loadSpools(),
-            loadMaterials()
+            loadMaterials(),
+            loadLiveState()
         ]);
-        
-        // Verarbeite AMS-Daten (basiert auf spools)
+
+        // Verarbeite AMS-Daten (basiert auf spools + live-state)
         loadAMSData();
-        
+
         updateStats();
         renderAMSUnits();
         renderAlerts();
@@ -127,43 +129,131 @@ async function loadMaterials() {
     }
 }
 
+async function loadLiveState() {
+    try {
+        const response = await fetch('/api/live-state/');
+        if (response.ok) {
+            liveState = await response.json();
+            console.log('[AMS] Live-State geladen:', Object.keys(liveState).length, 'Geräte');
+        }
+    } catch (error) {
+        console.error('Fehler beim Laden des Live-State:', error);
+        liveState = {};
+    }
+}
+
 function loadAMSData() {
     // Generate AMS structure based on spools with ams_slot
     // Single AMS Mode: Only create 1 AMS unit
     // Multi AMS Mode: Create 4 AMS units
-    
+
+    // Check Live-State für AMS-Status
+    const hasLiveState = Object.keys(liveState).length > 0;
+    let amsOnline = false;
+    let amsInfo = null;
+
+    if (hasLiveState) {
+        // Nehme den ersten Drucker aus Live-State
+        const deviceKey = Object.keys(liveState)[0];
+        const deviceData = liveState[deviceKey];
+
+        if (deviceData && deviceData.payload && deviceData.payload.print) {
+            const ams = deviceData.payload.print.ams;
+            if (ams && ams.ams && ams.ams.length > 0) {
+                amsOnline = true;
+                amsInfo = ams.ams[0]; // Erstes AMS
+                console.log('[AMS] Online! Serial:', amsInfo.id || 'unknown', 'Temp:', amsInfo.temp, 'Humidity:', amsInfo.humidity);
+            }
+        }
+    }
+
     if (singleAmsMode) {
         amsData = [
-            { id: 1, online: false, slots: [], serial: 'AMS-001', firmware: 'v1.2.3', signal: '85%', printer: null }
+            {
+                id: 1,
+                online: amsOnline,
+                slots: [],
+                serial: amsInfo?.id || 'AMS-001',
+                firmware: amsInfo?.info || 'v1.2.3',
+                signal: '85%',
+                printer: null,
+                temp: amsInfo?.temp || null,
+                humidity: amsInfo?.humidity || null
+            }
         ];
     } else {
         amsData = [
-            { id: 1, online: false, slots: [], serial: 'AMS-001', firmware: 'v1.2.3', signal: '85%', printer: null },
+            {
+                id: 1,
+                online: amsOnline,
+                slots: [],
+                serial: amsInfo?.id || 'AMS-001',
+                firmware: amsInfo?.info || 'v1.2.3',
+                signal: '85%',
+                printer: null,
+                temp: amsInfo?.temp || null,
+                humidity: amsInfo?.humidity || null
+            },
             { id: 2, online: false, slots: [], serial: 'AMS-002', firmware: 'v1.2.3', signal: '–', printer: null },
             { id: 3, online: false, slots: [], serial: 'AMS-003', firmware: 'v1.2.2', signal: '–', printer: null },
             { id: 4, online: false, slots: [], serial: 'AMS-004', firmware: 'v1.2.3', signal: '–', printer: null }
         ];
     }
-    
+
     // Map spools to AMS #1 slots (or distribute across multiple AMS in multi mode)
+    // Priorität: Live-State Spulen > Manuell zugewiesene Spulen
+
+    // 1. Füge Live-State Spulen hinzu (wenn vorhanden)
+    if (amsInfo && amsInfo.tray) {
+        amsInfo.tray.forEach((tray, index) => {
+            if (tray && tray.tray_type && tray.tray_type !== '') {
+                const ams = amsData[0];
+
+                // Versuche eine passende Spule aus der DB zu finden
+                const matchingSpool = spools.find(s =>
+                    s.ams_slot === index ||
+                    (s.rfid_uid && s.rfid_uid === tray.tag_uid)
+                );
+
+                const material = matchingSpool ? materials.find(m => m.id === matchingSpool.material_id) : null;
+
+                ams.slots[index] = {
+                    slot: index + 1,
+                    spool: matchingSpool || {
+                        id: null,
+                        ams_slot: index,
+                        material_type: tray.tray_type,
+                        color: tray.tray_color?.substring(0, 6) || '000000',
+                        weight_remaining: tray.remain || 0,
+                        weight_total: tray.tray_weight || 1000,
+                        rfid_uid: tray.tag_uid,
+                        from_live_state: true
+                    },
+                    material: material,
+                    liveData: tray
+                };
+            }
+        });
+    }
+
+    // 2. Ergänze manuell zugewiesene Spulen (wenn nicht schon durch Live-State besetzt)
     spools.forEach(spool => {
         if (spool.ams_slot != null && spool.ams_slot !== '') {
             const slotId = parseInt(spool.ams_slot);
-            
-            // For now, put all AMS spools in AMS #1
-            // Slot IDs: 0, 1, 2, 3 -> display as Slot 1, 2, 3, 4
+
             if (slotId >= 0 && slotId <= 3) {
-                const ams = amsData[0]; // AMS #1
-                ams.online = true;
-                ams.printer = 'X1C'; // TODO: Get from backend
-                
-                const material = materials.find(m => m.id === spool.material_id);
-                
-                ams.slots[slotId] = {
-                    slot: slotId + 1, // Display as 1-based
-                    spool: spool,
-                    material: material
-                };
+                const ams = amsData[0];
+
+                // Nur hinzufügen, wenn Slot noch leer ist
+                if (!ams.slots[slotId]) {
+                    const material = materials.find(m => m.id === spool.material_id);
+
+                    ams.slots[slotId] = {
+                        slot: slotId + 1,
+                        spool: spool,
+                        material: material
+                    };
+                }
             }
         }
     });
@@ -452,7 +542,7 @@ function openAssignModal(printerId, slotNumber) {
     currentAssignSlot = slotNumber;
 
     document.getElementById('assignModalTitle').textContent = `Spule zuweisen - Slot ${slotNumber}`;
-    document.getElementById('assignModal').classList.add('active');
+    document.getElementById('assignModal').classList.add('show');
     document.getElementById('spoolSearch').value = '';
     document.getElementById('spoolSearch').focus();
 
@@ -469,7 +559,7 @@ function openAssignModal(printerId, slotNumber) {
 }
 
 function closeAssignModal() {
-    document.getElementById('assignModal').classList.remove('active');
+    document.getElementById('assignModal').classList.remove('show');
     currentAssignPrinter = null;
     currentAssignSlot = null;
 }
@@ -516,41 +606,103 @@ function renderSpoolSearchResults(spools) {
 
     if (spools.length === 0) {
         container.innerHTML = `
-            <div style="padding: 16px; text-align: center; color: var(--text-dim);">
-                Keine freien Spulen gefunden
+            <div style="
+                padding: 40px 24px;
+                text-align: center;
+                background: var(--panel-2);
+                border-radius: 12px;
+                border: 2px dashed var(--border);
+            ">
+                <div style="font-size: 3rem; margin-bottom: 12px; opacity: 0.6;">📭</div>
+                <div style="font-weight: 600; font-size: 1.1rem; color: var(--text); margin-bottom: 6px;">
+                    Keine freien Spulen gefunden
+                </div>
+                <div style="font-size: 0.9rem; color: var(--text-dim);">
+                    Alle Spulen sind bereits zugewiesen
+                </div>
             </div>
         `;
         return;
     }
 
-    container.innerHTML = spools.map(s => {
-        const numberDisplay = s.spool_number ? `#${s.spool_number}` : 'Ohne Nummer';
+    container.innerHTML = `
+        <div style="
+            margin-bottom: 16px;
+            padding: 10px 12px;
+            background: var(--panel-2);
+            border-radius: 8px;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            font-weight: 500;
+        ">
+            🎯 ${spools.length} ${spools.length === 1 ? 'Spule' : 'Spulen'} verfügbar
+        </div>
+    ` + spools.map(s => {
+        const numberDisplay = s.spool_number ? `#${s.spool_number}` : '–';
         const nameDisplay = s.name || 'Unbekannt';
-        const vendorDisplay = s.vendor ? ` - ${s.vendor}` : '';
-        const colorDisplay = s.color ? ` - ${s.color}` : '';
+        const vendorDisplay = s.vendor || '';
+        const colorDisplay = s.color && s.color !== 'unknown' ? s.color : '';
         const weightDisplay = s.weight_current ? `${Math.round(s.weight_current)}g` : 'N/A';
+        const percentDisplay = s.remain_percent != null ? Math.round(s.remain_percent) + '%' : '';
+
+        // Farb-Badge falls Farbe bekannt
+        const colorBadge = colorDisplay ? `<span style="
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: ${colorDisplay};
+            border: 1px solid var(--border);
+            margin-left: 6px;
+            vertical-align: middle;
+        "></span>` : '';
 
         return `
             <div class="spool-search-item" onclick="assignSpool('${s.id}')" style="
-                padding: 12px;
-                border: 1px solid var(--border);
-                border-radius: 6px;
+                padding: 18px;
+                background: var(--panel-2);
+                border: 2px solid var(--border);
+                border-radius: 12px;
                 cursor: pointer;
-                margin-bottom: 8px;
-                transition: all 0.2s;
-            " onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <strong style="font-size: 1.1em;">${numberDisplay}</strong>
-                        <div style="color: var(--text-secondary); margin-top: 4px;">
-                            ${nameDisplay}${vendorDisplay}${colorDisplay}
+                margin-bottom: 12px;
+                transition: all 0.15s ease;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            " onmouseover="this.style.borderColor='var(--accent)'; this.style.background='var(--panel)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 16px rgba(243, 156, 18, 0.2)'"
+               onmouseout="this.style.borderColor='var(--border)'; this.style.background='var(--panel-2)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0, 0, 0, 0.2)'">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                            <span style="
+                                font-size: 1.5rem;
+                                font-weight: 700;
+                                color: var(--accent);
+                            ">${numberDisplay}</span>
+                            ${s.tray_uuid ? '<span style="font-size: 1.1rem;" title="RFID erkannt">🏷️</span>' : ''}
                         </div>
+                        <div style="font-weight: 600; color: var(--text); font-size: 1.05rem; margin-bottom: 6px;">
+                            ${nameDisplay}
+                        </div>
+                        ${vendorDisplay || colorDisplay ? `
+                            <div style="color: var(--text-secondary); font-size: 0.875rem; display: flex; align-items: center; gap: 4px;">
+                                ${vendorDisplay}
+                                ${colorDisplay ? `<span>${colorDisplay}${colorBadge}</span>` : ''}
+                            </div>
+                        ` : ''}
                     </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: 500;">${weightDisplay}</div>
-                        <div style="font-size: 0.875rem; color: var(--text-dim);">
-                            ${s.remain_percent != null ? Math.round(s.remain_percent) + '%' : ''}
+                    <div style="text-align: right; min-width: 90px;">
+                        <div style="font-weight: 700; font-size: 1.25rem; color: var(--text);">
+                            ${weightDisplay}
                         </div>
+                        ${percentDisplay ? `
+                            <div style="
+                                font-size: 0.9rem;
+                                color: var(--accent-2);
+                                margin-top: 4px;
+                                font-weight: 600;
+                            ">
+                                ${percentDisplay}
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             </div>
@@ -585,10 +737,29 @@ async function assignSpool(spoolId) {
     }
 }
 
-async function unassignSpool(spoolId) {
-    if (!confirm('Spule wirklich aus dem Slot entfernen?')) {
-        return;
-    }
+// Confirm Unassign Modal
+let pendingUnassignSpoolId = null;
+
+function unassignSpool(spoolId) {
+    // Finde Spule für Anzeige im Modal
+    const spool = spools.find(s => s.id === spoolId);
+    const spoolName = spool ? (spool.spool_number ? `#${spool.spool_number}` : spool.name || 'diese Spule') : 'diese Spule';
+
+    document.getElementById('confirmSpoolName').textContent = spoolName;
+    pendingUnassignSpoolId = spoolId;
+    document.getElementById('confirmUnassignModal').classList.add('show');
+}
+
+function closeConfirmUnassignModal() {
+    document.getElementById('confirmUnassignModal').classList.remove('show');
+    pendingUnassignSpoolId = null;
+}
+
+async function confirmUnassignSpool() {
+    if (!pendingUnassignSpoolId) return;
+
+    const spoolId = pendingUnassignSpoolId;
+    closeConfirmUnassignModal();
 
     try {
         const response = await fetch(`/api/spools/${spoolId}/unassign`, {
@@ -618,6 +789,7 @@ async function unassignSpool(spoolId) {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeAssignModal();
+        closeConfirmUnassignModal();
     }
 });
 
@@ -625,5 +797,11 @@ document.addEventListener('keydown', (e) => {
 document.getElementById('assignModal').addEventListener('click', (e) => {
     if (e.target.id === 'assignModal') {
         closeAssignModal();
+    }
+});
+
+document.getElementById('confirmUnassignModal').addEventListener('click', (e) => {
+    if (e.target.id === 'confirmUnassignModal') {
+        closeConfirmUnassignModal();
     }
 });
