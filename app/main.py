@@ -134,7 +134,7 @@ async def health():
     """Health check endpoint for Docker container monitoring"""
     return {'status': 'healthy', 'service': 'filamenthub'}
 
-# app.add_event_handler("startup", init_db)
+app.add_event_handler("startup", init_db)
 
 
 # -----------------------------------------------------

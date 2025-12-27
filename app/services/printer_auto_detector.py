@@ -20,16 +20,16 @@ class PrinterAutoDetector:
     }
 
     # MQTT Protokoll-Zuordnung nach Modell
-    # X1C, X1E, P1P, P1S verwenden MQTT v5 für vollständige Daten
-    # A1, A1 Mini verwenden MQTT v3.1.1
+    # Premium-Modelle (X1C, X1E, P1P, P1S, H2D) verwenden MQTT v5 für vollständige Daten
+    # Budget-Modelle (A1, A1 Mini) verwenden MQTT v3.1.1
     MODEL_MQTT_PROTOCOL = {
         "X1C": "5",
         "X1E": "5",
         "P1S": "5",
         "P1P": "5",
+        "H2D": "5",  # H2D ist neuestes Premium-Modell → MQTT v5
         "A1": "311",
         "A1MINI": "311",
-        "H2D": "311",
     }
 
     @staticmethod

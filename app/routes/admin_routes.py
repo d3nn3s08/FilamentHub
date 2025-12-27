@@ -272,11 +272,10 @@ async def admin_logout(request: Request):
     response.delete_cookie("admin_token", path="/")
     return response
 
-# Begrüßungstext laden
+# Begrüßungstext laden (öffentlich lesbar)
 @router.get("/api/admin/greeting")
 def get_greeting_text(request: Request, session: Session = Depends(get_session)):
-    admin_required(request)
-    audit("admin_greeting_get", {"ip": client_ip(request)})
+    # Kein admin_required - jeder darf den Begrüßungstext lesen
     setting = session.exec(select(Setting).where(Setting.key == "greeting_text")).first()
     return {"greeting_text": setting.value if setting else ""}
 

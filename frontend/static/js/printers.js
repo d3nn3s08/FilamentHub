@@ -45,6 +45,15 @@ function renderCard(printer) {
     // Live-Daten bevorzugen, Fallback auf statische Daten
     const nozzle = printer.live?.nozzle_temper ?? printer.nozzle_temp ?? "-";
     const bed = printer.live?.bed_temper ?? printer.bed_temp ?? "-";
+
+    // AMS-Daten extrahieren (Temperatur & Luftfeuchtigkeit)
+    let amsTemp = null;
+    let amsHumidity = null;
+    if (printer.live?.ams?.ams && Array.isArray(printer.live.ams.ams) && printer.live.ams.ams[0]) {
+        amsTemp = printer.live.ams.ams[0].temp;
+        amsHumidity = printer.live.ams.ams[0].humidity;
+    }
+
     let filament = "-";
     // Robust: tray/tray_now ggf. aus AMS-Daten extrahieren
     let tray = printer.live?.tray;
@@ -99,6 +108,7 @@ function renderCard(printer) {
                 <div class="temp"><span class="label">Filament:</span><span class="value">${filament}</span></div>
                 <div class="temp"><span class="label">Düse:</span><span class="value">${nozzle}</span></div>
                 <div class="temp"><span class="label">Bett:</span><span class="value">${bed}</span></div>
+                ${amsTemp && amsHumidity ? `<div class="temp"><span class="label">AMS:</span><span class="value">🌡️ ${amsTemp}°C  💧 ${amsHumidity}%</span></div>` : ''}
             </div>
         </div>
 

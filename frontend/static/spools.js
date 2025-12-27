@@ -331,6 +331,15 @@ function filterSpools() {
             const remaining = toNumber(s.weight) ?? toNumber(s.weight_current) ?? toNumber(s.weight_remaining) ?? (rp != null && wf ? (rp / 100) * wf : wf);
             return (rp === 0) || (!s.is_empty && (remaining || 0) < 200);
         });
+    } else if (statusFilter === 'ams') {
+        // Filter: Nur Spulen im AMS
+        filtered = filtered.filter(s => s.status === 'AMS' || (s.ams_slot != null && s.printer_id));
+    } else if (statusFilter === 'in-use') {
+        // Filter: In Benutzung (ohne AMS) - manuelle Verwendung
+        filtered = filtered.filter(s => s.status === 'In Benutzung');
+    } else if (statusFilter === 'storage') {
+        // Filter: Im Lager
+        filtered = filtered.filter(s => s.status === 'Lager');
     } else if (statusFilter === 'no-number') {
         // NEUE FILTER-OPTION: Spulen ohne Nummer (für Benachrichtigung)
         filtered = filtered.filter(s => s.spool_number == null);

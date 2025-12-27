@@ -43,6 +43,22 @@ def run_migrations() -> None:
             command.stamp(cfg, "head")
             return
 
+        # Prüfe aktuelle Revision bevor upgrade ausgeführt wird
+        if has_version:
+            with engine.connect() as conn:
+                current = conn.exec_driver_sql(
+                    "SELECT version_num FROM alembic_version"
+                ).fetchone()
+                if current:
+                    logging.info(f"Aktuelle DB-Revision: {current[0]}")
+                    # Prüfe ob bereits auf head
+                    from alembic.script import ScriptDirectory
+                    script = ScriptDirectory.from_config(cfg)
+                    head_rev = script.get_current_head()
+                    if current[0] == head_rev:
+                        logging.info("Datenbank ist bereits auf der neuesten Version (head). Keine Migrationen nötig.")
+                        return
+
         logging.info("Führe Alembic upgrade head aus...")
         command.upgrade(cfg, "head")
         logging.info("Alembic-Migrationen erfolgreich abgeschlossen.")
