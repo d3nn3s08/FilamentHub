@@ -63,9 +63,18 @@ try {
             <label for="notif-trigger">Trigger</label>
             <select id="notif-trigger">
                 <option value="manual">Manuell</option>
-                <option value="print_done">Druck abgeschlossen</option>
-                <option value="error">Fehler</option>
-                <option value="material_low">Material niedrig</option>
+                <!-- Job Status: Erfolg -->
+                <option value="job_completed">✅ Job abgeschlossen</option>
+                <!-- Job Status: Abbruch -->
+                <option value="job_cancelled">❌ Job abgebrochen</option>
+                <option value="job_aborted">❌ Job abgebrochen (Abort)</option>
+                <option value="job_stopped">❌ Job gestoppt</option>
+                <!-- Job Status: Fehler -->
+                <option value="job_failed">❌ Job fehlgeschlagen</option>
+                <option value="job_error">❌ Job Fehler</option>
+                <option value="job_exception">❌ Job Exception</option>
+                <!-- Sonstige -->
+                <option value="material_low">⚠️ Material niedrig</option>
                 <option value="custom">Custom</option>
             </select>
         </div>
