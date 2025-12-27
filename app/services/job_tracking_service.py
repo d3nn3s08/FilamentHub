@@ -146,9 +146,14 @@ class JobTrackingService:
         # Hat dieser Drucker einen aktiven Job?
         has_active_job = cloud_serial in self.active_jobs
 
-        PRINT_STATES = {"PRINTING", "RUNNING"}
+        # State-Mapping für Bambu Lab Drucker
+        PRINT_STATES = {
+            "PRINTING", "RUNNING",
+            "PURGING", "CHANGING_FILAMENT", "CALIBRATING"  # Zählt als aktiver Druck
+        }
         COMPLETED_STATES = {"FINISH", "FINISHED", "COMPLETED", "COMPLETE"}
-        FAILED_STATES = {"FAILED", "CANCELLED", "CANCELED", "ABORTED"}
+        FAILED_STATES = {"FAILED", "ERROR", "EXCEPTION"}
+        ABORTED_STATES = {"ABORT", "ABORTED", "STOPPED", "CANCELLED", "CANCELED"}
 
         # ===================================================================
         # JOB START
@@ -174,14 +179,19 @@ class JobTrackingService:
         # ===================================================================
         # JOB FINISH
         # ===================================================================
-        if has_active_job and (current_gstate in COMPLETED_STATES or current_gstate in FAILED_STATES):
+        if has_active_job and (
+            current_gstate in COMPLETED_STATES or
+            current_gstate in FAILED_STATES or
+            current_gstate in ABORTED_STATES
+        ):
             return self._handle_job_finish(
                 cloud_serial,
                 parsed_payload,
                 ams_data,
                 current_gstate,
                 COMPLETED_STATES,
-                FAILED_STATES
+                FAILED_STATES,
+                ABORTED_STATES
             )
 
         return None
@@ -385,7 +395,8 @@ class JobTrackingService:
         ams_data: Optional[List[Dict[str, Any]]],
         current_gstate: str,
         completed_states: set,
-        failed_states: set
+        failed_states: set,
+        aborted_states: set
     ) -> Optional[Dict[str, Any]]:
         """Beendet aktiven Job"""
         job_info = self.active_jobs.get(cloud_serial)
@@ -416,14 +427,27 @@ class JobTrackingService:
                 job.filament_used_g = total_used_g
                 job.finished_at = datetime.utcnow()
 
-                # Status setzen
+                # Status-Mapping: Bambu gcode_state → Job Status
                 if current_gstate in completed_states:
                     job.status = "completed"
-                elif current_gstate in {"CANCELLED", "CANCELED"}:
-                    job.status = "cancelled"
-                elif current_gstate == "ABORTED":
-                    job.status = "aborted"
+                elif current_gstate in aborted_states:
+                    # ABORT, ABORTED, STOPPED, CANCELLED, CANCELED → aborted
+                    if current_gstate in {"CANCELLED", "CANCELED"}:
+                        job.status = "cancelled"
+                    elif current_gstate in {"ABORT", "ABORTED"}:
+                        job.status = "aborted"
+                    else:  # STOPPED
+                        job.status = "stopped"
+                elif current_gstate in failed_states:
+                    # FAILED, ERROR, EXCEPTION → failed/error/exception
+                    if current_gstate == "EXCEPTION":
+                        job.status = "exception"
+                    elif current_gstate == "ERROR":
+                        job.status = "error"
+                    else:
+                        job.status = "failed"
                 else:
+                    # Fallback
                     job.status = "failed"
 
                 # Spool ID setzen (falls noch nicht gesetzt)
