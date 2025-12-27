@@ -463,7 +463,9 @@ def _build_printer_connect_payload(printer: Printer) -> Optional[Dict[str, Any]]
     cloud_serial = getattr(printer, "cloud_serial", None)
     if not ip or not api_key or not cloud_serial:
         return None
-    port = int(getattr(printer, "port", 0) or 6000)
+    # WICHTIG: PrinterMQTTClient verwendet IMMER Port 8883 (TLS)
+    # Auch wenn in der DB ein anderer Port gespeichert ist (z.B. 6000 für Tests)
+    port = 8883
     protocol = str(getattr(printer, "mqtt_version", "5") or "5")
     client_id = f"filamenthub_{getattr(printer, 'name', 'printer')}_{str(getattr(printer, 'id', ''))[:6]}"
     return {

@@ -968,14 +968,52 @@ function updateProbeUI(data) {
 function updateProbeButtonState() {
   const probeBtn = document.getElementById('proProbeStart');
   const fpBtn = document.getElementById('proFingerprintStart');
-  const enabled = document.body.classList.contains('pro-mode') && probeTarget && probeTarget.ip;
+  const probeBadge = document.getElementById('proProbeBadge');
+  const fpBadge = document.getElementById('proFingerprintBadge');
+  const enabled = probeTarget && probeTarget.ip;
+
   if (probeBtn) {
     probeBtn.disabled = !enabled;
-    probeBtn.title = enabled ? '' : 'Probe nur im Pro-Modus nach Port-Test verfuegbar';
+    probeBtn.title = enabled ? '' : 'Probe erfordert erfolgreichen Port-Test';
+
+    // Update button styling
+    if (enabled) {
+      probeBtn.classList.remove('pro-btn-disabled');
+      probeBtn.classList.add('btn-secondary');
+    } else {
+      probeBtn.classList.add('pro-btn-disabled');
+      probeBtn.classList.remove('btn-secondary');
+    }
   }
+
   if (fpBtn) {
     fpBtn.disabled = !enabled;
     fpBtn.title = enabled ? '' : 'Fingerprint erfordert erfolgreichen Port-Test';
+
+    // Update button styling
+    if (enabled) {
+      fpBtn.classList.remove('pro-btn-disabled');
+      fpBtn.classList.add('btn-secondary');
+    } else {
+      fpBtn.classList.add('pro-btn-disabled');
+      fpBtn.classList.remove('btn-secondary');
+    }
+  }
+
+  // Update badge states
+  if (probeBadge) {
+    probeBadge.textContent = enabled ? 'BEREIT' : 'IDLE';
+    probeBadge.className = enabled ? 'status-badge status-ok' : 'status-badge status-idle';
+  }
+
+  if (fpBadge) {
+    fpBadge.textContent = enabled ? 'BEREIT' : 'IDLE';
+    fpBadge.className = enabled ? 'status-badge status-ok' : 'status-badge status-idle';
+  }
+
+  // Log for debugging
+  if (enabled) {
+    console.log('[Scanner] Deep Probe & Fingerprint aktiviert für:', probeTarget);
   }
 }
 
@@ -1207,53 +1245,10 @@ async function handleAddPrinter(btn, card) {
   const ip = btn.dataset.ip;
   const port = Number(btn.dataset.port || 6000);
   const baseType = normalizePrinterType(btn.dataset.type || 'generic');
-  const saveInfo = card.querySelector('[data-role="saveInfo"]');
   if (!ip) return;
-  btn.disabled = true;
-  btn.textContent = 'Speichere...';
-  try {
-    const payload = {
-      name: `${baseType}-${ip}`,
-      printer_type: baseType,
-      ip_address: ip,
-      port,
-      model: "Lite",
-      mqtt_version: "311",
-      active: true
-    };
-    const res = await fetch('/api/printers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (data?.status === 'exists') {
-      btn.classList.add('btn-add-disabled', 'disabled');
-      btn.classList.remove('btn-add-active');
-      btn.disabled = true;
-      if (saveInfo) saveInfo.textContent = 'Bereits im System vorhanden';
-      setScannerStatus(card, 'ok', 'OK', 'info');
-      return;
-    }
-    if (res.ok) {
-      btn.classList.remove('btn-add-disabled', 'disabled');
-      btn.classList.add('btn-add-active');
-      btn.disabled = true;
-      btn.title = '';
-      if (saveInfo) saveInfo.textContent = 'Gespeichert';
-      setScannerStatus(card, 'ok', 'OK', `Port ${port}: OK`);
-    } else {
-      btn.disabled = false;
-      btn.textContent = 'Zum System';
-      if (saveInfo) saveInfo.textContent = 'Fehler beim Speichern';
-      setScannerStatus(card, 'failed', 'FAIL', `Port ${port}: error`);
-    }
-  } catch (err) {
-    btn.disabled = false;
-    btn.textContent = 'Zum System';
-    if (saveInfo) saveInfo.textContent = 'Fehler beim Speichern';
-    setScannerStatus(card, 'failed', 'FAIL', `Port ${port}: error`);
-  }
+
+  // Open dialog instead of directly saving
+  openScannerPrinterDialog(ip, port, baseType, card, btn);
 }
 
 function initScannerTab() {
@@ -1282,6 +1277,25 @@ function initScannerTab() {
   if (typeSelect) {
     typeSelect.addEventListener('change', toggleBambuCredentials);
   }
+
+  // Scanner Dialog Event Listeners
+  const closeScannerDialogBtn = $('closeScannerDialog');
+  if (closeScannerDialogBtn) {
+    closeScannerDialogBtn.addEventListener('click', closeScannerPrinterDialog);
+  }
+  const scannerCancelBtn = $('scannerCancelBtn');
+  if (scannerCancelBtn) {
+    scannerCancelBtn.addEventListener('click', closeScannerPrinterDialog);
+  }
+  const scannerConfirmBtn = $('scannerConfirmBtn');
+  if (scannerConfirmBtn) {
+    scannerConfirmBtn.addEventListener('click', handleScannerConfirm);
+  }
+  const scannerTypeSelect = $('scannerDialogType');
+  if (scannerTypeSelect) {
+    scannerTypeSelect.addEventListener('change', toggleScannerBambuCredentials);
+  }
+
   renderScannerEmpty('No printers detected');
   loadNetworkInfo();
   scannerInitialized = true;
@@ -1291,6 +1305,33 @@ function toggleBambuCredentials() {
   const typeSelect = $('manualType');
   const bambuCreds = $('bambuCredentials');
   const bambuAccess = $('bambuAccessCode');
+  const portInput = $('manualPort');
+
+  if (!typeSelect || !bambuCreds || !bambuAccess) return;
+
+  const isBambu = typeSelect.value === 'bambu';
+  bambuCreds.style.display = isBambu ? 'block' : 'none';
+  bambuAccess.style.display = isBambu ? 'block' : 'none';
+
+  // Set default port based on printer type
+  if (portInput && !portInput.value) {
+    if (isBambu) {
+      portInput.value = '8883';
+      portInput.placeholder = 'Standard: 8883 (MQTT TLS)';
+    } else if (typeSelect.value === 'klipper') {
+      portInput.value = '7125';
+      portInput.placeholder = 'Standard: 7125 (Moonraker)';
+    } else {
+      portInput.value = '';
+      portInput.placeholder = 'z.B. 80 oder 443';
+    }
+  }
+}
+
+function toggleScannerBambuCredentials() {
+  const typeSelect = $('scannerDialogType');
+  const bambuCreds = $('scannerBambuCredentials');
+  const bambuAccess = $('scannerAccessCode');
 
   if (!typeSelect || !bambuCreds || !bambuAccess) return;
 
@@ -1323,7 +1364,7 @@ function openManualPrinterDialog() {
   }
   if (saveBtn) saveBtn.disabled = true;
 
-  // Show Bambu credentials since default is 'bambu'
+  // Show Bambu credentials and set default port
   toggleBambuCredentials();
 
   dialog.style.display = 'flex';
@@ -1333,6 +1374,190 @@ function closeManualPrinterDialog() {
   const dialog = $('manualPrinterDialog');
   if (!dialog) return;
   dialog.style.display = 'none';
+}
+
+// Scanner Dialog State
+let scannerDialogData = {
+  ip: '',
+  port: 0,
+  type: 'bambu',
+  card: null,
+  btn: null
+};
+
+function openScannerPrinterDialog(ip, port, type, card, btn) {
+  const dialog = $('scannerPrinterDialog');
+  if (!dialog) return;
+
+  // Store data for later use
+  scannerDialogData = { ip, port, type, card, btn };
+
+  // Set values
+  const ipEl = $('scannerDialogIp');
+  const portEl = $('scannerDialogPort');
+  const typeSelect = $('scannerDialogType');
+  const serialInput = $('scannerSerial');
+  const apiKeyInput = $('scannerApiKey');
+  const saveResult = $('scannerSaveResult');
+
+  // Für Bambu-Drucker wird IMMER Port 8883 verwendet (MQTT TLS)
+  // Port 6000 ist nur für Tests, nicht für die tatsächliche Verbindung
+  const displayPort = type === 'bambu' ? '8883 (MQTT TLS)' : port;
+  const infoText = type === 'bambu' ? 'Port 6000 für Tests OK, 8883 wird für MQTT verwendet' : '';
+
+  if (ipEl) ipEl.textContent = ip;
+  if (portEl) {
+    portEl.textContent = displayPort;
+    if (infoText) {
+      portEl.title = infoText;
+      portEl.style.cursor = 'help';
+    }
+  }
+  if (typeSelect) typeSelect.value = type;
+  if (serialInput) serialInput.value = '';
+  if (apiKeyInput) apiKeyInput.value = '';
+  if (saveResult) {
+    saveResult.style.display = 'none';
+    saveResult.innerHTML = '';
+  }
+
+  // Show/hide Bambu credentials based on type
+  toggleScannerBambuCredentials();
+
+  dialog.style.display = 'flex';
+}
+
+function closeScannerPrinterDialog() {
+  const dialog = $('scannerPrinterDialog');
+  if (!dialog) return;
+  dialog.style.display = 'none';
+}
+
+async function handleScannerConfirm() {
+  const { ip, port, card, btn } = scannerDialogData;
+  const typeSelect = $('scannerDialogType');
+  const serialInput = $('scannerSerial');
+  const apiKeyInput = $('scannerApiKey');
+  const saveResult = $('scannerSaveResult');
+  const confirmBtn = $('scannerConfirmBtn');
+
+  if (!typeSelect || !confirmBtn) return;
+
+  const printerType = typeSelect.value;
+  const isBambu = printerType === 'bambu';
+
+  // Validate Bambu credentials
+  if (isBambu) {
+    const serial = serialInput?.value.trim() || '';
+    const apiKey = apiKeyInput?.value.trim() || '';
+
+    if (!serial || !apiKey) {
+      if (saveResult) {
+        saveResult.style.display = 'block';
+        saveResult.className = 'test-result test-result-error';
+        saveResult.textContent = 'Für Bambu Lab Drucker sind Seriennummer und Access Code erforderlich';
+      }
+      return;
+    }
+  }
+
+  // Disable button during save
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = 'Speichere...';
+
+  try {
+    // WICHTIG: Bambu-Drucker benötigen Port 8883 für MQTT (TLS)
+    // Scanner testet Port 6000, aber für die Verbindung brauchen wir 8883
+    const finalPort = isBambu ? 8883 : port;
+
+    const payload = {
+      name: `${printerType}-${ip}`,
+      printer_type: printerType,
+      ip_address: ip,
+      port: finalPort,
+      model: "Lite",
+      mqtt_version: "311",
+      active: true
+    };
+
+    // Add Bambu credentials if needed
+    if (isBambu) {
+      payload.cloud_serial = serialInput?.value.trim() || '';
+      payload.api_key = apiKeyInput?.value.trim() || '';
+    }
+
+    const res = await fetch('/api/printers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (data?.status === 'exists') {
+      if (saveResult) {
+        saveResult.style.display = 'block';
+        saveResult.className = 'test-result test-result-warning';
+        saveResult.textContent = 'Drucker bereits im System vorhanden';
+      }
+
+      // Update UI
+      if (btn) {
+        btn.classList.add('btn-add-disabled', 'disabled');
+        btn.classList.remove('btn-add-active');
+        btn.disabled = true;
+        btn.textContent = 'Im System';
+      }
+      if (card) {
+        const saveInfo = card.querySelector('[data-role="saveInfo"]');
+        if (saveInfo) saveInfo.textContent = 'Bereits vorhanden';
+        setScannerStatus(card, 'ok', 'OK', 'info');
+      }
+
+      setTimeout(() => closeScannerPrinterDialog(), 1500);
+      return;
+    }
+
+    if (res.ok) {
+      if (saveResult) {
+        saveResult.style.display = 'block';
+        saveResult.className = 'test-result test-result-success';
+        saveResult.textContent = 'Drucker erfolgreich hinzugefügt!';
+      }
+
+      // Update UI
+      if (btn) {
+        btn.classList.remove('btn-add-disabled', 'disabled');
+        btn.classList.add('btn-add-active');
+        btn.disabled = false;
+        btn.textContent = 'Gespeichert';
+        btn.title = '';
+      }
+      if (card) {
+        const saveInfo = card.querySelector('[data-role="saveInfo"]');
+        if (saveInfo) saveInfo.textContent = 'Gespeichert';
+        setScannerStatus(card, 'ok', 'OK', `Port ${port}: OK`);
+      }
+
+      setTimeout(() => closeScannerPrinterDialog(), 1500);
+    } else {
+      if (saveResult) {
+        saveResult.style.display = 'block';
+        saveResult.className = 'test-result test-result-error';
+        saveResult.textContent = `Fehler beim Speichern: ${data?.detail || 'Unbekannter Fehler'}`;
+      }
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Zum System hinzufügen';
+    }
+  } catch (err) {
+    if (saveResult) {
+      saveResult.style.display = 'block';
+      saveResult.className = 'test-result test-result-error';
+      saveResult.textContent = `Fehler: ${err.message}`;
+    }
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Zum System hinzufügen';
+  }
 }
 
 async function handleManualTest() {
