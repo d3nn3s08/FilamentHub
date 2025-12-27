@@ -45,41 +45,66 @@ def get_next_spool_number(session: Session) -> int:
     return (max_num or 0) + 1
 
 
-def assign_spool_number(spool: Spool, session: Session) -> int:
+def assign_spool_number(spool: Spool, session: Session) -> Optional[int]:
     """
     Weist einer Spule eine Nummer zu und denormalisiert Material-Daten
 
+    WICHTIG: Bambu-RFID-Spulen (mit tray_uuid) bekommen KEINE Nummer!
+    Nur manuelle/Drittanbieter-Spulen bekommen Nummern (#1, #2, #3...)
+
     Diese Funktion:
-    1. Findet die niedrigste freie Nummer
-    2. Kopiert name, vendor aus material-Tabelle
-    3. Extrahiert Farbe aus tray_color (falls Bambu-Spule)
+    1. Prüft ob RFID-Spule (tray_uuid vorhanden) → KEINE Nummer
+    2. Findet die niedrigste freie Nummer (nur für manuelle Spulen)
+    3. Kopiert name, vendor aus material-Tabelle
+    4. Extrahiert Farbe aus tray_color (falls vorhanden)
 
     Args:
         spool: Spool-Objekt (wird modifiziert)
         session: SQLModel Session
 
     Returns:
-        int: Zugewiesene Spulen-Nummer
+        Optional[int]: Zugewiesene Spulen-Nummer oder None (bei RFID-Spulen)
     """
-    # 1. Nummer zuweisen
+    # RFID-Check: Bambu-Spulen mit tray_uuid brauchen KEINE Nummer
+    if spool.tray_uuid:
+        spool.spool_number = None
+        # Denormalisierung trotzdem durchführen
+        _denormalize_spool_data(spool, session)
+        return None
+
+    # 1. Nummer zuweisen (nur für manuelle Spulen)
     spool.spool_number = get_next_spool_number(session)
 
-    # 2. Material-Daten kopieren (denormalisieren für schnelle Suche)
+    # 2. Denormalisierung durchführen
+    _denormalize_spool_data(spool, session)
+
+    return spool.spool_number
+
+
+def _denormalize_spool_data(spool: Spool, session: Session) -> None:
+    """
+    Denormalisiert Material-Daten und Farbe für schnelle Suche
+
+    Interne Hilfsfunktion für assign_spool_number()
+
+    Args:
+        spool: Spool-Objekt (wird modifiziert)
+        session: SQLModel Session
+    """
+    # 1. Material-Daten kopieren (denormalisieren für schnelle Suche)
     if spool.material_id:
         material = session.get(Material, spool.material_id)
         if material:
             spool.name = material.name
             spool.vendor = material.brand
 
-    # 3. Farbe extrahieren oder setzen
+    # 2. Farbe extrahieren oder setzen
     if not spool.color and spool.tray_color:
         # Bambu-Spule: Extrahiere Farbe aus Hex-Code
         spool.color = extract_color_from_hex(spool.tray_color)
     elif not spool.color:
         # Fallback: unknown
         spool.color = "unknown"
-
-    return spool.spool_number
 
 
 def extract_color_from_hex(hex_color: str) -> str:

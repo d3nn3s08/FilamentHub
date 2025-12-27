@@ -32,7 +32,7 @@ def upgrade() -> None:
     # TEIL 1: SPOOL TABLE
     # ========================================
 
-    print("→ Füge Spulen-Nummern-System hinzu...")
+    print(">> Fuege Spulen-Nummern-System hinzu...")
 
     # 1. Add spool_number (unique, nullable initially for migration)
     op.add_column(
@@ -54,7 +54,7 @@ def upgrade() -> None:
         sa.Column("color", sa.String(50), nullable=True),
     )
 
-    print("→ Erstelle Indizes für Performance...")
+    print(">> Erstelle Indizes fuer Performance...")
 
     # 3. Create indexes for performance
     op.create_index("idx_spool_number", "spool", ["spool_number"], unique=False)
@@ -66,7 +66,7 @@ def upgrade() -> None:
     # TEIL 2: JOB TABLE (Snapshots)
     # ========================================
 
-    print("→ Füge Job-Snapshot-Felder hinzu...")
+    print(">> Fuege Job-Snapshot-Felder hinzu...")
 
     # 4. Add snapshot fields to job table
     op.add_column(
@@ -97,12 +97,12 @@ def upgrade() -> None:
     # TEIL 3: DATA MIGRATION
     # ========================================
 
-    print("→ Migriere bestehende Daten...")
+    print(">> Migriere bestehende Daten...")
 
     connection = op.get_bind()
 
     # 6. Populate spool_number for existing spools (sequential, by created_at)
-    print("  → Vergebe Spulen-Nummern...")
+    print("  >> Vergebe Spulen-Nummern...")
     connection.execute(text("""
         WITH numbered AS (
             SELECT id, ROW_NUMBER() OVER (ORDER BY created_at NULLS LAST, id) as num
@@ -113,7 +113,7 @@ def upgrade() -> None:
     """))
 
     # 7. Populate name, vendor from material table
-    print("  → Kopiere Material-Daten (name, vendor)...")
+    print("  >> Kopiere Material-Daten (name, vendor)...")
     connection.execute(text("""
         UPDATE spool
         SET
@@ -123,7 +123,7 @@ def upgrade() -> None:
     """))
 
     # 8. Populate color from tray_color (simplified: use first 6 chars as hex)
-    print("  → Extrahiere Farben aus tray_color...")
+    print("  >> Extrahiere Farben aus tray_color...")
     connection.execute(text("""
         UPDATE spool
         SET color = CASE
@@ -134,7 +134,7 @@ def upgrade() -> None:
     """))
 
     # 9. Populate job snapshots for existing jobs
-    print("  → Erstelle Job-Snapshots für bestehende Jobs...")
+    print("  >> Erstelle Job-Snapshots fuer bestehende Jobs...")
     connection.execute(text("""
         UPDATE job
         SET
@@ -147,14 +147,14 @@ def upgrade() -> None:
           AND job.spool_number IS NULL
     """))
 
-    # 10. Add UNIQUE constraint on spool_number (now that all have values)
-    print("→ Setze UNIQUE constraint auf spool_number...")
-    op.create_unique_constraint("uq_spool_number", "spool", ["spool_number"])
+    # 10. Add UNIQUE index on spool_number (SQLite doesn't support ADD CONSTRAINT)
+    print(">> Setze UNIQUE index auf spool_number...")
+    op.create_index("uq_spool_number", "spool", ["spool_number"], unique=True)
 
-    print("✓ Migration erfolgreich abgeschlossen!")
-    print("  → Spulen haben jetzt Nummern (#1, #2, #3...)")
-    print("  → Jobs haben Snapshots für korrekte Historie")
-    print("  → Schnelle Suche ohne JOINs aktiviert")
+    print("[OK] Migration erfolgreich abgeschlossen!")
+    print("  >> Spulen haben jetzt Nummern (#1, #2, #3...)")
+    print("  >> Jobs haben Snapshots fuer korrekte Historie")
+    print("  >> Schnelle Suche ohne JOINs aktiviert")
 
 
 def downgrade() -> None:
@@ -163,10 +163,10 @@ def downgrade() -> None:
     - Entfernt alle Änderungen dieser Migration
     """
 
-    print("→ Entferne Spulen-Nummern-System...")
+    print(">> Entferne Spulen-Nummern-System...")
 
-    # Drop unique constraint
-    op.drop_constraint("uq_spool_number", "spool", type_="unique")
+    # Drop unique index (not constraint, SQLite limitation)
+    op.drop_index("uq_spool_number", "spool")
 
     # Drop indexes
     op.drop_index("idx_job_spool_number", "job")
@@ -188,4 +188,4 @@ def downgrade() -> None:
     op.drop_column("spool", "name")
     op.drop_column("spool", "spool_number")
 
-    print("✓ Downgrade erfolgreich abgeschlossen!")
+    print("[OK] Downgrade erfolgreich abgeschlossen!")

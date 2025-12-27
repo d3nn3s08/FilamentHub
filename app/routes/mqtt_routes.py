@@ -34,6 +34,7 @@ from app.services.live_state import set_live_state
 from app.services.ams_sync import sync_ams_slots
 
 from app.models.printer import Printer
+from app.services.spool_number_service import assign_spool_number
 from services.mqtt_protocol_detector import MQTTProtocolDetector
 
 # ...existing code...
@@ -875,6 +876,8 @@ def on_message(client, userdata, msg):
 
                                 pass
 
+n                            # SPULEN-NUMMERN-SYSTEM: Nummer zuweisen (nur für manuelle Spulen, RFID-Spulen bekommen None)
+                            assign_spool_number(sp, session)
                             session.add(sp)
 
                             session.commit()
@@ -1408,21 +1411,39 @@ async def connect_mqtt(connection: MQTTConnection, request: Request):
 
         connection_id = f"{connection.broker}:{connection.port}"
 
+        # Modell-basierte MQTT-Protokoll-Erkennung (PRIORITÄT!)
+        from app.services.printer_auto_detector import PrinterAutoDetector
+
+        mqtt_protocol = mqtt.MQTTv311  # Default
         detected_protocol = None
 
-        try:
+        # 1. Priorität: Modell aus cloud_serial ermitteln
+        if connection.cloud_serial:
+            model = PrinterAutoDetector.detect_model_from_serial(connection.cloud_serial)
+            if model and model.upper() in PrinterAutoDetector.MODEL_MQTT_PROTOCOL:
+                protocol_str = PrinterAutoDetector.MODEL_MQTT_PROTOCOL[model.upper()]
+                if protocol_str == "5":
+                    mqtt_protocol = mqtt.MQTTv5
+                    detected_protocol = "5"
+                    print(f"[MQTT] Modell {model} (Serial {connection.cloud_serial}) → MQTT v5")
+                elif protocol_str == "311":
+                    mqtt_protocol = mqtt.MQTTv311
+                    detected_protocol = "311"
+                    print(f"[MQTT] Modell {model} (Serial {connection.cloud_serial}) → MQTT v3.1.1")
 
-            detector = MQTTProtocolDetector()
-
-            detection = detector.detect(connection.broker, connection.password or '', connection.port)
-
-            if detection.get('detected'):
-
-                detected_protocol = detection.get('protocol')
-
-        except Exception:
-
-            detected_protocol = None
+        # 2. Fallback: Auto-Detection (nur wenn kein Modell erkannt)
+        if detected_protocol is None:
+            try:
+                detector = MQTTProtocolDetector()
+                detection = detector.detect(connection.broker, connection.password or '', connection.port)
+                if detection.get('detected'):
+                    detected_protocol = detection.get('protocol')
+                    if detected_protocol == "5":
+                        mqtt_protocol = mqtt.MQTTv5
+                    print(f"[MQTT] Auto-Detection → Protokoll {detected_protocol}")
+            except Exception as e:
+                print(f"[MQTT] Auto-Detection fehlgeschlagen: {e}")
+                detected_protocol = None
 
 
 
@@ -1438,13 +1459,13 @@ async def connect_mqtt(connection: MQTTConnection, request: Request):
 
         
 
-        # Create new client (MQTT v3.1.1 f�r Bambu-Kompatibilit�t)
+        # Create new client (MQTT-Protokoll basierend auf Modell oder Auto-Detection)
 
         client = mqtt.Client(
 
             client_id=connection.client_id or "filamenthub_debug",
 
-            protocol=mqtt.MQTTv311
+            protocol=mqtt_protocol
 
         )
 

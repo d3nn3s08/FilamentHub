@@ -386,6 +386,91 @@ def test_color_extraction_from_hex():
     assert extract_color_from_hex("XYZ") == "unknown"
 
 
+# ===== TEST 5: RFID vs. MANUELLE SPULEN =====
+
+def test_rfid_spool_gets_no_number(session: Session, test_material: Material):
+    """RFID-Spule (mit tray_uuid) bekommt KEINE Nummer"""
+    spool = Spool(
+        material_id=test_material.id,
+        weight_full=1000,
+        tray_uuid="some-bambu-rfid-uuid-12345",  # RFID vorhanden
+        tray_color="FF0000FF"
+    )
+    assign_spool_number(spool, session)
+    session.add(spool)
+    session.commit()
+    session.refresh(spool)
+
+    assert spool.spool_number is None, "RFID-Spule sollte KEINE Nummer bekommen"
+    assert spool.tray_uuid == "some-bambu-rfid-uuid-12345"
+    assert spool.name == "PLA Basic", "Denormalisierung sollte trotzdem funktionieren"
+    assert spool.vendor == "Bambu Lab"
+
+
+def test_manual_spool_gets_number(session: Session, test_material: Material):
+    """Manuelle Spule (ohne tray_uuid) bekommt Nummer"""
+    spool = Spool(
+        material_id=test_material.id,
+        weight_full=1000,
+        tray_uuid=None  # Kein RFID
+    )
+    assign_spool_number(spool, session)
+    session.add(spool)
+    session.commit()
+    session.refresh(spool)
+
+    assert spool.spool_number == 1, "Manuelle Spule sollte Nummer bekommen"
+    assert spool.tray_uuid is None
+    assert spool.name == "PLA Basic"
+
+
+def test_mixed_rfid_and_manual_spools(session: Session, test_material: Material):
+    """Gemischte RFID- und manuelle Spulen - nur manuelle bekommen Nummern"""
+    # RFID-Spule #1
+    rfid1 = Spool(
+        material_id=test_material.id,
+        weight_full=1000,
+        tray_uuid="rfid-uuid-1"
+    )
+    assign_spool_number(rfid1, session)
+    session.add(rfid1)
+
+    # Manuelle Spule #1
+    manual1 = Spool(
+        material_id=test_material.id,
+        weight_full=1000,
+        tray_uuid=None
+    )
+    assign_spool_number(manual1, session)
+    session.add(manual1)
+
+    # RFID-Spule #2
+    rfid2 = Spool(
+        material_id=test_material.id,
+        weight_full=1000,
+        tray_uuid="rfid-uuid-2"
+    )
+    assign_spool_number(rfid2, session)
+    session.add(rfid2)
+
+    # Manuelle Spule #2
+    manual2 = Spool(
+        material_id=test_material.id,
+        weight_full=1000,
+        tray_uuid=None
+    )
+    assign_spool_number(manual2, session)
+    session.add(manual2)
+
+    session.commit()
+
+    # Prüfe Nummern
+    assert rfid1.spool_number is None, "RFID-Spule 1 sollte keine Nummer haben"
+    assert rfid2.spool_number is None, "RFID-Spule 2 sollte keine Nummer haben"
+    assert manual1.spool_number == 1, "Manuelle Spule 1 sollte #1 sein"
+    assert manual2.spool_number == 2, "Manuelle Spule 2 sollte #2 sein"
+
+
 # ===== ZUSAMMENFASSUNG =====
 
 if __name__ == "__main__":
@@ -398,8 +483,9 @@ if __name__ == "__main__":
     print("2. Snapshot-Stabilität (3 Tests)")
     print("3. Assign/Unassign (4 Tests)")
     print("4. Utility Functions (1 Test)")
+    print("5. RFID vs. Manuelle Spulen (3 Tests)")
     print()
-    print("Gesamt: 13 Tests")
+    print("Gesamt: 16 Tests")
     print()
     print("Ausführen mit: pytest tests/test_spool_number_system.py -v")
     print("=" * 60)
