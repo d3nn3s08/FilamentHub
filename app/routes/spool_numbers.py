@@ -215,6 +215,11 @@ def assign_to_slot(
     spool.ams_slot = data.slot_number
     spool.updated_at = datetime.utcnow().isoformat()
 
+    # Status-Logik: Nur wenn Spule manuell erstellt wurde (hat spool_number)
+    # UND noch nie im AMS war (used_count = 0 oder None)
+    # → Warte auf ersten Druck, dann wird Status auf "Aktiv" gesetzt
+    # (Status-Änderung erfolgt in mqtt_routes.py beim Job-Start)
+
     session.add(spool)
     session.commit()
     session.refresh(spool)
@@ -263,6 +268,15 @@ def unassign_from_slot(
     spool.ams_slot = None
     spool.last_slot = last_slot  # Merke letzten Slot
     spool.updated_at = datetime.utcnow().isoformat()
+
+    # Status-Logik: Spule zurück ins Lager
+    # Nur für manuell angelegte Spulen mit Nummer
+    if spool.spool_number:
+        # NUR wenn Spule NICHT leer ist
+        if not spool.is_empty and spool.status == "Aktiv":
+            spool.status = "Lager"
+            # is_open bleibt True, da Spule bereits geöffnet wurde
+        # Wenn is_empty = True → Status bleibt unverändert (z.B. "Leer")
 
     session.add(spool)
     session.commit()

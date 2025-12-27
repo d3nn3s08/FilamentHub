@@ -32,6 +32,11 @@ body.theme-light {
 
 * { box-sizing: border-box; }
 
+/* Verhindert weißen Flash beim Seitenwechsel */
+html {
+    background-color: #0e1116;
+}
+
 body.page {
     margin: 0;
     display: grid;
@@ -334,37 +339,87 @@ body.page {
 .modal {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.55);
+    background: #000000;
     display: none;
     align-items: center;
     justify-content: center;
     z-index: 100;
 }
-.modal.show { display: flex; }
-.modal__dialog {
-    background: #121821;
+.modal.show {
+    display: flex;
+    animation: modalFadeIn 0.2s ease;
+}
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.modal-content {
+    background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: 16px;
+    min-width: 400px;
+    max-width: 650px;
+    width: 100%;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
+    animation: modalSlideIn 0.25s ease;
+}
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+.modal__dialog {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
     min-width: 320px;
     max-width: 480px;
     width: 100%;
     padding: 18px 20px;
-    box-shadow: var(--shadow);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
 }
-.modal__header {
+.modal-header, .modal__header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    padding: 24px 24px 16px 24px;
+    border-bottom: 1px solid var(--border);
 }
-.modal__close {
+.modal-header h2, .modal__header h2 {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text);
+}
+.modal-close, .modal__close {
     background: none;
     border: none;
-    color: var(--text);
-    font-size: 22px;
+    color: var(--text-dim);
+    font-size: 28px;
     cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.15s ease;
 }
-.modal__body { display: flex; flex-direction: column; gap: 10px; }
+.modal-close:hover, .modal__close:hover {
+    background: var(--panel-2);
+    color: var(--text);
+}
+.modal-body, .modal__body {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
 .field { display: flex; flex-direction: column; gap: 4px; color: var(--text-dim); }
 .field input, .field select {
     background: #0f141c;

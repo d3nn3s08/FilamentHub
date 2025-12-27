@@ -253,33 +253,39 @@ function renderTopMaterials(data) {
 function renderTopPrinters(data) {
     const container = document.getElementById("topPrintersList");
     if (!container) return;
-    
+
     // Sort by duration_h descending and take top 5
     const top5 = [...data]
         .sort((a, b) => (b.duration_h || 0) - (a.duration_h || 0))
         .slice(0, 5);
-    
+
     const maxDuration = Math.max(...top5.map(p => p.duration_h || 0), 1);
-    
-    container.innerHTML = top5.map((printer, idx) => {
-        const duration = printer.duration_h || 0;
-        const percent = Math.round((duration / maxDuration) * 100);
-        const color = palette(idx + 3);
-        
-        return `
-            <div class="ranking-item">
-                <div class="ranking-label">
-                    <span>${printer.printer_name || "Unbekannt"}</span>
-                    <span>${number(duration, 1)}h (${printer.jobs} Jobs)</span>
-                </div>
-                <div class="ranking-bar">
-                    <div class="ranking-bar-fill" style="width: ${percent}%; background: ${color};">
-                        ${percent}%
+
+    // Moderne vertikale Card-Layout (Grid)
+    container.innerHTML = `
+        <div class="printer-cards-grid">
+            ${top5.map((printer, idx) => {
+                const duration = printer.duration_h || 0;
+                const percent = Math.round((duration / maxDuration) * 100);
+                const color = palette(idx + 3);
+                const printerName = printer.printer_name || "Unbekannt";
+
+                return `
+                    <div class="printer-card" title="${printerName}">
+                        <div class="printer-card-icon">🖨️</div>
+                        <div class="printer-card-name">${printerName}</div>
+                        <div class="printer-card-bar">
+                            <div class="printer-card-bar-fill" style="width: ${percent}%; background: ${color};"></div>
+                        </div>
+                        <div class="printer-card-stats">
+                            <span class="printer-card-time">${number(duration, 1)}h</span>
+                            <span class="printer-card-jobs">${printer.jobs} Job${printer.jobs !== 1 ? 's' : ''}</span>
+                        </div>
                     </div>
-                </div>
-            </div>
-        `;
-    }).join("");
+                `;
+            }).join("")}
+        </div>
+    `;
 }
 
 function renderTimelineMaterial(data) {

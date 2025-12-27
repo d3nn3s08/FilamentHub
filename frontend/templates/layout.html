@@ -1,9 +1,14 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" style="background-color: #0e1116;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title or "FilamentHub" }}</title>
+    <style>
+        /* Critical CSS - verhindert weißen Flash SOFORT */
+        html { background-color: #0e1116; }
+        body { background-color: #0e1116; margin: 0; }
+    </style>
     <link rel="stylesheet" href="{{ url_for('frontend_static', path='css/main.css') }}">
     <link rel="stylesheet" href="{{ url_for('frontend_static', path='css/global_alerts.css') }}">
     {% block extra_styles %}{% endblock %}

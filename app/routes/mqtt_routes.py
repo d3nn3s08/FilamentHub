@@ -1085,6 +1085,22 @@ def on_message(client, userdata, msg):
                                 session.commit()
                                 session.refresh(job)
 
+                                # === STATUS-LOGIK: Spule im AMS + erster Druck = "Aktiv" ===
+                                if spool_obj:
+                                    # Nur für manuell angelegte Spulen mit Nummer
+                                    if spool_obj.spool_number:
+                                        # Prüfe ob Spule im AMS ist
+                                        if spool_obj.printer_id and spool_obj.ams_slot:
+                                            # Setze Status auf "Aktiv" beim ersten Druck
+                                            if spool_obj.status != "Aktiv":
+                                                spool_obj.status = "Aktiv"
+                                                spool_obj.is_open = True  # Spule ist jetzt geöffnet
+                                                session.add(spool_obj)
+                                                session.commit()
+                                                mqtt_message_logger.info(
+                                                    f"[STATUS] Spule #{spool_obj.spool_number} → Aktiv (erster AMS-Druck)"
+                                                )
+
                                 mqtt_message_logger.info(
                                     f"[JOB START] printer_id={printer_id} job_id={job.id} name={job.name}"
                                 )

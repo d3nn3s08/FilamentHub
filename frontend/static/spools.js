@@ -362,8 +362,7 @@ function openAddModal() {
     document.getElementById('spoolWeightEmpty').value = '250';
     document.getElementById('spoolColor').value = '#ffffff';
     document.getElementById('spoolColorHex').value = '#ffffff';
-    document.getElementById('spoolIsOpen').checked = true;
-    document.getElementById('spoolIsEmpty').checked = false;
+    document.getElementById('spoolStatus').value = 'Lager';  // Neue Spulen starten als "Lager"
     document.getElementById('spoolNumber').value = '';
     document.getElementById('spoolModal').classList.add('active');
 }
@@ -385,9 +384,13 @@ function openEditModal(id) {
     document.getElementById('spoolWeightRemaining').value = (toNumber(spool.weight) ?? toNumber(spool.weight_current) ?? toNumber(spool.weight_remaining)) ?? '';
     document.getElementById('spoolManufacturerId').value = spool.manufacturer_spool_id || '';
     document.getElementById('spoolNumber').value = spool.spool_number || '';
-    document.getElementById('spoolStatus').value = spool.status || '';
-    document.getElementById('spoolIsOpen').checked = spool.is_open;
-    document.getElementById('spoolIsEmpty').checked = spool.is_empty;
+
+    // Status setzen (basierend auf is_empty und status)
+    let statusValue = spool.status || 'Lager';
+    if (spool.is_empty) {
+        statusValue = 'Leer';
+    }
+    document.getElementById('spoolStatus').value = statusValue;
 
     document.getElementById('spoolModal').classList.add('active');
 }
@@ -410,12 +413,31 @@ function closeDeleteModal() {
 // === SAVE SPOOL ===
 async function saveSpool(event) {
     event.preventDefault();
-    
+
+    const status = document.getElementById('spoolStatus').value;
+
+    // SICHERHEITSABFRAGE: Wenn Status auf "Leer" gesetzt wird
+    if (status === 'Leer') {
+        const confirmed = confirm(
+            '⚠️ ACHTUNG: Spule als LEER markieren?\n\n' +
+            'Diese Aktion setzt die Spule als aufgebraucht.\n' +
+            'Möchten Sie fortfahren?'
+        );
+
+        if (!confirmed) {
+            return; // Abbrechen
+        }
+    }
+
     const weightRemaining = document.getElementById('spoolWeightRemaining').value;
     const materialId = document.getElementById('spoolMaterial').value;
     const colorHex = document.getElementById('spoolColor').value;
     const trayColor = colorHex?.replace('#', '') || null;
     const spoolNumber = document.getElementById('spoolNumber').value;
+
+    // Status-basierte Flags
+    const is_empty = (status === 'Leer');
+    const is_open = (status === 'Aktiv' || status === 'In Benutzung' || status === 'Leer');
 
     const data = {
         material_id: materialId,
@@ -425,10 +447,10 @@ async function saveSpool(event) {
         vendor_id: document.getElementById('spoolVendor').value || null,
         manufacturer_spool_id: document.getElementById('spoolManufacturerId').value || null,
         tray_color: trayColor,
-        is_open: document.getElementById('spoolIsOpen').checked,
-        is_empty: document.getElementById('spoolIsEmpty').checked,
+        is_open: is_open,
+        is_empty: is_empty,
         spool_number: spoolNumber ? parseInt(spoolNumber) : null,
-        status: document.getElementById('spoolStatus').value || null
+        status: status || null
     };
     
     try {

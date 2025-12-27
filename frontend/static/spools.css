@@ -362,7 +362,7 @@ tbody td:nth-child(3) { /* Status */
     border: 1px solid var(--border);
     border-radius: 12px;
     width: 90%;
-    max-width: 600px;
+    max-width: 900px;  /* Vergrößert für 2-Spalten */
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     animation: modalSlideIn 0.3s ease;
 }
@@ -416,6 +416,18 @@ tbody td:nth-child(3) { /* Status */
 }
 
 /* Form Styles */
+.form-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    padding: 1.5rem;
+}
+
+.form-column {
+    display: flex;
+    flex-direction: column;
+}
+
 .form-group {
     margin-bottom: 1.25rem;
 }
@@ -733,7 +745,14 @@ tbody td:nth-child(3) { /* Status */
     .form-row {
         grid-template-columns: 1fr;
     }
-    
+
+    /* 2-Spalten-Layout auf 1 Spalte bei kleinen Bildschirmen */
+    .form-columns {
+        grid-template-columns: 1fr;
+        gap: 0;
+        padding: 1rem;
+    }
+
     .modal-content {
         width: 95%;
         max-height: 95vh;

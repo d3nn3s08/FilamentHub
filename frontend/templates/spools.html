@@ -116,84 +116,79 @@
         
         <form id="spoolForm" onsubmit="saveSpool(event)">
             <input type="hidden" id="spoolId">
-            
-            <div class="form-group">
-                <label for="spoolMaterial">Material *</label>
-                <select id="spoolMaterial" required class="form-control">
-                    <option value="">-- Material wählen --</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="spoolVendor">Marke / Hersteller</label>
-                <input type="text" id="spoolVendor" class="form-control" placeholder="z.B. Prusament">
-            </div>
-            
-            <div class="form-group">
-                <label for="spoolColor">Farbe</label>
-                <div class="color-picker-row">
-                    <input type="color" id="spoolColor" class="form-control color-input" value="#ffffff">
-                    <input type="text" id="spoolColorHex" placeholder="#ffffff" class="form-control color-hex" readonly>
+
+            <!-- Linke Spalte -->
+            <div class="form-columns">
+                <div class="form-column">
+                    <div class="form-group">
+                        <label for="spoolMaterial">Material *</label>
+                        <select id="spoolMaterial" required class="form-control">
+                            <option value="">-- Material wählen --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolVendor">Marke / Hersteller</label>
+                        <input type="text" id="spoolVendor" class="form-control" placeholder="z.B. Prusament">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolColor">Farbe</label>
+                        <div class="color-picker-row">
+                            <input type="color" id="spoolColor" class="form-control color-input" value="#ffffff">
+                            <input type="text" id="spoolColorHex" placeholder="#ffffff" class="form-control color-hex" readonly>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="spoolWeightFull">Gewicht voll (g) *</label>
+                            <input type="number" id="spoolWeightFull" class="form-control" required value="1000">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="spoolWeightEmpty">Gewicht leer (g) *</label>
+                            <input type="number" id="spoolWeightEmpty" class="form-control" required value="250">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rechte Spalte -->
+                <div class="form-column">
+                    <div class="form-group">
+                        <label for="spoolWeightRemaining">Restgewicht (g)</label>
+                        <input type="number" id="spoolWeightRemaining" class="form-control" placeholder="Optional">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolManufacturerId">RFID / Hersteller ID</label>
+                        <input type="text" id="spoolManufacturerId" class="form-control" placeholder="Optional">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolNumber">Spulen-Nummer (optional)</label>
+                        <input type="number" id="spoolNumber" class="form-control" placeholder="z.B. 5" min="1">
+                        <small style="color: var(--text-dim); font-size: 0.875rem;">
+                            💡 Nummer für Lager-System
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolStatus">Status</label>
+                        <select id="spoolStatus" class="form-control">
+                            <option value="Lager" selected>🏪 Lager</option>
+                            <option value="In Benutzung">🖨️ In Benutzung (ohne AMS)</option>
+                            <option value="Leer">🚫 Spule ist leer</option>
+                        </select>
+                        <small style="color: var(--text-dim); font-size: 0.875rem;">
+                            💡 "Aktiv" wird automatisch bei AMS-Nutzung gesetzt
+                        </small>
+                    </div>
                 </div>
             </div>
-            
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="spoolWeightFull">Gewicht voll (g) *</label>
-                    <input type="number" id="spoolWeightFull" class="form-control" required value="1000">
-                </div>
-                
-                <div class="form-group">
-                    <label for="spoolWeightEmpty">Gewicht leer (g) *</label>
-                    <input type="number" id="spoolWeightEmpty" class="form-control" required value="250">
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label for="spoolWeightRemaining">Restgewicht (g)</label>
-                <input type="number" id="spoolWeightRemaining" class="form-control" placeholder="Optional">
-            </div>
-            
-            <div class="form-group">
-                <label for="spoolManufacturerId">RFID / Hersteller ID</label>
-                <input type="text" id="spoolManufacturerId" class="form-control" placeholder="Optional">
-            </div>
 
-            <div class="form-group">
-                <label for="spoolNumber">Spulen-Nummer (optional)</label>
-                <input type="number" id="spoolNumber" class="form-control" placeholder="z.B. 5" min="1">
-                <small style="color: var(--text-dim); font-size: 0.875rem;">
-                    💡 Optional: Vergib eine Nummer (#1, #2, #3...) für dein Lager-System. Neue RFID-Spulen können später nummeriert werden.
-                </small>
-            </div>
-
-            <div class="form-group">
-                <label for="spoolStatus">Status</label>
-                <select id="spoolStatus" class="form-control">
-                    <option value="">-- Bitte wählen --</option>
-                    <option value="Lager">🏪 Lager (im Regal)</option>
-                    <option value="AMS" selected>📦 Im AMS</option>
-                    <option value="In Benutzung">🖨️ In Benutzung</option>
-                </select>
-                <small style="color: var(--text-dim); font-size: 0.875rem;">
-                    💡 "Lager" = Spule wird nach Nummer im Regal verfolgt. Bei AMS-Einlage bleibt die Nummer erhalten.
-                </small>
-            </div>
-
-            <div class="form-group checkbox-group">
-                <label>
-                    <input type="checkbox" id="spoolIsOpen">
-                    <span>Spule ist geöffnet</span>
-                </label>
-                
-                <label>
-                    <input type="checkbox" id="spoolIsEmpty">
-                    <span>Spule ist leer</span>
-                </label>
-            </div>
-            
             <div class="form-info">
-                💡 <strong>Hinweis:</strong> Neue Spulen werden automatisch als "Neu" markiert und sind standardmäßig geöffnet.
+                💡 <strong>Hinweis:</strong> Neue Spulen sind standardmäßig verschlossen und bekommen den Status "Lager". Bei Einlage ins AMS und erstem Druck wechselt der Status automatisch zu "Aktiv".
             </div>
             
             <div class="modal-actions">
