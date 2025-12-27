@@ -167,6 +167,19 @@
                 </small>
             </div>
 
+            <div class="form-group">
+                <label for="spoolStatus">Status</label>
+                <select id="spoolStatus" class="form-control">
+                    <option value="">-- Bitte wählen --</option>
+                    <option value="Lager">🏪 Lager (im Regal)</option>
+                    <option value="AMS" selected>📦 Im AMS</option>
+                    <option value="In Benutzung">🖨️ In Benutzung</option>
+                </select>
+                <small style="color: var(--text-dim); font-size: 0.875rem;">
+                    💡 "Lager" = Spule wird nach Nummer im Regal verfolgt. Bei AMS-Einlage bleibt die Nummer erhalten.
+                </small>
+            </div>
+
             <div class="form-group checkbox-group">
                 <label>
                     <input type="checkbox" id="spoolIsOpen">

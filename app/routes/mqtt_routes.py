@@ -739,6 +739,17 @@ def on_message(client, userdata, msg):
 
 
                         def match_spool(slot: Optional[int], tray: Optional[Dict[str, Any]]) -> Optional[Spool]:
+                            """
+                            Findet existierende Spule - INTELLIGENTES LAGER-SYSTEM
+
+                            Sucht in folgender Reihenfolge:
+                            1. Nach tag_uid (NFC-Tag)
+                            2. Nach tray_uuid (RFID)
+                            3. Nach Slot-Position (für Spulen die schon im AMS sind)
+
+                            Wichtig: Wenn eine nummerierte Spule gefunden wird und neue RFID-Daten kommen,
+                            wird die Nummer NICHT entfernt, sondern die RFID-Daten werden hinzugefügt.
+                            """
 
                             tag_uid = tray.get("tag_uid") if tray else None
 
@@ -766,7 +777,19 @@ def on_message(client, userdata, msg):
 
                                 return None
 
-                            return session.exec(stmt).first()
+                            existing = session.exec(stmt).first()
+
+                            # LAGER-SYSTEM: Wenn Spule gefunden wurde und neue RFID-Daten vorhanden sind,
+                            # aktualisiere die RFID-Daten, aber BEHALTE die spool_number
+                            if existing and tray_uuid and not existing.tray_uuid:
+                                existing.tray_uuid = tray_uuid
+                                if tag_uid and not existing.tag_uid:
+                                    existing.tag_uid = tag_uid
+                                # Nummer wird NICHT entfernt - das ist der Kern des Systems!
+                                session.add(existing)
+                                session.commit()
+
+                            return existing
 
 
 

@@ -227,21 +227,35 @@ function renderSpools(spoolsToRender) {
                             numberDisplay = '<span class="spool-number-badge" title="Keine Nummer">-</span>';
                         }
 
+                        // Status anzeigen - Priorisiert manuellen Status, dann Leer-Status
                         let statusBadge = '';
+                        let locationBadge = '';
 
+                        // 1. Haupt-Status (Leer oder nicht)
                         if (remainPercent === 0 || (remaining || 0) <= 0 || s.is_empty) {
                             statusBadge = '<span class="status-badge status-offline">Leer</span>';
                         } else if (remainPercent != null && remainPercent <= 20) {
                             statusBadge = '<span class="status-badge" style="background: rgba(255, 167, 38, 0.2); color: var(--warning);">Fast leer</span>';
                         } else if (remaining < 200) {
                             statusBadge = '<span class="status-badge" style="background: rgba(255, 167, 38, 0.2); color: var(--warning);">Wenig</span>';
-                        } else if (s.used_count && s.used_count > 0) {
-                            statusBadge = '<span class="status-badge status-secondary">Gebraucht</span>';
-                        } else if (s.is_open) {
-                            statusBadge = '<span class="status-badge status-printing">Offen</span>';
-                        } else {
-                            statusBadge = '<span class="status-badge status-online">Neu</span>';
                         }
+
+                        // 2. Lager-Status (wo ist die Spule?)
+                        if (s.status === 'Lager') {
+                            locationBadge = '<span class="status-badge" style="background: rgba(102, 187, 106, 0.2); color: #66BB6A;">🏪 Lager</span>';
+                        } else if (s.status === 'AMS') {
+                            locationBadge = '<span class="status-badge" style="background: rgba(66, 165, 245, 0.2); color: #42A5F5;">📦 AMS</span>';
+                        } else if (s.status === 'In Benutzung') {
+                            locationBadge = '<span class="status-badge status-printing">🖨️ In Benutzung</span>';
+                        } else if (s.used_count && s.used_count > 0) {
+                            locationBadge = '<span class="status-badge status-secondary">Gebraucht</span>';
+                        } else if (s.is_open) {
+                            locationBadge = '<span class="status-badge status-printing">Offen</span>';
+                        } else {
+                            locationBadge = '<span class="status-badge status-online">Neu</span>';
+                        }
+
+                        statusBadge = statusBadge || locationBadge;
 
                         return `
                             <tr>
@@ -353,10 +367,10 @@ function openAddModal() {
 function openEditModal(id) {
     const spool = spools.find(s => s.id === id);
     if (!spool) return;
-    
+
     currentSpoolId = id;
     document.getElementById('modalTitle').textContent = '✏️ Spule bearbeiten';
-    
+
     document.getElementById('spoolId').value = spool.id;
     document.getElementById('spoolMaterial').value = spool.material_id;
     document.getElementById('spoolVendor').value = spool.vendor_id || '';
@@ -366,9 +380,11 @@ function openEditModal(id) {
     document.getElementById('spoolWeightEmpty').value = spool.weight_empty;
     document.getElementById('spoolWeightRemaining').value = (toNumber(spool.weight) ?? toNumber(spool.weight_current) ?? toNumber(spool.weight_remaining)) ?? '';
     document.getElementById('spoolManufacturerId').value = spool.manufacturer_spool_id || '';
+    document.getElementById('spoolNumber').value = spool.spool_number || '';
+    document.getElementById('spoolStatus').value = spool.status || '';
     document.getElementById('spoolIsOpen').checked = spool.is_open;
     document.getElementById('spoolIsEmpty').checked = spool.is_empty;
-    
+
     document.getElementById('spoolModal').classList.add('active');
 }
 
@@ -407,7 +423,8 @@ async function saveSpool(event) {
         tray_color: trayColor,
         is_open: document.getElementById('spoolIsOpen').checked,
         is_empty: document.getElementById('spoolIsEmpty').checked,
-        spool_number: spoolNumber ? parseInt(spoolNumber) : null
+        spool_number: spoolNumber ? parseInt(spoolNumber) : null,
+        status: document.getElementById('spoolStatus').value || null
     };
     
     try {

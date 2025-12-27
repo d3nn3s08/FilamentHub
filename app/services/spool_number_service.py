@@ -49,12 +49,15 @@ def assign_spool_number(spool: Spool, session: Session) -> Optional[int]:
     """
     Weist einer Spule eine Nummer zu und denormalisiert Material-Daten
 
-    WICHTIG: Bambu-RFID-Spulen (mit tray_uuid) bekommen KEINE Nummer!
-    Nur manuelle/Drittanbieter-Spulen bekommen Nummern (#1, #2, #3...)
+    INTELLIGENTES LAGER-SYSTEM:
+    - Manuelle Spulen bekommen Nummern (#1, #2, #3...)
+    - Wenn eine nummerierte Spule in den AMS eingelegt wird, BEHÄLT sie die Nummer
+    - RFID (tray_uuid) und Nummer werden VERKNÜPFT (nicht entfernt!)
+    - So kann das Lager-System Spulen über Nummern tracken, auch wenn sie im AMS sind
 
     Diese Funktion:
-    1. Prüft ob RFID-Spule (tray_uuid vorhanden) → KEINE Nummer
-    2. Nutzt manuell gesetzte Nummer ODER findet die niedrigste freie Nummer
+    1. Nutzt manuell gesetzte Nummer ODER findet die niedrigste freie Nummer
+    2. Behält die Nummer, auch wenn später tray_uuid hinzugefügt wird
     3. Kopiert name, vendor aus material-Tabelle
     4. Extrahiert Farbe aus tray_color (falls vorhanden)
 
@@ -63,19 +66,18 @@ def assign_spool_number(spool: Spool, session: Session) -> Optional[int]:
         session: SQLModel Session
 
     Returns:
-        Optional[int]: Zugewiesene Spulen-Nummer oder None (bei RFID-Spulen)
+        Optional[int]: Zugewiesene Spulen-Nummer
     """
-    # RFID-Check: Bambu-Spulen mit tray_uuid brauchen KEINE Nummer
-    if spool.tray_uuid:
-        spool.spool_number = None
-        # Denormalisierung trotzdem durchführen
-        _denormalize_spool_data(spool, session)
-        return None
-
-    # 1. Nummer zuweisen (nur für manuelle Spulen)
-    # Wenn bereits eine Nummer gesetzt wurde (manuell), behalte diese
+    # 1. Nummer zuweisen (nur wenn noch keine vorhanden)
+    # Wenn bereits eine Nummer gesetzt wurde (manuell oder früher vergeben), behalte diese
     if spool.spool_number is None:
-        spool.spool_number = get_next_spool_number(session)
+        # Nur RFID-only Spulen (direkt von Bambu, nie manuell angelegt) bekommen keine Nummer
+        # Wenn tray_uuid gesetzt ist UND es noch nie eine Nummer gab → keine Nummer vergeben
+        if spool.tray_uuid and not hasattr(spool, '_had_number_before'):
+            spool.spool_number = None
+        else:
+            # Manuelle Spule oder Spule die früher eine Nummer hatte
+            spool.spool_number = get_next_spool_number(session)
 
     # 2. Denormalisierung durchführen
     _denormalize_spool_data(spool, session)
