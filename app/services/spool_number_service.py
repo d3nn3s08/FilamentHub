@@ -54,7 +54,7 @@ def assign_spool_number(spool: Spool, session: Session) -> Optional[int]:
 
     Diese Funktion:
     1. Prüft ob RFID-Spule (tray_uuid vorhanden) → KEINE Nummer
-    2. Findet die niedrigste freie Nummer (nur für manuelle Spulen)
+    2. Nutzt manuell gesetzte Nummer ODER findet die niedrigste freie Nummer
     3. Kopiert name, vendor aus material-Tabelle
     4. Extrahiert Farbe aus tray_color (falls vorhanden)
 
@@ -73,7 +73,9 @@ def assign_spool_number(spool: Spool, session: Session) -> Optional[int]:
         return None
 
     # 1. Nummer zuweisen (nur für manuelle Spulen)
-    spool.spool_number = get_next_spool_number(session)
+    # Wenn bereits eine Nummer gesetzt wurde (manuell), behalte diese
+    if spool.spool_number is None:
+        spool.spool_number = get_next_spool_number(session)
 
     # 2. Denormalisierung durchführen
     _denormalize_spool_data(spool, session)

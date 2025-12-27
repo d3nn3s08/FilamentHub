@@ -346,6 +346,7 @@ function openAddModal() {
     document.getElementById('spoolColorHex').value = '#ffffff';
     document.getElementById('spoolIsOpen').checked = true;
     document.getElementById('spoolIsEmpty').checked = false;
+    document.getElementById('spoolNumber').value = '';
     document.getElementById('spoolModal').classList.add('active');
 }
 
@@ -394,7 +395,8 @@ async function saveSpool(event) {
     const materialId = document.getElementById('spoolMaterial').value;
     const colorHex = document.getElementById('spoolColor').value;
     const trayColor = colorHex?.replace('#', '') || null;
-    
+    const spoolNumber = document.getElementById('spoolNumber').value;
+
     const data = {
         material_id: materialId,
         weight_full: parseFloat(document.getElementById('spoolWeightFull').value),
@@ -404,7 +406,8 @@ async function saveSpool(event) {
         manufacturer_spool_id: document.getElementById('spoolManufacturerId').value || null,
         tray_color: trayColor,
         is_open: document.getElementById('spoolIsOpen').checked,
-        is_empty: document.getElementById('spoolIsEmpty').checked
+        is_empty: document.getElementById('spoolIsEmpty').checked,
+        spool_number: spoolNumber ? parseInt(spoolNumber) : null
     };
     
     try {
