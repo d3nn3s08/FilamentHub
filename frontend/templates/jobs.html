@@ -64,6 +64,7 @@
             <option value="">Alle Status</option>
             <option value="active">Aktiv</option>
             <option value="completed">Abgeschlossen</option>
+            <option value="no-tracking">⚠️ Ohne Tracking</option>
         </select>
         
         <button class="btn btn-secondary" onclick="clearFilters()">
@@ -165,6 +166,46 @@
             <button class="btn btn-primary btn-danger" onclick="confirmDelete()">Löschen</button>
             <button class="btn btn-secondary" onclick="closeDeleteModal()">Abbrechen</button>
         </div>
+    </div>
+</div>
+
+<!-- Manual Usage Modal -->
+<div id="manualUsageModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Verbrauch nachtragen</h2>
+            <button class="modal-close" onclick="closeManualUsageModal()">✕</button>
+        </div>
+        <form id="manualUsageForm" onsubmit="saveManualUsage(event)">
+            <div style="margin-bottom: 16px; padding: 12px; background: var(--warning-bg, #fff3cd); border-left: 4px solid var(--warning, #ffc107); border-radius: 4px;">
+                <strong>ℹ️ Hinweis:</strong> Job <span id="usageJobName" style="font-weight: bold;">-</span> hat keinen automatischen Verbrauch erfasst.
+            </div>
+
+            <div class="form-group">
+                <label for="usageSpool">Spule* (Pflicht)</label>
+                <select id="usageSpool" required>
+                    <option value="">-- Spule wählen --</option>
+                </select>
+                <small style="color: var(--text-dim);">Die Spule muss zugeordnet werden, damit der Verbrauch korrekt abgezogen wird.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="usageGrams">Verbrauch (Gramm)*</label>
+                <input type="number" id="usageGrams" step="0.1" min="0" placeholder="z.B. 42.5" required>
+                <small style="color: var(--text-dim);">Du kannst den Verbrauch mit einer Waage messen.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="usageMm">Verbrauch (Meter)</label>
+                <input type="number" id="usageMm" step="0.1" min="0" placeholder="Optional">
+                <small style="color: var(--text-dim);">Optional: Länge in Metern (wird automatisch in mm umgerechnet).</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Speichern</button>
+                <button type="button" class="btn btn-secondary" onclick="closeManualUsageModal()">Abbrechen</button>
+            </div>
+        </form>
     </div>
 </div>
 

@@ -34,6 +34,14 @@ DEFAULT_NOTIFICATIONS: List[Dict[str, Any]] = [
         "persistent": True,
         "enabled": True,
     },
+    {
+        "id": "job_no_tracking",
+        "label": "Job ohne Filament-Tracking",
+        "message": "Ein Druckauftrag wurde ohne Filament-Tracking beendet. Bitte Spule zuordnen und Verbrauch nachtragen.",
+        "type": "warn",
+        "persistent": True,
+        "enabled": True,
+    },
 ]
 
 notification_ws_clients: Set[WebSocket] = set()

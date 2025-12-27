@@ -129,6 +129,13 @@ class JobSpoolUpdate(SQLModel):
     spool_id: Optional[str] = None
 
 
+class JobManualUsageUpdate(SQLModel):
+    """Model für manuelle Verbrauchseingabe bei Jobs ohne AMS"""
+    spool_id: Optional[str] = None  # Spule zuordnen (Pflicht!)
+    used_g: Optional[float] = None   # Verbrauch in Gramm
+    used_mm: Optional[float] = None  # Verbrauch in Millimetern
+
+
 @router.patch("/{job_id}/spool", response_model=JobRead)
 def override_job_spool(job_id: str, payload: JobSpoolUpdate, session: Session = Depends(get_session)):
     """
@@ -145,6 +152,53 @@ def override_job_spool(job_id: str, payload: JobSpoolUpdate, session: Session = 
             raise HTTPException(status_code=400, detail="Spule nicht gefunden")
 
     db_job.spool_id = payload.spool_id
+    session.add(db_job)
+    session.commit()
+    session.refresh(db_job)
+    return db_job
+
+
+@router.patch("/{job_id}/manual-usage", response_model=JobRead)
+def update_manual_usage(job_id: str, payload: JobManualUsageUpdate, session: Session = Depends(get_session)):
+    """
+    Manuelle Verbrauchseingabe für Jobs ohne AMS-Tracking.
+    Spule muss zugeordnet werden (Pflicht), dann wird Verbrauch von Spule abgezogen.
+    """
+    db_job = session.get(Job, job_id)
+    if not db_job:
+        raise HTTPException(status_code=404, detail="Druckauftrag nicht gefunden")
+
+    # Spule ist Pflicht!
+    if not payload.spool_id:
+        raise HTTPException(status_code=400, detail="Spule muss zugeordnet werden")
+
+    spool = session.get(Spool, payload.spool_id)
+    if not spool:
+        raise HTTPException(status_code=400, detail="Spule nicht gefunden")
+
+    # Spule zuordnen
+    db_job.spool_id = payload.spool_id
+
+    # Verbrauch setzen (mindestens einer muss angegeben sein)
+    if payload.used_g is None and payload.used_mm is None:
+        raise HTTPException(status_code=400, detail="Verbrauch (used_g oder used_mm) muss angegeben werden")
+
+    if payload.used_mm is not None:
+        db_job.filament_used_mm = payload.used_mm
+    if payload.used_g is not None:
+        db_job.filament_used_g = payload.used_g
+
+    # Von Spule abziehen (wenn Gewicht vorhanden)
+    if payload.used_g and spool.weight_current is not None:
+        new_weight = max(0, float(spool.weight_current) - float(payload.used_g))
+        spool.weight_current = new_weight
+
+        # Spule als "leer" markieren wenn unter 50g
+        if new_weight < 50:
+            spool.is_empty = True
+
+        session.add(spool)
+
     session.add(db_job)
     session.commit()
     session.refresh(db_job)

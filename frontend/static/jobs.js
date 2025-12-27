@@ -98,25 +98,30 @@ async function loadStats() {
 function renderJobs(jobsList) {
     const tbody = document.getElementById('jobsTable');
     tbody.innerHTML = '';
-    
+
     // Update count
     document.getElementById('jobCount').textContent = jobsList.length;
-    
+
     if (jobsList.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-dim);">Keine Druckaufträge vorhanden</td></tr>';
         return;
     }
-    
+
     jobsList.forEach(job => {
         const printer = printers.find(p => p.id === job.printer_id);
         const primarySpool = spools.find(s => s.id === job.spool_id);
-        
-        const status = job.finished_at ? 
-            '<span class="status-badge status-online">Abgeschlossen</span>' : 
+
+        // Prüfe ob Job Tracking braucht (kein Verbrauch und keine Spule)
+        const needsTracking = (!job.spool_id || job.filament_used_g === 0 || job.filament_used_mm === 0) && job.finished_at;
+
+        const status = job.finished_at ?
+            '<span class="status-badge status-online">Abgeschlossen</span>' :
             '<span class="status-badge status-printing">Aktiv</span>';
-        
-        const verbrauch = `<strong>${job.filament_used_g.toFixed(1)}g</strong><br><small>${(job.filament_used_mm / 1000).toFixed(2)}m</small>`;
-        
+
+        const verbrauch = needsTracking ?
+            '<span style="color: var(--error, #dc3545); font-weight: bold;">⚠️ 0g</span>' :
+            `<strong>${job.filament_used_g.toFixed(1)}g</strong><br><small>${(job.filament_used_mm / 1000).toFixed(2)}m</small>`;
+
         // Berechne Dauer
         const start = new Date(job.started_at);
         const end = job.finished_at ? new Date(job.finished_at) : new Date();
@@ -125,26 +130,39 @@ function renderJobs(jobsList) {
         const hours = Math.floor(durationMin / 60);
         const minutes = durationMin % 60;
         const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-        
-        const spoolDisplay = primarySpool ? 
+
+        const spoolDisplay = primarySpool ?
             `<div style="display:flex;align-items:center;gap:8px;">
                 ${primarySpool.tray_color ? `<span class="color-preview" style="background:#${primarySpool.tray_color.substring(0,6)}"></span>` : ''}
                 <span>${primarySpool.label || `Spule ${primarySpool.id.substring(0,6)}`}</span>
-             </div>` : '<span style="color: var(--text-dim);">-</span>';
-        
+             </div>` :
+            (needsTracking ? '<span style="color: var(--error, #dc3545); font-weight: bold;">⚠️ Keine</span>' : '<span style="color: var(--text-dim);">-</span>');
+
+        // Aktionen: "Verbrauch nachtragen" Button wenn nötig
+        const actions = needsTracking ?
+            `<div class="table-actions">
+                <button class="btn btn-warning btn-sm" onclick="openManualUsageModal('${job.id}')" title="Verbrauch nachtragen" style="padding: 4px 8px; font-size: 0.85rem;">
+                    📝 Nachtragen
+                </button>
+                <button class="btn-icon btn-delete" onclick="deleteJob('${job.id}')" title="Löschen">🗑️</button>
+            </div>` :
+            `<div class="table-actions">
+                <button class="btn-icon" onclick="editJob('${job.id}')" title="Bearbeiten">✏️</button>
+                <button class="btn-icon btn-delete" onclick="deleteJob('${job.id}')" title="Löschen">🗑️</button>
+            </div>`;
+
+        const rowClass = needsTracking ? ' style="background: var(--warning-bg, #fff3cd);"' : '';
+
         const row = `
-            <tr>
-                <td><strong>${job.name}</strong></td>
+            <tr${rowClass}>
+                <td><strong>${needsTracking ? '⚠️ ' : ''}${job.name}</strong></td>
                 <td>${printer ? printer.name : '<em style="color: var(--text-dim);">Unbekannt</em>'}</td>
                 <td>${spoolDisplay}</td>
                 <td>${verbrauch}</td>
                 <td>${status}</td>
                 <td><strong>${durationText}</strong></td>
                 <td>
-                    <div class="table-actions">
-                        <button class="btn-icon" onclick="editJob('${job.id}')" title="Bearbeiten">✏️</button>
-                        <button class="btn-icon btn-delete" onclick="deleteJob('${job.id}')" title="Löschen">🗑️</button>
-                    </div>
+                    ${actions}
                 </td>
             </tr>
         `;
@@ -156,17 +174,25 @@ function filterJobs() {
     const search = document.getElementById('searchInput').value.toLowerCase();
     const printerFilter = document.getElementById('filterPrinter').value;
     const statusFilter = document.getElementById('filterStatus').value;
-    
+
     const filtered = jobs.filter(job => {
         const matchSearch = job.name.toLowerCase().includes(search);
         const matchPrinter = !printerFilter || job.printer_id === printerFilter;
-        const matchStatus = !statusFilter || 
-            (statusFilter === 'active' && !job.finished_at) ||
-            (statusFilter === 'completed' && job.finished_at);
-        
+
+        // Erweiterter Status-Filter mit "no-tracking"
+        let matchStatus = !statusFilter;
+        if (statusFilter === 'active') {
+            matchStatus = !job.finished_at;
+        } else if (statusFilter === 'completed') {
+            matchStatus = job.finished_at;
+        } else if (statusFilter === 'no-tracking') {
+            // Jobs ohne Tracking: kein Verbrauch ODER keine Spule UND abgeschlossen
+            matchStatus = (!job.spool_id || job.filament_used_g === 0 || job.filament_used_mm === 0) && job.finished_at;
+        }
+
         return matchSearch && matchPrinter && matchStatus;
     });
-    
+
     renderJobs(filtered);
 }
 
@@ -310,12 +336,105 @@ async function confirmDelete() {
     }
 }
 
+// ===== Manual Usage Modal =====
+let manualUsageJobId = null;
+
+function openManualUsageModal(jobId) {
+    manualUsageJobId = jobId;
+    const job = jobs.find(j => j.id === jobId);
+
+    if (!job) {
+        alert('Job nicht gefunden');
+        return;
+    }
+
+    // Job-Name anzeigen
+    document.getElementById('usageJobName').textContent = job.name;
+
+    // Spulen-Dropdown befüllen (nur verfügbare Spulen)
+    const spoolSelect = document.getElementById('usageSpool');
+    spoolSelect.innerHTML = '<option value="">-- Spule wählen --</option>';
+
+    spools.forEach(spool => {
+        // Filtere nur Spulen die verfügbar sind (nicht leer, nicht im AMS eines anderen Druckers)
+        const isAvailable = !spool.is_empty;
+        if (isAvailable) {
+            const name = spool.label || `#${spool.spool_number || spool.id.substring(0, 6)}`;
+            const vendor = spool.vendor || '';
+            const color = spool.tray_color ? ` (${spool.tray_color.substring(0, 6)})` : '';
+            const displayName = vendor ? `${name} - ${vendor}${color}` : `${name}${color}`;
+            spoolSelect.innerHTML += `<option value="${spool.id}">${displayName}</option>`;
+        }
+    });
+
+    // Felder zurücksetzen
+    document.getElementById('usageGrams').value = '';
+    document.getElementById('usageMm').value = '';
+
+    // Modal öffnen
+    document.getElementById('manualUsageModal').style.display = 'flex';
+}
+
+function closeManualUsageModal() {
+    document.getElementById('manualUsageModal').style.display = 'none';
+    manualUsageJobId = null;
+}
+
+async function saveManualUsage(event) {
+    event.preventDefault();
+
+    const spool_id = document.getElementById('usageSpool').value;
+    const used_g = parseFloat(document.getElementById('usageGrams').value);
+    const usageMmMeters = parseFloat(document.getElementById('usageMm').value) || 0;
+    const used_mm = usageMmMeters > 0 ? usageMmMeters * 1000 : null; // Meter → mm
+
+    if (!spool_id) {
+        alert('Bitte wähle eine Spule aus!');
+        return;
+    }
+
+    if (!used_g && !used_mm) {
+        alert('Bitte gib den Verbrauch in Gramm oder Meter an!');
+        return;
+    }
+
+    const payload = {
+        spool_id,
+        used_g: used_g || null,
+        used_mm: used_mm || null
+    };
+
+    try {
+        const response = await fetch(`/api/jobs/${manualUsageJobId}/manual-usage`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            closeManualUsageModal();
+            clearFilters();
+            await loadJobs();
+            await loadStats();
+            await loadSpools(); // Spulen neu laden (Gewicht hat sich geändert)
+            showNotification('Verbrauch erfolgreich nachgetragen!', 'success');
+        } else {
+            const error = await response.json();
+            alert(`Fehler: ${error.detail || 'Verbrauch konnte nicht gespeichert werden'}`);
+        }
+    } catch (error) {
+        console.error('Fehler:', error);
+        alert('Fehler beim Speichern des Verbrauchs');
+    }
+}
+
 
 // Close modal on ESC or background click
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeAddModal();
         closeDeleteModal();
+        closeManualUsageModal();
     }
 });
 
@@ -325,4 +444,8 @@ document.getElementById('jobModal')?.addEventListener('click', (e) => {
 
 document.getElementById('deleteModal')?.addEventListener('click', (e) => {
     if (e.target.id === 'deleteModal') closeDeleteModal();
+});
+
+document.getElementById('manualUsageModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'manualUsageModal') closeManualUsageModal();
 });
