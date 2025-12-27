@@ -74,7 +74,10 @@ def parse_job(report_payload: Dict[str, Any]) -> Dict[str, Any]:
     root = _dict_lookup(report_payload, "print") or report_payload
 
     job_block = root.get("job") or {}
-    upgrade_block = root.get("upgrade_state") or {}
+    upgrade_block = {}
+    if isinstance(report_payload, dict):
+        upgrade_block = report_payload.get("upgrade_state") or {}
+    upgrade_block = upgrade_block or root.get("upgrade_state") or {}
 
     file_name = _first_defined(
         root.get("gcode_file"),

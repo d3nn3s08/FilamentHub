@@ -1,49 +1,56 @@
 
 from fastapi.testclient import TestClient
 from app.main import app
+import uuid
 
 client = TestClient(app)
 
-material_data = {
-    "name": "TestPLA_unique_20251127",
-    "type": "PLA",
-    "color": "Rot",
-    "manufacturer": "TestMaker",
-    "density": 1.24,
-    "diameter": 1.75
-}
+def get_unique_material_data():
+    return {
+        "name": f"TestPLA_{uuid.uuid4().hex[:8]}",
+        "type": "PLA",
+        "color": "Rot",
+        "manufacturer": "TestMaker",
+        "density": 1.24,
+        "diameter": 1.75
+    }
 
-spool_data = {
-    "weight": 1000,
-    "external_id": "spool-456-20251127",
-    "printer_slot": "AMS-2",
-    "manufacturer": "TestMaker",
-    "color": "Rot"
-}
+def get_unique_spool_data():
+    return {
+        "weight": 1000,
+        "external_id": f"spool-{uuid.uuid4().hex[:8]}",
+        "printer_slot": "AMS-2",
+        "manufacturer": "TestMaker",
+        "color": "Rot"
+    }
+
+material_data = get_unique_material_data()
+spool_data = get_unique_spool_data()
 
 material_id = None
 spool_id = None
 
 def test_crud_material():
     global material_id
-    # Create
-    response = client.post("/api/materials", json=material_data)
+    # Create with unique data
+    test_material = get_unique_material_data()
+    response = client.post("/api/materials", json=test_material)
     assert response.status_code == 201
     material_id = response.json()["id"]
     # Get
     response = client.get(f"/api/materials/{material_id}")
     assert response.status_code == 200
-    assert response.json()["name"] == material_data["name"]
+    assert response.json()["name"] == test_material["name"]
     # List
     response = client.get("/api/materials")
     assert response.status_code == 200
     assert any(m["id"] == material_id for m in response.json())
     # Update
-    update_data = material_data.copy()
-    update_data["color"] = "Blau"
+    update_data = test_material.copy()
+    update_data["density"] = 1.30
     response = client.put(f"/api/materials/{material_id}", json=update_data)
     assert response.status_code == 200
-    assert response.json()["color"] == "Blau"
+    assert response.json()["density"] == 1.30
     # Delete
     response = client.delete(f"/api/materials/{material_id}")
     assert response.status_code == 204
@@ -52,24 +59,27 @@ def test_crud_material():
 
 def test_crud_spool():
     global spool_id
-    # Material für Spool anlegen
-    response = client.post("/api/materials", json=material_data)
+    # Material für Spool anlegen with unique data
+    test_material = get_unique_material_data()
+    response = client.post("/api/materials", json=test_material)
     assert response.status_code == 201
-    spool_data["material_id"] = response.json()["id"]
-    # Create Spool
-    response = client.post("/api/spools", json=spool_data)
+    mat_id = response.json()["id"]
+    # Create Spool with unique data
+    test_spool = get_unique_spool_data()
+    test_spool["material_id"] = mat_id
+    response = client.post("/api/spools", json=test_spool)
     assert response.status_code == 201
     spool_id = response.json()["id"]
     # Get
     response = client.get(f"/api/spools/{spool_id}")
     assert response.status_code == 200
-    assert response.json()["external_id"] == spool_data["external_id"]
+    assert response.json()["external_id"] == test_spool["external_id"]
     # List
     response = client.get("/api/spools")
     assert response.status_code == 200
     assert any(s["id"] == spool_id for s in response.json())
     # Update
-    update_data = spool_data.copy()
+    update_data = test_spool.copy()
     update_data["weight"] = 900
     response = client.put(f"/api/spools/{spool_id}", json=update_data)
     assert response.status_code == 200

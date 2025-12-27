@@ -40,22 +40,104 @@
         .info-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:16px; }
         .info-label { font-size:12px; opacity:0.65; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px; }
         .info-value { font-size:16px; font-weight:700; opacity:0.95; }
-        /* Data-Mode System: Verstecke Pro-Elemente in Lite-Mode */
+
+        /* ═══════════════════════════════════════════════════════════════════════════════
+         * PRO/LITE MODE SYSTEM - DOKUMENTATION
+         * ═══════════════════════════════════════════════════════════════════════════════
+         *
+         * ÜBERBLICK:
+         * Das Pro/Lite Mode System steuert die Sichtbarkeit von erweiterten Features.
+         * - LITE MODE: Zeigt nur grundlegende Features (Standard-Tabs, einfache Ansichten)
+         * - PRO MODE: Zeigt erweiterte Features (zusätzliche Tabs, Detail-Cards, Pro-Buttons)
+         *
+         * FUNKTIONSWEISE:
+         * 1. CSS-Regeln (unten) definieren Basis-Sichtbarkeit basierend auf body[data-mode]
+         * 2. JavaScript (setMode() Funktion) steuert dynamisch die Sichtbarkeit beim Umschalten
+         * 3. Tab-spezifische Regeln (z.B. .tab-mqtt) steuern Content nur in bestimmten Tabs
+         *
+         * WIE MAN NEUE PRO-FEATURES HINZUFÜGT:
+         *
+         * A) FÜR NORMALE PRO-ELEMENTE (in allen Pro-Tabs sichtbar):
+         *    → Füge dem Element das Attribut data-mode="pro" hinzu
+         *    Beispiele:
+         *      <div class="debug-tab" data-tab="logs" data-mode="pro">Log Viewer</div>
+         *      <button class="action-btn" data-mode="pro">Export Data</button>
+         *      <div class="panel" data-mode="pro">Pro Feature Panel</div>
+         *
+         * B) FÜR TAB-SPEZIFISCHE PRO-ELEMENTE (nur in einem bestimmten Tab sichtbar):
+         *    → Verwende die Klasse .mqtt-only (oder erstelle neue tab-only Klassen)
+         *    → Füge CSS-Regeln analog zu den MQTT-Regeln unten hinzu
+         *    Beispiel für MQTT-spezifisch:
+         *      <div class="mqtt-only">Nur in MQTT Tab sichtbar</div>
+         *    Beispiel für neuen Tab:
+         *      <div class="logs-only">Nur in Logs Tab sichtbar</div>
+         *      CSS: .logs-only { display: none !important; }
+         *           body[data-mode="pro"].tab-logs .logs-only { display: block !important; }
+         *
+         * C) FÜR PANELS (vollständige Ansichten wie #panel-mqtt):
+         *    → Panel wird automatisch von switchPanel() gesteuert
+         *    → Elemente INNERHALB von Panels brauchen KEIN data-mode="pro" für Sichtbarkeit!
+         *    → NUR wenn Panel selbst Pro-exklusiv ist: data-mode="pro" am Panel-Element
+         *
+         * WICHTIGE REGELN:
+         * - Elemente mit data-mode="pro" sind in Lite-Mode VERSTECKT, in Pro-Mode SICHTBAR
+         * - .debug-panel Elemente werden NICHT von setMode() manipuliert → switchPanel() steuert diese
+         * - .mqtt-only Elemente sind ZUSÄTZLICH tab-spezifisch (nur im MQTT-Tab sichtbar)
+         * - Lite-Mode Features sind IMMER sichtbar (sowohl in Lite als auch in Pro)
+         * - JavaScript überschreibt CSS-Cache durch direktes Setzen von element.style.display
+         *
+         * ─────────────────────────────────────────────────────────────────────────────
+         * PRAKTISCHE BEISPIELE AUS DEM CODE:
+         * ─────────────────────────────────────────────────────────────────────────────
+         *
+         * 1) PRO-EXKLUSIVER TAB (Zeile 125-128):
+         *    <div class="debug-tab" data-tab="logs" data-mode="pro">Log Viewer</div>
+         *    → Tab ist nur in Pro-Mode sichtbar
+         *
+         * 2) PRO BUTTON MIT SCANNER (Zeile ~270):
+         *    <button class="scanner-action-btn" data-mode="pro">Advanced Scan</button>
+         *    → Button erscheint nur in Pro-Mode
+         *
+         * 3) MQTT-SPEZIFISCHER CONTENT (Zeile ~420):
+         *    <div class="mqtt-only">
+         *        <h3>MQTT – ÜBERSICHT</h3>
+         *        <!-- Nur im MQTT-Tab sichtbar -->
+         *    </div>
+         *    → Content nur in Pro-Mode UND im MQTT-Tab
+         *
+         * 4) PANEL SELBST IST PRO (Zeile ~320):
+         *    <div id="panel-json" class="debug-panel" data-mode="pro">
+         *        <!-- Gesamtes Panel ist Pro-exklusiv -->
+         *    </div>
+         *    → Gesamtes Panel nur in Pro-Mode verfügbar
+         *
+         * ═══════════════════════════════════════════════════════════════════════════════ */
+
+        /* ─────────────────────────────────────────────────────────────────────────────
+         * BASISREGEL: In Lite-Mode alle Pro-Elemente verstecken
+         * ───────────────────────────────────────────────────────────────────────────── */
         body:not([data-mode="pro"]) [data-mode="pro"] { display: none !important; }
-        /* Im Pro-Mode: Zeige nur Tabs/Buttons/kleine Panels - NICHT debug-panel (wird von switchPanel gesteuert) */
+
+        /* ─────────────────────────────────────────────────────────────────────────────
+         * PRO-MODE: Zeige Pro-Elemente (Tabs, Buttons, kleine Panels)
+         * WICHTIG: .debug-panel wird NICHT hier gesteuert → switchPanel() übernimmt das!
+         * ───────────────────────────────────────────────────────────────────────────── */
         body[data-mode="pro"] .debug-tab[data-mode="pro"] { display: block !important; }
         body[data-mode="pro"] button[data-mode="pro"]:not(.pro-btn-disabled) { display: inline-block !important; }
         body[data-mode="pro"] .panel[data-mode="pro"] { display: block !important; }
         body[data-mode="pro"] .pro-coming[data-mode="pro"] { display: block !important; }
 
-        /* MQTT Panel: NUR im MQTT-Tab sichtbar (überschreibt switchPanel) */
+        /* ─────────────────────────────────────────────────────────────────────────────
+         * TAB-SPEZIFISCH: MQTT Panel nur im MQTT-Tab anzeigen
+         * Diese Regeln überschreiben switchPanel() für #panel-mqtt
+         * ───────────────────────────────────────────────────────────────────────────── */
         #panel-mqtt { display: none !important; }
         body.tab-mqtt #panel-mqtt { display: block !important; }
 
-        /* MQTT PRO Grid Exception - NUR wenn MQTT-Tab aktiv */
+        /* MQTT PRO Grid: Nur im MQTT-Tab als Grid anzeigen */
         body[data-mode="pro"].tab-mqtt #panel-mqtt .mqtt-pro-grid { display: grid !important; }
 
-        /* MQTT-only: Nur im MQTT-Tab sichtbar */
+        /* MQTT-only Elemente: Nur im Pro-Mode UND im MQTT-Tab sichtbar */
         .mqtt-only { display: none !important; }
         body[data-mode="pro"].tab-mqtt #panel-mqtt .mqtt-only { display: block !important; }
     </style>
@@ -394,42 +476,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Pro-Mode Warndialog -->
-            <div id="proModeWarningDialog" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
-                <div class="modal-dialog" style="max-width: 500px;">
-                    <div class="modal-header" style="background: linear-gradient(135deg, #ff9966, #ff5e62); color: white;">
-                        <h3 style="display: flex; align-items: center; gap: 10px;">
-                            <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
-                            Pro-Modus Warnung
-                        </h3>
-                    </div>
-                    <div class="modal-body" style="padding: 24px;">
-                        <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
-                            Der <strong>Pro-Modus</strong> bietet erweiterte Debug-Tools und tiefere Systemanalysen.
-                        </p>
-                        <div style="background: rgba(255, 94, 98, 0.1); border-left: 4px solid #ff5e62; padding: 12px 16px; margin-bottom: 16px; border-radius: 4px;">
-                            <p style="margin: 0; font-size: 14px; color: var(--text-primary);">
-                                <strong>⚠️ Achtung:</strong> Falsche Einstellungen oder unsachgemäße Nutzung können das System beeinträchtigen oder zu Fehlkonfigurationen führen.
-                            </p>
-                        </div>
-                        <p style="font-size: 14px; margin-bottom: 20px; color: var(--text-dim);">
-                            Diese Warnung erscheint nur einmal. Mit der Bestätigung akzeptieren Sie, dass Sie mit den erweiterten Funktionen vertraut sind.
-                        </p>
-                        <div style="background: rgba(0, 0, 0, 0.05); padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 20px;">
-                            <p style="margin: 0; font-size: 15px; font-weight: 600; color: var(--text-primary);">
-                                "Ich weiß was ich mache"
-                            </p>
-                        </div>
-                    </div>
-                    <div class="modal-footer" style="padding: 16px 24px; display: flex; gap: 12px; justify-content: flex-end;">
-                        <button id="proModeCancel" class="btn btn-secondary">Abbrechen</button>
-                        <button id="proModeAccept" class="btn btn-primary" style="background: linear-gradient(135deg, #667eea, #764ba2);">
-                            Ja, Pro-Modus aktivieren
-                        </button>
-                    </div>
-                </div>
-            </div>
         </div>
         <div id="panel-config" class="debug-panel" data-mode="pro" style="display:none;">
             <div class="system-grid" style="margin-top:10px;">
@@ -743,13 +789,33 @@
 
                     let proModeAccepted = false; // wird beim Laden geprüft
 
+                    /* ═══════════════════════════════════════════════════════════════════════════════
+                     * setMode(mode) - HAUPT-FUNKTION FÜR PRO/LITE MODE WECHSEL
+                     * ═══════════════════════════════════════════════════════════════════════════════
+                     *
+                     * PARAMETER:
+                     * - mode: 'lite' oder 'pro'
+                     *
+                     * ABLAUF:
+                     * 1. Setze body[data-mode] Attribut (für CSS-Regeln)
+                     * 2. Speichere Einstellung in Datenbank (persistent)
+                     * 3. JavaScript-basierte Sichtbarkeit für alle [data-mode="pro"] Elemente
+                     * 4. Update UI-Buttons (active/inactive States)
+                     * 5. Update Mode-Label Text
+                     *
+                     * WIRD AUFGERUFEN VON:
+                     * - btnLite.addEventListener('click') → setMode('lite')
+                     * - btnPro.addEventListener('click') → setMode('pro') (nach Warning-Dialog)
+                     * - window.onload → Lade gespeicherten Mode aus Datenbank
+                     *
+                     * ═══════════════════════════════════════════════════════════════════════════════ */
                     const setMode = async (mode) => {
                         const b = document.body;
 
-                        // Setze data-mode Attribut auf body
+                        // Setze data-mode Attribut auf body (wird von CSS-Regeln genutzt)
                         b.dataset.mode = mode;
 
-                        // Speichere Einstellung in Datenbank
+                        // Speichere Einstellung in Datenbank (persistent über Server-Neustarts)
                         try {
                             await fetch('/api/settings', {
                                 method: 'PUT',
@@ -761,24 +827,54 @@
                             console.error('[Debug] Fehler beim Speichern des Modes:', err);
                         }
 
-                        // JAVASCRIPT-BASIERTE SICHTBARKEIT (umgeht CSS-Cache-Probleme!)
-                        // Zeige/Verstecke alle Elemente mit data-mode="pro"
+                        /* ═══════════════════════════════════════════════════════════════════════════
+                         * JAVASCRIPT-BASIERTE SICHTBARKEIT
+                         * ═══════════════════════════════════════════════════════════════════════════
+                         *
+                         * WARUM JAVASCRIPT STATT NUR CSS?
+                         * - Umgeht Browser-Cache und CSS-Cache Probleme (vor allem in Docker/Unraid)
+                         * - Garantiert sofortige Sichtbarkeitsänderung beim Mode-Wechsel
+                         * - Setzt element.style.display direkt (höhere Priorität als CSS)
+                         *
+                         * LOGIK:
+                         * 1. Finde alle Elemente mit data-mode="pro"
+                         * 2. Im PRO-MODE: Zeige Element (außer Ausnahmen)
+                         * 3. Im LITE-MODE: Verstecke Element (außer Ausnahmen)
+                         *
+                         * AUSNAHMEN (werden NICHT manipuliert):
+                         * - .debug-panel: Wird von switchPanel() gesteuert, nicht hier!
+                         * - Elemente INNERHALB .debug-panel: Panel-Sichtbarkeit entscheidet
+                         * - .mqtt-only und .mqtt-pro-grid: Tab-spezifisch, CSS steuert diese
+                         *
+                         * ═══════════════════════════════════════════════════════════════════════════ */
                         document.querySelectorAll('[data-mode="pro"]').forEach(el => {
                             if (mode === 'pro') {
-                                // Pro-Mode: Zeige Pro-Elemente
+                                // ──────────────────────────────────────────────────────────────────
+                                // PRO-MODE: Zeige Pro-Elemente
+                                // ──────────────────────────────────────────────────────────────────
                                 if (el.classList.contains('debug-panel')) {
-                                    // Debug-Panels nicht anzeigen - werden von switchPanel gesteuert
+                                    // AUSNAHME 1: Debug-Panels (z.B. #panel-mqtt, #panel-logs)
+                                    // → switchPanel() steuert welches Panel sichtbar ist
+                                    // → Hier NICHTS tun!
                                 } else if (el.closest('.debug-panel')) {
-                                    // Elemente INNERHALB eines debug-panel ignorieren - Panel-Sichtbarkeit wird von switchPanel gesteuert
+                                    // AUSNAHME 2: Elemente INNERHALB eines debug-panel
+                                    // → Panel-Sichtbarkeit entscheidet ob Inhalt sichtbar ist
+                                    // → Hier NICHTS tun!
                                 } else if (el.classList.contains('mqtt-only') || el.classList.contains('mqtt-pro-grid') || el.closest('.mqtt-only')) {
-                                    // MQTT-only Elemente: Nur im MQTT-Tab sichtbar (CSS-gesteuert)
+                                    // AUSNAHME 3: Tab-spezifische Elemente (z.B. .mqtt-only)
+                                    // → CSS-Regeln mit body.tab-{name} steuern Sichtbarkeit
+                                    // → Hier NICHTS tun!
                                 } else {
-                                    el.style.display = '';  // Entferne inline style, nutze CSS
+                                    // NORMALE PRO-ELEMENTE: Zeige sie!
+                                    el.style.display = '';  // Entferne inline style → CSS übernimmt
                                     el.removeAttribute('hidden');
                                 }
                             } else {
-                                // Lite-Mode: Verstecke Pro-Elemente
+                                // ──────────────────────────────────────────────────────────────────
+                                // LITE-MODE: Verstecke Pro-Elemente
+                                // ──────────────────────────────────────────────────────────────────
                                 if (!el.classList.contains('debug-panel') && !el.closest('.debug-panel')) {
+                                    // Verstecke Element (außer wenn es in einem Panel ist)
                                     el.style.display = 'none';
                                 }
                             }
@@ -855,22 +951,25 @@
                         }
                     });
 
-                    // Lade Pro-Mode-Status beim Start
+                    // Lade Pro-Mode-Status beim Start UND setze dann den initialen Mode
                     (async () => {
                         try {
                             const res = await fetch('/api/debug/pro-mode/status');
                             if (res.ok) {
                                 const data = await res.json();
                                 proModeAccepted = data.accepted || false;
+                                console.log('[Pro-Mode] Status geladen, accepted:', proModeAccepted);
                             }
                         } catch (err) {
                             console.error('Pro-Mode Status laden fehlgeschlagen:', err);
                         }
-                    })();
 
-                    // Initial: Lade Mode vom Server (data-mode Attribut)
-                    const initialMode = document.body.dataset.mode || 'lite';
-                    setMode(initialMode);
+                        // WICHTIG: Initialen Mode NACH dem Laden des Status setzen
+                        // Damit proModeAccepted schon korrekt gesetzt ist
+                        const initialMode = document.body.dataset.mode || 'lite';
+                        console.log('[Pro-Mode] Initial mode:', initialMode);
+                        setMode(initialMode);
+                    })();
                 });
                 // Einfacher Hinweis-Toast
                 (function(){
@@ -1300,6 +1399,46 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════════
+         PRO-MODE WARNDIALOG
+         Muss außerhalb aller .debug-panel divs sein, damit er immer sichtbar ist!
+         ═══════════════════════════════════════════════════════════════════════════════ -->
+    <div id="proModeWarningDialog" class="modal-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+        <div class="modal-dialog" style="max-width: 500px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #ff9966, #ff5e62); color: white;">
+                <h3 style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+                    Pro-Modus Warnung
+                </h3>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <p style="font-size: 16px; line-height: 1.6; margin-bottom: 16px;">
+                    Der <strong>Pro-Modus</strong> bietet erweiterte Debug-Tools und tiefere Systemanalysen.
+                </p>
+                <div style="background: rgba(255, 94, 98, 0.1); border-left: 4px solid #ff5e62; padding: 12px 16px; margin-bottom: 16px; border-radius: 4px;">
+                    <p style="margin: 0; font-size: 14px; color: var(--text-primary);">
+                        <strong>⚠️ Achtung:</strong> Falsche Einstellungen oder unsachgemäße Nutzung können das System beeinträchtigen oder zu Fehlkonfigurationen führen.
+                    </p>
+                </div>
+                <p style="font-size: 14px; margin-bottom: 20px; color: var(--text-dim);">
+                    Diese Warnung erscheint nur einmal. Mit der Bestätigung akzeptieren Sie, dass Sie mit den erweiterten Funktionen vertraut sind.
+                </p>
+                <div style="background: rgba(0, 0, 0, 0.05); padding: 12px; border-radius: 6px; text-align: center; margin-bottom: 20px;">
+                    <p style="margin: 0; font-size: 15px; font-weight: 600; color: var(--text-primary);">
+                        "Ich weiß was ich mache"
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 16px 24px; display: flex; gap: 12px; justify-content: flex-end;">
+                <button id="proModeCancel" class="btn btn-secondary">Abbrechen</button>
+                <button id="proModeAccept" class="btn btn-primary" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                    Ja, Pro-Modus aktivieren
+                </button>
+            </div>
+        </div>
+    </div>
 
 {% endblock %}
 

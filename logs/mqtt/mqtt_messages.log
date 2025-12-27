@@ -21338,3 +21338,12 @@
 }
 2025-12-21 01:06:20,331 | [AMS SYNC] printer_id=a8a51ff3-a44b-4825-969b-a5d545388140 ams_count=1
 2025-12-21 01:06:20,335 | [AMS SYNC] done printer_id=a8a51ff3-a44b-4825-969b-a5d545388140
+2025-12-27 00:24:10,271 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-27 00:24:10,273 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-27 00:24:10,280 | [AMS SYNC] done printer_id=None
+2025-12-27 00:24:10,287 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-27 00:24:10,288 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-27 00:24:10,295 | [AMS SYNC] done printer_id=None
+2025-12-27 00:24:10,295 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-27 00:24:10,296 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-27 00:24:10,299 | [AMS SYNC] done printer_id=None

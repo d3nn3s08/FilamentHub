@@ -274,69 +274,22 @@ try {
         </div>
 
         <section class="admin-card" id="admin-notifications" style="grid-column: 1 / -1;">
-                <div class="notif-header">
+                <div class="notif-header-modern">
                     <div>
                         <p class="eyebrow">Benachrichtigungen</p>
                         <h2>Globale Alerts</h2>
+                        <p class="subtitle" style="margin:8px 0 0 0;color:var(--text-dim);">Verwalte systemweite Benachrichtigungen für alle Benutzer</p>
                     </div>
-                    <div class="btn-group-compact">
-                        <button class="btn-compact" id="btn-save">💾 Speichern</button>
-                        <button class="btn-compact" id="btn-test">▶️ Testen</button>
-                        <button class="btn-compact" id="btn-trigger">⚡ Triggern</button>
-                    </div>
+                    <button class="btn-add-notif" id="btn-new-notification">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Neue Benachrichtigung
+                    </button>
                 </div>
-                <div class="notif-container">
-                    <div class="notif-form">
-                        <h3 class="form-title">Neue Benachrichtigung</h3>
-                        <div class="form-group">
-                            <label for="notif-id">ID <span class="required">*</span></label>
-                            <input id="notif-id" type="text" placeholder="z.B. print_done">
-                        </div>
-                        <div class="form-group">
-                            <label for="notif-label">Label</label>
-                            <input id="notif-label" type="text" placeholder="Lesbarer Name">
-                        </div>
-                        <div class="form-group">
-                            <label for="notif-message">Nachricht <span class="required">*</span></label>
-                            <textarea id="notif-message" placeholder="Der Druck wurde erfolgreich abgeschlossen." style="min-height:80px;"></textarea>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="notif-type">Typ</label>
-                                <select id="notif-type">
-                                    <option value="success">✓ Success</option>
-                                    <option value="warn">⚠️ Warnung</option>
-                                    <option value="error">✕ Error</option>
-                                    <option value="info">ℹ️ Info</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="notif-trigger">Trigger</label>
-                                <select id="notif-trigger">
-                                    <option value="manual">Manuell</option>
-                                    <option value="print_done">Druck fertig</option>
-                                    <option value="error">Fehler</option>
-                                    <option value="material_low">Material niedrig</option>
-                                    <option value="custom">Custom</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-checkboxes">
-                            <label class="checkbox-label">
-                                <input id="notif-enabled" type="checkbox" checked>
-                                <span>Aktiv</span>
-                            </label>
-                            <label class="checkbox-label">
-                                <input id="notif-persistent" type="checkbox">
-                                <span>Persistent</span>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="notif-list">
-                        <h3 class="form-title">Gespeichert</h3>
-                        <div id="notification-list" class="notif-items"></div>
-                    </div>
-                </div>
+
+                <!-- Notification Cards Grid -->
+                <div id="notification-cards-container" class="notif-cards-grid"></div>
             </section>
         </main>
     </div>
@@ -349,6 +302,11 @@ try {
         if (modal) {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
+
+            // Lade Begrüßungstext, wenn Welcome-Modal geöffnet wird
+            if (modalId === 'modal-welcome') {
+                loadWelcomeText();
+            }
         }
     }
     
@@ -527,7 +485,7 @@ try {
     });
 
     coverageReportBtn?.addEventListener('click', function () {
-        window.open('/api/admin/coverage/report', '_blank');
+        window.open('/api/admin/coverage/ui', '_blank');
     });
 
     // ===== DEBUG SETTINGS =====
@@ -586,5 +544,174 @@ try {
         }
     });
     </script>
+
+    <!-- Notification Edit Modal (moved outside card to prevent clipping) -->
+    <div id="notif-edit-modal" class="notif-modal">
+        <div class="notif-modal-overlay" onclick="closeNotifModal()"></div>
+        <div class="notif-modal-dialog">
+            <div class="notif-modal-header">
+                <h3 id="notif-modal-title">Neue Benachrichtigung</h3>
+                <button class="notif-modal-close" onclick="closeNotifModal()">&times;</button>
+            </div>
+            <div class="notif-modal-body">
+                <div class="form-group">
+                    <label for="notif-id">ID <span class="required">*</span></label>
+                    <input id="notif-id" type="text" placeholder="z.B. print_done">
+                </div>
+                <div class="form-group">
+                    <label for="notif-label">Label</label>
+                    <input id="notif-label" type="text" placeholder="Lesbarer Name">
+                </div>
+                <div class="form-group">
+                    <label for="notif-message">Nachricht <span class="required">*</span></label>
+                    <textarea id="notif-message" placeholder="Der Druck wurde erfolgreich abgeschlossen." style="min-height:80px;"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="notif-type">Typ</label>
+                        <select id="notif-type">
+                            <option value="success">✓ Success</option>
+                            <option value="warn">⚠️ Warnung</option>
+                            <option value="error">✕ Error</option>
+                            <option value="info">ℹ️ Info</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="notif-trigger">Trigger</label>
+                        <select id="notif-trigger">
+                            <option value="manual">Manuell</option>
+                            <option value="print_done">Druck fertig</option>
+                            <option value="print_time">Druckzeit</option>
+                            <option value="error">Fehler</option>
+                            <option value="material_low">Material niedrig</option>
+                            <option value="temperature">Temperatur</option>
+                            <option value="filament_weight">Filament-Gewicht</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-checkboxes">
+                    <label class="checkbox-label">
+                        <input id="notif-enabled" type="checkbox" checked>
+                        <span>Aktiv</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input id="notif-persistent" type="checkbox">
+                        <span>Persistent</span>
+                    </label>
+                </div>
+
+                <!-- Webhook Integration -->
+                <div class="form-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+                    <h4 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text);">🔗 Webhook Integration (Optional)</h4>
+
+                    <div class="form-group">
+                        <label for="notif-webhook-url">Webhook URL</label>
+                        <input id="notif-webhook-url" type="text" placeholder="https://discord.com/api/webhooks/... oder https://api.telegram.org/bot...">
+                        <small style="color: var(--text-dim); font-size: 12px; display: block; margin-top: 4px;">
+                            Sende Benachrichtigungen an Discord, Telegram oder andere Services
+                        </small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="notif-webhook-type">Webhook Typ</label>
+                            <select id="notif-webhook-type">
+                                <option value="">Kein Webhook</option>
+                                <option value="discord">Discord</option>
+                                <option value="telegram">Telegram</option>
+                                <option value="slack">Slack</option>
+                                <option value="custom">Custom JSON</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="notif-webhook-username">Bot Name (Optional)</label>
+                            <input id="notif-webhook-username" type="text" placeholder="FilamentHub Bot">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trigger Conditions -->
+                <div class="form-section" id="trigger-conditions-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); display: none;">
+                    <h4 style="margin: 0 0 16px 0; font-size: 16px; color: var(--text);">⚙️ Trigger Bedingungen</h4>
+
+                    <!-- Temperature Condition -->
+                    <div id="condition-temperature" class="condition-config" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Operator</label>
+                                <select id="temp-operator">
+                                    <option value=">">Größer als (>)</option>
+                                    <option value="<">Kleiner als (<)</option>
+                                    <option value=">=">Größer gleich (>=)</option>
+                                    <option value="<=">Kleiner gleich (<=)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Temperatur (°C)</label>
+                                <input type="number" id="temp-value" placeholder="z.B. 250">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Print Time Condition -->
+                    <div id="condition-print_time" class="condition-config" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Operator</label>
+                                <select id="printtime-operator">
+                                    <option value=">">Länger als (>)</option>
+                                    <option value="<">Kürzer als (<)</option>
+                                    <option value=">=">Mind. (>=)</option>
+                                    <option value="<=">Max. (<=)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Druckzeit (Stunden)</label>
+                                <input type="number" id="printtime-value" placeholder="z.B. 5" step="0.5">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filament Weight Condition -->
+                    <div id="condition-filament_weight" class="condition-config" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Operator</label>
+                                <select id="filament-operator">
+                                    <option value="<">Weniger als (<)</option>
+                                    <option value="<=">Höchstens (<=)</option>
+                                    <option value=">">Mehr als (>)</option>
+                                    <option value=">=">Mindestens (>=)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Filament-Gewicht (g)</label>
+                                <input type="number" id="filament-value" placeholder="z.B. 100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Code Condition -->
+                    <div id="condition-custom" class="condition-config" style="display: none;">
+                        <div class="form-group">
+                            <label>JavaScript Code (return true/false)</label>
+                            <textarea id="custom-condition-code" placeholder="// Beispiel:&#10;return printerData.temp > 250 && printerData.temp < 300;" style="min-height: 100px; font-family: 'Courier New', monospace;"></textarea>
+                            <small style="color: var(--text-dim); font-size: 12px; display: block; margin-top: 4px;">
+                                Verfügbare Variablen: printerData, jobData, materialData
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="notif-modal-footer">
+                <button class="btn-secondary" onclick="closeNotifModal()">Abbrechen</button>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-test" id="btn-test">▶️ Testen</button>
+                    <button class="btn-primary" id="btn-save">💾 Speichern</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

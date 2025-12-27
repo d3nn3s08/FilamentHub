@@ -8,8 +8,15 @@ from sqlalchemy.sql.elements import BinaryExpression
 test_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(test_root))
 
+from tests.helpers import ensure_admin_password_hash
+
+ensure_admin_password_hash()
+
 # Test database path
 TEST_DB_PATH = os.path.join(test_root, "data", "test_filamenthub.db")
+
+# Ensure test DB path is used by the application before app imports engine
+os.environ["FILAMENTHUB_DB_PATH"] = TEST_DB_PATH
 
 from app.database import engine
 
@@ -165,3 +172,27 @@ def reset_db():
         pass
     if os.path.exists(TEST_DB_PATH):
         os.remove(TEST_DB_PATH)
+
+
+@pytest.fixture
+def db_session():
+    """Provide a simple Session fixture tests can opt into.
+
+    Note: This does not automatically wrap sessions created directly
+    with `Session(engine)` in tests — consider migrating tests to use
+    this fixture or implement a per-test engine/connection strategy.
+    """
+    from sqlmodel import Session as _Session
+
+    sess = _Session(engine)
+    try:
+        yield sess
+    finally:
+        try:
+            sess.rollback()
+        except Exception:
+            pass
+        try:
+            sess.close()
+        except Exception:
+            pass
