@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 from app.database import engine
 from app.models.spool import Spool
 from app.models.material import Material
+from app.routes.notification_routes import trigger_notification_sync
 
 
 def _now_iso() -> str:
@@ -69,6 +70,27 @@ def sync_ams_slots(ams_units: List[Dict[str, Any]], printer_id: Optional[str] = 
     with Session(engine) as session:
         material_id = default_material_id if auto_create else None
         for ams in ams_units:
+            # === NOTIFICATION: AMS Luftfeuchtigkeit prüfen ===
+            humidity = ams.get("humidity")
+            if humidity is not None:
+                try:
+                    humidity_val = int(humidity)
+                    if humidity_val > 60:
+                        # Lade Printer-Name für Kontext
+                        printer_name = "Unbekannt"
+                        if printer_id:
+                            from app.models.printer import Printer
+                            printer = session.get(Printer, printer_id)
+                            printer_name = printer.name if printer else printer_id
+
+                        trigger_notification_sync(
+                            "ams_humidity_high",
+                            humidity=humidity_val,
+                            printer_name=printer_name
+                        )
+                except (ValueError, TypeError):
+                    pass
+
             trays = ams.get("trays") or []
             for tray in trays:
                 tag_uid = tray.get("tag_uid") or tray.get("tag")

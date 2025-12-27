@@ -22,6 +22,7 @@ from app.models.job import Job
 from app.models.spool import Spool
 from app.models.printer import Printer
 from app.database import engine
+from app.routes.notification_routes import trigger_notification_sync
 
 
 class JobTrackingService:
@@ -259,6 +260,16 @@ class JobTrackingService:
                         session.add(spool)
                         session.commit()
 
+                # === NOTIFICATION: Job ohne Spule gestartet ===
+                if not spool:
+                    printer = session.get(Printer, printer_id)
+                    printer_name = printer.name if printer else "Unbekannt"
+                    trigger_notification_sync(
+                        "job_no_spool",
+                        job_name=new_job.name,
+                        printer_name=printer_name
+                    )
+
                 # Job-Info in RAM speichern
                 tray_info = self._find_tray(ams_data or [], active_slot) if active_slot is not None else None
                 start_remain = tray_info.get("remain") if tray_info else None
@@ -458,11 +469,43 @@ class JobTrackingService:
 
                 session.add(job)
                 session.commit()
+                session.refresh(job)
 
                 self.logger.info(
                     f"[JOB FINISH] job={job.id} status={job.status} "
                     f"used_mm={total_used_mm:.1f} used_g={total_used_g:.1f}"
                 )
+
+                # Lade Printer für Notification-Kontext
+                printer = session.get(Printer, job.printer_id)
+                printer_name = printer.name if printer else "Unbekannt"
+
+                # === NOTIFICATIONS TRIGGERN ===
+                # 1. Job failed (FAILED/ERROR/EXCEPTION)
+                if job.status in ["failed", "error", "exception"]:
+                    trigger_notification_sync(
+                        "job_failed",
+                        job_name=job.name,
+                        printer_name=printer_name,
+                        status=job.status.upper()
+                    )
+
+                # 2. Job aborted (ABORTED/STOPPED/CANCELLED)
+                if job.status in ["aborted", "stopped", "cancelled"]:
+                    trigger_notification_sync(
+                        "job_aborted",
+                        job_name=job.name,
+                        printer_name=printer_name,
+                        status=job.status.upper()
+                    )
+
+                # 3. Job ohne Tracking (kein Verbrauch oder keine Spule)
+                if not job.spool_id or total_used_g == 0:
+                    trigger_notification_sync(
+                        "job_no_tracking",
+                        job_name=job.name,
+                        printer_name=printer_name
+                    )
 
                 # Cleanup RAM
                 del self.active_jobs[cloud_serial]

@@ -1,10 +1,11 @@
 import json
+import asyncio
 from typing import Any, Dict, List, Set
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Request
 from sqlmodel import Session, select
 
-from app.database import get_session
+from app.database import get_session, engine
 from app.models.settings import Setting
 
 router = APIRouter()
@@ -37,7 +38,7 @@ DEFAULT_NOTIFICATIONS: List[Dict[str, Any]] = [
     {
         "id": "job_no_tracking",
         "label": "Job ohne Filament-Tracking",
-        "message": "Ein Druckauftrag wurde ohne Filament-Tracking beendet. Bitte Spule zuordnen und Verbrauch nachtragen.",
+        "message": "Job '{job_name}' auf Drucker '{printer_name}' wurde ohne Filament-Tracking beendet. Bitte Spule zuordnen und Verbrauch nachtragen.",
         "type": "warn",
         "persistent": True,
         "enabled": True,
@@ -45,7 +46,7 @@ DEFAULT_NOTIFICATIONS: List[Dict[str, Any]] = [
     {
         "id": "job_failed",
         "label": "Job fehlgeschlagen",
-        "message": "Ein Druckauftrag ist fehlgeschlagen (FAILED/ERROR/EXCEPTION).",
+        "message": "Job '{job_name}' auf Drucker '{printer_name}' ist fehlgeschlagen (Status: {status}).",
         "type": "error",
         "persistent": True,
         "enabled": True,
@@ -53,7 +54,7 @@ DEFAULT_NOTIFICATIONS: List[Dict[str, Any]] = [
     {
         "id": "job_aborted",
         "label": "Job abgebrochen",
-        "message": "Ein Druckauftrag wurde abgebrochen (ABORT/STOPPED/CANCELLED).",
+        "message": "Job '{job_name}' auf Drucker '{printer_name}' wurde abgebrochen (Status: {status}).",
         "type": "warn",
         "persistent": True,
         "enabled": True,
@@ -61,7 +62,7 @@ DEFAULT_NOTIFICATIONS: List[Dict[str, Any]] = [
     {
         "id": "ams_tray_error",
         "label": "AMS Tray Fehler",
-        "message": "Problem mit AMS-Spulenfach erkannt.",
+        "message": "Problem mit AMS-Spulenfach auf Drucker '{printer_name}' erkannt.",
         "type": "error",
         "persistent": True,
         "enabled": False,
@@ -69,7 +70,7 @@ DEFAULT_NOTIFICATIONS: List[Dict[str, Any]] = [
     {
         "id": "ams_humidity_high",
         "label": "AMS Luftfeuchtigkeit hoch",
-        "message": "AMS hat zu hohe Luftfeuchtigkeit (>60%).",
+        "message": "AMS auf Drucker '{printer_name}' hat zu hohe Luftfeuchtigkeit ({humidity}% > 60%).",
         "type": "warn",
         "persistent": True,
         "enabled": False,
@@ -77,7 +78,7 @@ DEFAULT_NOTIFICATIONS: List[Dict[str, Any]] = [
     {
         "id": "job_no_spool",
         "label": "Job ohne Spule gestartet",
-        "message": "Ein Druckauftrag wurde ohne Spulenzuordnung gestartet.",
+        "message": "Job '{job_name}' auf Drucker '{printer_name}' wurde ohne Spulenzuordnung gestartet.",
         "type": "warn",
         "persistent": True,
         "enabled": False,
@@ -211,3 +212,61 @@ async def notifications_websocket(websocket: WebSocket):
         pass
     finally:
         notification_ws_clients.discard(websocket)
+
+
+# ===== Helper für synchrones Triggern =====
+def trigger_notification_sync(notification_id: str, **context) -> None:
+    """
+    Synchrone Funktion zum Triggern einer Notification.
+    Kann von Services (job_tracking, etc.) aufgerufen werden.
+
+    Args:
+        notification_id: Die ID der Notification (z.B. "job_failed")
+        **context: Zusätzliche Kontext-Daten (job_name, printer_name, etc.)
+    """
+    try:
+        with Session(engine) as session:
+            notifications = ensure_notification_config(session)
+            notification = next((n for n in notifications if n.get("id") == notification_id), None)
+
+            if not notification:
+                # Notification nicht definiert - ignorieren
+                return
+
+            if not notification.get("enabled", True):
+                # Notification ist deaktiviert - ignorieren
+                return
+
+            # Kontext-Daten zur Message hinzufügen falls vorhanden
+            message = notification.get("message", "")
+            if context:
+                # Ersetze Platzhalter in der Message (z.B. {job_name}, {printer_name})
+                try:
+                    message = message.format(**context)
+                except (KeyError, ValueError):
+                    # Falls Platzhalter fehlen, originale Message verwenden
+                    pass
+
+            # Erstelle Notification-Payload
+            notif_payload = {
+                **notification,
+                "message": message,
+                "context": context
+            }
+
+            # Broadcast async (fire and forget)
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # Wenn Loop läuft, schedule als Task
+                    asyncio.create_task(broadcast_notification(notif_payload))
+                else:
+                    # Wenn kein Loop läuft, create new one
+                    asyncio.run(broadcast_notification(notif_payload))
+            except RuntimeError:
+                # Kein Event Loop - ignorieren (z.B. in Tests)
+                pass
+    except Exception as e:
+        # Fehler beim Triggern sollte nicht den Hauptprozess stoppen
+        import logging
+        logging.getLogger(__name__).error(f"Fehler beim Triggern von Notification '{notification_id}': {e}")
