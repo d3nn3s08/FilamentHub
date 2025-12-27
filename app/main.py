@@ -65,6 +65,7 @@ from app.database import init_db
 from app.routes.hello import router as hello_router
 from app.routes.materials import router as materials_router
 from app.routes.spools import router as spools_router
+from app.routes.spool_numbers import router as spool_numbers_router  # NEU: Spulen-Nummern-System
 from app.routes.log_routes import router as log_router
 from app.routes.system_routes import router as system_router
 from app.routes.debug_routes import router as debug_router
@@ -151,6 +152,7 @@ templates = Jinja2Templates(directory="frontend/templates")
 app.include_router(hello_router)
 app.include_router(materials_router)
 app.include_router(spools_router)
+app.include_router(spool_numbers_router)  # NEU: Spulen-Nummern-System
 app.include_router(log_router)
 app.include_router(system_router)
 app.include_router(debug_router)
@@ -313,17 +315,28 @@ async def logs_page(request: Request):
 
 @app.get('/debug', response_class=HTMLResponse)
 async def debug_page(request: Request):
+    from app.routes.settings_routes import get_setting, DEFAULTS
+
     debug_templates = Jinja2Templates(directory='app/templates')
     printers = []
+    debug_center_mode = "lite"
+
     try:
         with Session(engine) as session:
             printers = session.exec(select(Printer)).all()
+            debug_center_mode = get_setting(session, "debug_center_mode", DEFAULTS.get("debug_center_mode", "lite")) or "lite"
     except Exception:
         printers = []
 
     return debug_templates.TemplateResponse(
         'debug.html',
-        {'request': request, 'title': 'FilamentHub Debug Center', 'active_page': 'debug', 'printers': printers},
+        {
+            'request': request,
+            'title': 'FilamentHub Debug Center',
+            'active_page': 'debug',
+            'printers': printers,
+            'data_mode': debug_center_mode
+        },
     )
 
 

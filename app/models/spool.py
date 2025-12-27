@@ -8,6 +8,13 @@ from sqlmodel import SQLModel, Field as SQLField
 class SpoolBase(SQLModel):
     material_id: str = SQLField(foreign_key="material.id")
     vendor_id: Optional[str] = None
+
+    # Spulen-Nummern-System (NEU - Teil der Spezifikation v4)
+    spool_number: Optional[int] = None  # Unique, user-friendly number (#1, #2, #3...)
+    name: Optional[str] = None          # Denormalized from material.name
+    vendor: Optional[str] = None        # Denormalized from material.brand
+    color: Optional[str] = None         # Spulen-spezifische Farbe
+
     weight_full: float = 1000
     weight_empty: float = 250
     weight_current: Optional[float] = None
@@ -60,7 +67,10 @@ class SpoolCreateSchema(BaseModel):
     tray_type: str | None = None
     remain_percent: float | None = None
     last_seen: str | None = None
-    color: str | None = None  # aktuell nicht persistiert
+    color: str | None = None  # JETZT persistiert (Teil des Nummern-Systems)
+    name: str | None = None  # NEU: Kopie von material.name
+    vendor: str | None = None  # NEU: Kopie von material.brand
+    spool_number: int | None = None  # NEU: User-friendly Nummer
     first_seen: str | None = None
     used_count: int = 0
     last_slot: int | None = None
@@ -156,6 +166,13 @@ class SpoolReadSchema(BaseModel):
     id: str
     material_id: str
     vendor_id: str | None = Field(None, serialization_alias="manufacturer")
+
+    # Spulen-Nummern-System (NEU)
+    spool_number: int | None = None
+    name: str | None = None
+    vendor: str | None = None
+    color: str | None = None
+
     weight_full: float
     weight_empty: float
     weight_current: float | None = Field(None, serialization_alias="weight")

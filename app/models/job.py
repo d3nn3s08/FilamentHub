@@ -18,6 +18,14 @@ class JobBase(SQLModel):
     # Status: running, completed, failed, cancelled, aborted
     status: str = Field(default="running")
 
+    # Spulen-Snapshot-System (NEU - Teil der Spezifikation v4)
+    # Speichert Spulen-Daten zum Zeitpunkt des Job-Starts
+    spool_number: Optional[int] = None
+    spool_name: Optional[str] = None
+    spool_vendor: Optional[str] = None
+    spool_color: Optional[str] = None
+    spool_created_at: Optional[str] = None
+
 
 class Job(JobBase, table=True):
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)

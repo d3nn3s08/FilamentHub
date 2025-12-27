@@ -5,12 +5,14 @@ from typing import List
 
 from app.database import get_session
 from app.models.spool import Spool, SpoolCreateSchema, SpoolUpdateSchema, SpoolReadSchema
+from app.services.spool_number_service import assign_spool_number
 
 router = APIRouter(prefix="/api/spools", tags=["Spools"])
 
 def _normalize_spool_payload(data: SpoolCreateSchema | SpoolUpdateSchema, *, is_update: bool = False) -> dict:
     payload = data.model_dump(exclude_unset=True)
-    payload.pop("color", None)  # aktuell nicht persistiert
+    # Color wird jetzt persistiert (Teil des Nummern-Systems)
+    # payload.pop("color", None) - ENTFERNT
     # alias weight -> weight_current
     if "weight" in payload:
         payload["weight_current"] = payload.pop("weight")
@@ -62,6 +64,10 @@ def create_spool(data: SpoolCreateSchema, session: Session = Depends(get_session
     try:
         payload = _normalize_spool_payload(data)
         spool = Spool(**payload)
+
+        # NEU: Automatisch Spulen-Nummer zuweisen
+        assign_spool_number(spool, session)
+
         session.add(spool)
         session.commit()
         session.refresh(spool)
