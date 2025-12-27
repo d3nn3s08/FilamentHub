@@ -213,7 +213,20 @@ function renderSpools(spoolsToRender) {
                         const remainPercent = toNumber(s.remain_percent);
                         const remaining = toNumber(s.weight) ?? toNumber(s.weight_current) ?? toNumber(s.weight_remaining) ?? ((remainPercent != null && weightFull) ? (remainPercent / 100) * weightFull : (weightFull || 0));
                         const trayColor = s.tray_color ? `#${s.tray_color.substring(0, 6)}` : null;
-                    
+
+                        // NEU: Spulen-Nummern-System
+                        const isRFID = s.tray_uuid != null;
+                        const spoolNumber = s.spool_number;
+                        let numberDisplay = '';
+
+                        if (isRFID) {
+                            numberDisplay = '<span class="spool-number-badge rfid-badge" title="RFID-Spule (Bambu)">📡 RFID</span>';
+                        } else if (spoolNumber) {
+                            numberDisplay = `<span class="spool-number-badge manual-badge" title="Manuelle Spule">#${spoolNumber}</span>`;
+                        } else {
+                            numberDisplay = '<span class="spool-number-badge" title="Keine Nummer">-</span>';
+                        }
+
                         let statusBadge = '';
 
                         if (remainPercent === 0 || (remaining || 0) <= 0 || s.is_empty) {
