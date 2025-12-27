@@ -46,6 +46,18 @@ def list_spools(session: Session = Depends(get_session)):
     return [SpoolReadSchema.model_validate(s) for s in result]
 
 
+@router.get("/unnumbered", response_model=List[SpoolReadSchema])
+def list_unnumbered_spools(session: Session = Depends(get_session)):
+    """
+    Gibt alle Spulen zurück, die KEINE Nummer haben
+
+    Nützlich für Benachrichtigungen: "Neue Spule im AMS erkannt - Bitte Nummer vergeben"
+    """
+    stmt = select(Spool).where(Spool.spool_number.is_(None))
+    result = session.exec(stmt).all()
+    return [SpoolReadSchema.model_validate(s) for s in result]
+
+
 @router.get("/{spool_id}", response_model=SpoolReadSchema)
 def get_spool(spool_id: str, session: Session = Depends(get_session)):
     spool = session.get(Spool, spool_id)

@@ -47,18 +47,18 @@ def get_next_spool_number(session: Session) -> int:
 
 def assign_spool_number(spool: Spool, session: Session) -> Optional[int]:
     """
-    Weist einer Spule eine Nummer zu und denormalisiert Material-Daten
+    Denormalisiert Material-Daten und behält Spulen-Nummern bei
 
     INTELLIGENTES LAGER-SYSTEM:
-    - Manuelle Spulen bekommen Nummern (#1, #2, #3...)
-    - Wenn eine nummerierte Spule in den AMS eingelegt wird, BEHÄLT sie die Nummer
+    - Spulen-Nummern sind OPTIONAL und werden NUR manuell vom Benutzer vergeben
+    - Wenn eine Nummer gesetzt ist, bleibt sie DAUERHAFT (auch bei RFID-Erkennung)
     - RFID (tray_uuid) und Nummer werden VERKNÜPFT (nicht entfernt!)
-    - So kann das Lager-System Spulen über Nummern tracken, auch wenn sie im AMS sind
+    - Neue RFID-Spulen bekommen KEINE automatische Nummer → Benutzer entscheidet
 
     Diese Funktion:
-    1. Nutzt manuell gesetzte Nummer ODER findet die niedrigste freie Nummer
-    2. Behält die Nummer, auch wenn später tray_uuid hinzugefügt wird
-    3. Kopiert name, vendor aus material-Tabelle
+    1. Behält vorhandene spool_number (wird NIE überschrieben)
+    2. Vergibt KEINE automatischen Nummern mehr
+    3. Kopiert name, vendor aus material-Tabelle (Denormalisierung)
     4. Extrahiert Farbe aus tray_color (falls vorhanden)
 
     Args:
@@ -66,20 +66,12 @@ def assign_spool_number(spool: Spool, session: Session) -> Optional[int]:
         session: SQLModel Session
 
     Returns:
-        Optional[int]: Zugewiesene Spulen-Nummer
+        Optional[int]: Vorhandene Spulen-Nummer oder None
     """
-    # 1. Nummer zuweisen (nur wenn noch keine vorhanden)
-    # Wenn bereits eine Nummer gesetzt wurde (manuell oder früher vergeben), behalte diese
-    if spool.spool_number is None:
-        # Nur RFID-only Spulen (direkt von Bambu, nie manuell angelegt) bekommen keine Nummer
-        # Wenn tray_uuid gesetzt ist UND es noch nie eine Nummer gab → keine Nummer vergeben
-        if spool.tray_uuid and not hasattr(spool, '_had_number_before'):
-            spool.spool_number = None
-        else:
-            # Manuelle Spule oder Spule die früher eine Nummer hatte
-            spool.spool_number = get_next_spool_number(session)
+    # KEINE automatische Nummern-Vergabe mehr!
+    # spool.spool_number bleibt wie es ist (None oder vom Benutzer gesetzt)
 
-    # 2. Denormalisierung durchführen
+    # Denormalisierung durchführen
     _denormalize_spool_data(spool, session)
 
     return spool.spool_number
