@@ -857,6 +857,36 @@ def connect(config: Dict[str, Any]) -> Dict[str, Any]:
                                         parsed = json.loads(payload_str)
                                         set_live_state(cloud_serial, parsed)
 
+                                        # === AMS SYNC: Auto-create/update spools ===
+                                        try:
+                                            from app.services.ams_parser import parse_ams
+                                            from app.services.ams_sync import sync_ams_slots
+                                            from app.database import engine
+                                            from sqlmodel import Session, select
+                                            from app.models.printer import Printer
+
+                                            ams_data = parse_ams(parsed)
+                                            if ams_data:
+                                                # Find printer by cloud_serial
+                                                with Session(engine) as session:
+                                                    printer = session.exec(
+                                                        select(Printer).where(Printer.cloud_serial == cloud_serial)
+                                                    ).first()
+
+                                                    printer_id = printer.id if printer else None
+
+                                                updated_count = sync_ams_slots(
+                                                    [dict(unit) for unit in ams_data],
+                                                    printer_id=printer_id,
+                                                    auto_create=True
+                                                )
+                                                if updated_count > 0:
+                                                    logger = logging.getLogger("mqtt_runtime")
+                                                    logger.info(f"[AMS SYNC] Updated {updated_count} spools for printer {printer_id or cloud_serial}")
+                                        except Exception as e:
+                                            logger = logging.getLogger("mqtt_runtime")
+                                            logger.error(f"[AMS SYNC] Failed: {e}")
+
                                         # === JOB TRACKING ===
                                         try:
                                             from app.database import engine
