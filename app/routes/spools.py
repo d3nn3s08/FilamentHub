@@ -96,6 +96,11 @@ def update_spool(spool_id: str, data: SpoolUpdateSchema, session: Session = Depe
     update_data = _normalize_spool_payload(data, is_update=True)
     for key, value in update_data.items():
         setattr(spool, key, value)
+
+    # AUTOMATISCHE NUMMERN-FREIGABE: Wenn Spule leer wird, Nummer entfernen
+    if spool.is_empty and spool.spool_number is not None:
+        spool.spool_number = None
+
     try:
         session.add(spool)
         session.commit()

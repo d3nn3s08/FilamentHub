@@ -41,6 +41,7 @@ async function loadData() {
         // Lade Materials ZUERST, dann Spools (wichtig für korrekte Anzeige)
         await loadMaterials();
         await loadSpools();
+        await checkUnnumberedSpools(); // Prüfe auf Spulen ohne Nummer
     } catch (error) {
         console.error('Fehler beim Laden:', error);
     }
@@ -330,8 +331,11 @@ function filterSpools() {
             const remaining = toNumber(s.weight) ?? toNumber(s.weight_current) ?? toNumber(s.weight_remaining) ?? (rp != null && wf ? (rp / 100) * wf : wf);
             return (rp === 0) || (!s.is_empty && (remaining || 0) < 200);
         });
+    } else if (statusFilter === 'no-number') {
+        // NEUE FILTER-OPTION: Spulen ohne Nummer (für Benachrichtigung)
+        filtered = filtered.filter(s => s.spool_number == null);
     }
-    
+
     renderSpools(filtered);
 }
 
@@ -489,6 +493,105 @@ async function confirmDelete() {
         showNotification('Fehler beim Löschen', 'error');
     }
 }
+
+// === BENACHRICHTIGUNGS-SYSTEM FÜR SPULEN OHNE NUMMER ===
+async function checkUnnumberedSpools() {
+    try {
+        const response = await fetch('/api/spools/unnumbered');
+        if (!response.ok) return;
+
+        const unnumbered = await response.json();
+
+        // Filtere nur RFID-Spulen (die vom AMS kommen)
+        const rfidSpools = unnumbered.filter(s => s.tray_uuid != null);
+
+        if (rfidSpools.length > 0) {
+            showUnnumberedNotification(rfidSpools.length);
+        }
+    } catch (error) {
+        console.error('Fehler beim Laden unnummerierter Spulen:', error);
+    }
+}
+
+function showUnnumberedNotification(count) {
+    // Prüfe ob bereits eine Benachrichtigung existiert
+    if (document.getElementById('unnumberedNotification')) return;
+
+    const notification = document.createElement('div');
+    notification.id = 'unnumberedNotification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 16px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 10000;
+        max-width: 350px;
+        cursor: pointer;
+        animation: slideIn 0.3s ease-out;
+    `;
+
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 24px;">⚠️</div>
+            <div style="flex: 1;">
+                <strong style="display: block; margin-bottom: 4px;">
+                    ${count} neue Spule${count > 1 ? 'n' : ''} ohne Nummer
+                </strong>
+                <small style="opacity: 0.9;">
+                    Klicken zum Nummerieren
+                </small>
+            </div>
+            <div style="font-size: 20px; opacity: 0.7;">→</div>
+        </div>
+    `;
+
+    notification.addEventListener('click', () => {
+        // Setze Filter auf "Keine Nummer" und schließe Benachrichtigung
+        document.getElementById('filterStatus').value = 'no-number';
+        filterSpools();
+        notification.remove();
+    });
+
+    document.body.appendChild(notification);
+
+    // Automatisch nach 10 Sekunden ausblenden
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.style.animation = 'slideOut 0.3s ease-in';
+            setTimeout(() => notification.remove(), 300);
+        }
+    }, 10000);
+}
+
+// CSS Animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
 
 // Close modals on ESC key
 document.addEventListener('keydown', (e) => {
