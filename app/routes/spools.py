@@ -118,3 +118,81 @@ def delete_spool(spool_id: str, session: Session = Depends(get_session)):
     session.delete(spool)
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/{spool_id}/assign", response_model=SpoolReadSchema)
+def assign_spool_to_slot(
+    spool_id: str,
+    printer_id: str,
+    slot_number: int,
+    session: Session = Depends(get_session)
+):
+    """
+    Weist eine Spule einem AMS-Slot zu
+
+    POST /api/spools/{spool_id}/assign?printer_id=xxx&slot_number=1
+    """
+    # Validierung: Slot muss 1-4 sein
+    if slot_number not in [1, 2, 3, 4]:
+        raise HTTPException(status_code=400, detail="Slot muss 1-4 sein")
+
+    # Finde Spule
+    spool = session.get(Spool, spool_id)
+    if not spool:
+        raise HTTPException(status_code=404, detail="Spule nicht gefunden")
+
+    # Prüfe ob Spule bereits zugewiesen
+    if spool.printer_id is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Spule ist bereits Drucker '{spool.printer_id}' Slot {spool.ams_slot} zugewiesen"
+        )
+
+    # Prüfe ob Slot frei
+    stmt = select(Spool).where(
+        Spool.printer_id == printer_id,
+        Spool.ams_slot == slot_number
+    )
+    existing = session.exec(stmt).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Slot {slot_number} ist bereits mit Spule belegt"
+        )
+
+    # Zuweisen
+    spool.printer_id = printer_id
+    spool.ams_slot = slot_number
+
+    session.add(spool)
+    session.commit()
+    session.refresh(spool)
+
+    return SpoolReadSchema.model_validate(spool)
+
+
+@router.post("/{spool_id}/unassign", response_model=SpoolReadSchema)
+def unassign_spool(spool_id: str, session: Session = Depends(get_session)):
+    """
+    Entfernt eine Spule aus einem AMS-Slot
+
+    POST /api/spools/{spool_id}/unassign
+    """
+    spool = session.get(Spool, spool_id)
+    if not spool:
+        raise HTTPException(status_code=404, detail="Spule nicht gefunden")
+
+    # Merke letzten Slot
+    if spool.ams_slot is not None:
+        spool.last_slot = spool.ams_slot
+
+    # Entferne Zuweisung
+    spool.printer_id = None
+    spool.ams_slot = None
+
+    session.add(spool)
+    session.commit()
+    session.refresh(spool)
+
+    return SpoolReadSchema.model_validate(spool)

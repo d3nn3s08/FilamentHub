@@ -283,6 +283,9 @@ function renderAMSUnits() {
                     <div class="slot-empty">
                         <div class="slot-number">Slot ${slotNumber}</div>
                         <div class="slot-label">Leer</div>
+                        <button class="btn btn-sm btn-primary" onclick="openAssignModal('${ams.id}', ${slotNumber})" style="margin-top: 8px;">
+                            + Zuweisen
+                        </button>
                     </div>
                 `;
             }
@@ -435,3 +438,160 @@ function changeSpoolDialog(amsId, slotNumber) {
         window.location.href = '/spools';
     }
 }
+
+// === QUICK-ASSIGN SYSTEM ===
+let currentAssignPrinter = null;
+let currentAssignSlot = null;
+let searchTimeout = null;
+
+function openAssignModal(printerId, slotNumber) {
+    currentAssignPrinter = printerId;
+    currentAssignSlot = slotNumber;
+
+    document.getElementById('assignModalTitle').textContent = `Spule zuweisen - Slot ${slotNumber}`;
+    document.getElementById('assignModal').classList.add('active');
+    document.getElementById('spoolSearch').value = '';
+    document.getElementById('spoolSearch').focus();
+
+    // Initial load: Zeige alle freien Spulen
+    searchSpools('');
+
+    // Live-Suche
+    document.getElementById('spoolSearch').oninput = (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            searchSpools(e.target.value);
+        }, 300);
+    };
+}
+
+function closeAssignModal() {
+    document.getElementById('assignModal').classList.remove('active');
+    currentAssignPrinter = null;
+    currentAssignSlot = null;
+}
+
+async function searchSpools(searchTerm) {
+    try {
+        const response = await fetch('/api/spools/');
+        if (!response.ok) throw new Error('Fehler beim Laden der Spulen');
+
+        let allSpools = await response.json();
+
+        // Filtere nur freie Spulen (nicht zugewiesen)
+        let availableSpools = allSpools.filter(s => s.printer_id == null && s.ams_slot == null);
+
+        // Suche filtern
+        if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            availableSpools = availableSpools.filter(s => {
+                const num = s.spool_number ? s.spool_number.toString() : '';
+                const name = s.name || '';
+                const vendor = s.vendor || '';
+                const color = s.color || '';
+
+                return num.includes(term) ||
+                       name.toLowerCase().includes(term) ||
+                       vendor.toLowerCase().includes(term) ||
+                       color.toLowerCase().includes(term);
+            });
+        }
+
+        renderSpoolSearchResults(availableSpools);
+    } catch (error) {
+        console.error('Fehler bei Spulen-Suche:', error);
+        document.getElementById('spoolSearchResults').innerHTML = `
+            <div style="padding: 16px; text-align: center; color: var(--error);">
+                Fehler beim Laden der Spulen
+            </div>
+        `;
+    }
+}
+
+function renderSpoolSearchResults(spools) {
+    const container = document.getElementById('spoolSearchResults');
+
+    if (spools.length === 0) {
+        container.innerHTML = `
+            <div style="padding: 16px; text-align: center; color: var(--text-dim);">
+                Keine freien Spulen gefunden
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = spools.map(s => {
+        const numberDisplay = s.spool_number ? `#${s.spool_number}` : 'Ohne Nummer';
+        const nameDisplay = s.name || 'Unbekannt';
+        const vendorDisplay = s.vendor ? ` - ${s.vendor}` : '';
+        const colorDisplay = s.color ? ` - ${s.color}` : '';
+        const weightDisplay = s.weight_current ? `${Math.round(s.weight_current)}g` : 'N/A';
+
+        return `
+            <div class="spool-search-item" onclick="assignSpool('${s.id}')" style="
+                padding: 12px;
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                cursor: pointer;
+                margin-bottom: 8px;
+                transition: all 0.2s;
+            " onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background='transparent'">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong style="font-size: 1.1em;">${numberDisplay}</strong>
+                        <div style="color: var(--text-secondary); margin-top: 4px;">
+                            ${nameDisplay}${vendorDisplay}${colorDisplay}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 500;">${weightDisplay}</div>
+                        <div style="font-size: 0.875rem; color: var(--text-dim);">
+                            ${s.remain_percent != null ? Math.round(s.remain_percent) + '%' : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function assignSpool(spoolId) {
+    try {
+        const response = await fetch(
+            `/api/spools/${spoolId}/assign?printer_id=${currentAssignPrinter}&slot_number=${currentAssignSlot}`,
+            { method: 'POST' }
+        );
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Zuweisung fehlgeschlagen');
+        }
+
+        const result = await response.json();
+
+        showNotification(
+            `Spule ${result.spool_number ? '#' + result.spool_number : ''} zu Slot ${currentAssignSlot} zugewiesen`,
+            'success'
+        );
+
+        closeAssignModal();
+        loadData(); // Refresh AMS view
+    } catch (error) {
+        console.error('Fehler bei Zuweisung:', error);
+        showNotification(error.message, 'error');
+    }
+}
+
+// Close modal on ESC
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeAssignModal();
+    }
+});
+
+// Close modal on background click
+document.getElementById('assignModal').addEventListener('click', (e) => {
+    if (e.target.id === 'assignModal') {
+        closeAssignModal();
+    }
+});

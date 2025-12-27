@@ -244,6 +244,29 @@
 <!-- Notification Toast -->
 <div id="notification" class="notification"></div>
 
+<!-- Quick-Assign Modal -->
+<div id="assignModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2 id="assignModalTitle">Spule zuweisen</h2>
+            <button class="modal-close" onclick="closeAssignModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="spoolSearch">Spule suchen (Nummer oder Name)</label>
+                <input type="text" id="spoolSearch" class="form-control" placeholder="#5 oder PLA Basic..." autofocus>
+                <small style="color: var(--text-dim); font-size: 0.875rem;">
+                    💡 Gib eine Nummer (#5) oder einen Namen ein
+                </small>
+            </div>
+
+            <div id="spoolSearchResults" style="margin-top: 16px; max-height: 300px; overflow-y: auto;">
+                <!-- Wird dynamisch gefüllt -->
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_scripts %}
