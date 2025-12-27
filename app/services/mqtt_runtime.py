@@ -858,6 +858,9 @@ def connect(config: Dict[str, Any]) -> Dict[str, Any]:
                                         set_live_state(cloud_serial, parsed)
 
                                         # === AMS SYNC: Auto-create/update spools ===
+                                        ams_data_parsed = None
+                                        printer_id_for_tracking = None
+
                                         try:
                                             from app.services.ams_parser import parse_ams
                                             from app.services.ams_sync import sync_ams_slots
@@ -865,80 +868,62 @@ def connect(config: Dict[str, Any]) -> Dict[str, Any]:
                                             from sqlmodel import Session, select
                                             from app.models.printer import Printer
 
-                                            ams_data = parse_ams(parsed)
-                                            if ams_data:
+                                            ams_data_parsed = parse_ams(parsed)
+                                            if ams_data_parsed:
                                                 # Find printer by cloud_serial
                                                 with Session(engine) as session:
                                                     printer = session.exec(
                                                         select(Printer).where(Printer.cloud_serial == cloud_serial)
                                                     ).first()
 
-                                                    printer_id = printer.id if printer else None
+                                                    printer_id_for_tracking = printer.id if printer else None
 
                                                 updated_count = sync_ams_slots(
-                                                    [dict(unit) for unit in ams_data],
-                                                    printer_id=printer_id,
+                                                    [dict(unit) for unit in ams_data_parsed],
+                                                    printer_id=printer_id_for_tracking,
                                                     auto_create=True
                                                 )
                                                 if updated_count > 0:
                                                     logger = logging.getLogger("mqtt_runtime")
-                                                    logger.info(f"[AMS SYNC] Updated {updated_count} spools for printer {printer_id or cloud_serial}")
+                                                    logger.info(f"[AMS SYNC] Updated {updated_count} spools for printer {printer_id_for_tracking or cloud_serial}")
                                         except Exception as e:
                                             logger = logging.getLogger("mqtt_runtime")
                                             logger.error(f"[AMS SYNC] Failed: {e}")
 
-                                        # === JOB TRACKING ===
+                                        # === JOB TRACKING (NEW: Centralized Service) ===
                                         try:
+                                            from app.services.job_tracking_service import job_tracking_service
                                             from app.database import engine
                                             from sqlmodel import Session, select
-                                            from app.models.job import Job
                                             from app.models.printer import Printer
-                                            from datetime import datetime
 
-                                            gcode_state = parsed.get("print", {}).get("gcode_state", "").upper()
-
-                                            if gcode_state in ["RUNNING", "PRINTING"]:
+                                            # Printer ID ermitteln (falls nicht schon von AMS Sync)
+                                            if not printer_id_for_tracking:
                                                 with Session(engine) as session:
-                                                    # Find printer
                                                     printer = session.exec(
                                                         select(Printer).where(Printer.cloud_serial == cloud_serial)
                                                     ).first()
+                                                    printer_id_for_tracking = printer.id if printer else None
 
-                                                    if printer:
-                                                        # Check if job already exists
-                                                        existing_job = session.exec(
-                                                            select(Job)
-                                                            .where(Job.printer_id == printer.id)
-                                                            .where(Job.finished_at == None)
-                                                        ).first()
+                                            if printer_id_for_tracking:
+                                                # Zentraler Service verarbeitet Job-Tracking
+                                                result = job_tracking_service.process_message(
+                                                    cloud_serial=cloud_serial,
+                                                    parsed_payload=parsed,
+                                                    printer_id=printer_id_for_tracking,
+                                                    ams_data=[dict(unit) for unit in ams_data_parsed] if ams_data_parsed else None
+                                                )
 
-                                                        if not existing_job:
-                                                            # Create new job
-                                                            job_name = (
-                                                                parsed.get("print", {}).get("subtask_name") or
-                                                                parsed.get("print", {}).get("gcode_file") or
-                                                                "Unnamed Job"
-                                                            )
+                                                if result and result.get("status") == "started":
+                                                    logger = logging.getLogger("mqtt_runtime")
+                                                    logger.info(f"[JOB TRACKING] Job started: {result.get('job_id')}")
+                                                elif result and result.get("status") in ["completed", "failed", "cancelled", "aborted"]:
+                                                    logger = logging.getLogger("mqtt_runtime")
+                                                    logger.info(f"[JOB TRACKING] Job finished: {result.get('job_id')} status={result.get('status')} used_g={result.get('used_g', 0):.1f}g")
 
-                                                            new_job = Job(
-                                                                printer_id=printer.id,
-                                                                name=job_name,
-                                                                started_at=datetime.utcnow(),
-                                                                filament_used_mm=0,
-                                                                filament_used_g=0,
-                                                                status="running"
-                                                            )
-
-                                                            session.add(new_job)
-                                                            session.commit()
-                                                            session.refresh(new_job)
-
-                                                            logger = logging.getLogger("3D_drucker")
-                                                            logger.info(f"[JOB CREATED] job_id={new_job.id} name={new_job.name} printer={printer.name}")
                                         except Exception as job_err:
-                                            print(f"[mqtt_runtime] ERROR job tracking: {job_err}")
-                                            import traceback
-                                            traceback.print_exc()
+                                            logger = logging.getLogger("mqtt_runtime")
+                                            logger.error(f"[JOB TRACKING] Failed: {job_err}", exc_info=True)
                                     except Exception as e:
                                         print(f"[mqtt_runtime] ERROR set_live_state: {e}")
                             except Exception:
