@@ -876,7 +876,7 @@ def on_message(client, userdata, msg):
 
                                 pass
 
-n                            # SPULEN-NUMMERN-SYSTEM: Nummer zuweisen (nur für manuelle Spulen, RFID-Spulen bekommen None)
+                           # SPULEN-NUMMERN-SYSTEM: Nummer zuweisen (nur für manuelle Spulen, RFID-Spulen bekommen None)
                             assign_spool_number(sp, session)
                             session.add(sp)
 
