@@ -252,6 +252,8 @@ function renderAMSUnits() {
                 const isLow = percentage <= 20 || remaining < 200;
                 const progressClass = isLow ? 'low' : '';
                 
+                const spoolNumberDisplay = spool.spool_number ? `#${spool.spool_number} ` : '';
+
                 slotsHTML += `
                     <div class="slot ${spool.is_empty ? 'slot-empty' : ''}">
                         <div class="slot-color" style="background: ${color};"></div>
@@ -259,6 +261,7 @@ function renderAMSUnits() {
                             Slot ${slotNumber}
                             ${spool.tray_uuid ? '<span class="slot-icon" title="RFID erkannt">🏷️</span>' : ''}
                         </div>
+                        ${spoolNumberDisplay ? `<div class="slot-spool-number" style="font-weight: 600; color: var(--primary); margin: 4px 0;">${spoolNumberDisplay}</div>` : ''}
                         <div class="slot-material">${material.name}</div>
                         ${material.brand ? `<div class="slot-brand">${material.brand}</div>` : ''}
                         <div class="slot-weight">${Math.round(remaining)}g (${Math.round(percentage)}%)</div>
@@ -269,11 +272,11 @@ function renderAMSUnits() {
                             <button class="slot-action-btn" onclick="event.stopPropagation(); goToSpool('${spool.id}')" title="Spule öffnen">
                                 <span>📋</span>
                             </button>
+                            <button class="slot-action-btn" onclick="event.stopPropagation(); unassignSpool('${spool.id}')" title="Spule entfernen">
+                                <span>✖️</span>
+                            </button>
                             <button class="slot-action-btn" onclick="event.stopPropagation(); refreshRFID(${amsId}, ${slotNumber})" title="RFID neu einlesen">
                                 <span>🔄</span>
-                            </button>
-                            <button class="slot-action-btn" onclick="event.stopPropagation(); changeSpoolDialog(${amsId}, ${slotNumber})" title="Spule wechseln">
-                                <span>↔️</span>
                             </button>
                         </div>
                     </div>
@@ -578,6 +581,35 @@ async function assignSpool(spoolId) {
         loadData(); // Refresh AMS view
     } catch (error) {
         console.error('Fehler bei Zuweisung:', error);
+        showNotification(error.message, 'error');
+    }
+}
+
+async function unassignSpool(spoolId) {
+    if (!confirm('Spule wirklich aus dem Slot entfernen?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/spools/${spoolId}/unassign`, {
+            method: 'POST'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Entfernen fehlgeschlagen');
+        }
+
+        const result = await response.json();
+
+        showNotification(
+            `Spule ${result.spool_number ? '#' + result.spool_number : ''} entfernt`,
+            'success'
+        );
+
+        loadData(); // Refresh AMS view
+    } catch (error) {
+        console.error('Fehler beim Entfernen:', error);
         showNotification(error.message, 'error');
     }
 }
