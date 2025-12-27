@@ -42,6 +42,46 @@ DEFAULT_NOTIFICATIONS: List[Dict[str, Any]] = [
         "persistent": True,
         "enabled": True,
     },
+    {
+        "id": "job_failed",
+        "label": "Job fehlgeschlagen",
+        "message": "Ein Druckauftrag ist fehlgeschlagen (FAILED/ERROR/EXCEPTION).",
+        "type": "error",
+        "persistent": True,
+        "enabled": True,
+    },
+    {
+        "id": "job_aborted",
+        "label": "Job abgebrochen",
+        "message": "Ein Druckauftrag wurde abgebrochen (ABORT/STOPPED/CANCELLED).",
+        "type": "warn",
+        "persistent": True,
+        "enabled": True,
+    },
+    {
+        "id": "ams_tray_error",
+        "label": "AMS Tray Fehler",
+        "message": "Problem mit AMS-Spulenfach erkannt.",
+        "type": "error",
+        "persistent": True,
+        "enabled": False,
+    },
+    {
+        "id": "ams_humidity_high",
+        "label": "AMS Luftfeuchtigkeit hoch",
+        "message": "AMS hat zu hohe Luftfeuchtigkeit (>60%).",
+        "type": "warn",
+        "persistent": True,
+        "enabled": False,
+    },
+    {
+        "id": "job_no_spool",
+        "label": "Job ohne Spule gestartet",
+        "message": "Ein Druckauftrag wurde ohne Spulenzuordnung gestartet.",
+        "type": "warn",
+        "persistent": True,
+        "enabled": False,
+    },
 ]
 
 notification_ws_clients: Set[WebSocket] = set()
@@ -61,14 +101,31 @@ def _persist_config(session: Session, notifications: List[Dict[str, Any]]) -> Li
 
 def ensure_notification_config(session: Session) -> List[Dict[str, Any]]:
     setting = session.exec(select(Setting).where(Setting.key == "notifications_config")).first()
+
+    # Bestehende Config laden
+    existing_notifications = []
     if setting and setting.value:
         try:
             data = json.loads(setting.value)
             if isinstance(data, list):
-                return data
+                existing_notifications = data
         except Exception:
             pass
-    return _persist_config(session, DEFAULT_NOTIFICATIONS)
+
+    # Merge: Neue Defaults hinzufügen die noch nicht existieren
+    existing_ids = {n.get("id") for n in existing_notifications}
+    merged = list(existing_notifications)  # Kopie der bestehenden
+
+    for default_notif in DEFAULT_NOTIFICATIONS:
+        if default_notif.get("id") not in existing_ids:
+            # Neue Notification aus Defaults hinzufügen
+            merged.append(default_notif)
+
+    # Wenn etwas hinzugefügt wurde, speichern
+    if len(merged) > len(existing_notifications):
+        return _persist_config(session, merged)
+
+    return existing_notifications if existing_notifications else _persist_config(session, DEFAULT_NOTIFICATIONS)
 
 
 def _validate_notifications(raw: Any) -> List[Dict[str, Any]]:
