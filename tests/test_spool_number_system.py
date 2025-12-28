@@ -86,8 +86,10 @@ def test_printer_fixture(session: Session):
 # ===== TEST 1: SPULEN-NUMMERN-VERGABE =====
 
 def test_first_spool_gets_number_one(session: Session, test_material: Material):
-    """Erste Spule bekommt #1"""
+    """Erste Spule bekommt #1 (manuell zugewiesen)"""
     spool = Spool(material_id=test_material.id, weight_full=1000)
+    # NEUES VERHALTEN: Manuell Nummer zuweisen
+    spool.spool_number = get_next_spool_number(session)
     assign_spool_number(spool, session)
 
     assert spool.spool_number == 1, "Erste Spule sollte #1 bekommen"
@@ -96,10 +98,12 @@ def test_first_spool_gets_number_one(session: Session, test_material: Material):
 
 
 def test_multiple_spools_sequential(session: Session, test_material: Material):
-    """Mehrere Spulen → fortlaufend"""
+    """Mehrere Spulen → fortlaufend (manuell zugewiesen)"""
     spools = []
     for i in range(5):
         spool = Spool(material_id=test_material.id, weight_full=1000)
+        # NEUES VERHALTEN: Manuell Nummer zuweisen
+        spool.spool_number = get_next_spool_number(session)
         assign_spool_number(spool, session)
         session.add(spool)
         session.commit()
@@ -113,14 +117,17 @@ def test_recycling_fills_gaps(session: Session, test_material: Material):
     """Lücke wird recycelt (#2 gelöscht → neue Spule bekommt #2)"""
     # Erstelle #1, #2, #3
     spool1 = Spool(material_id=test_material.id, weight_full=1000)
+    spool1.spool_number = get_next_spool_number(session)
     assign_spool_number(spool1, session)
     session.add(spool1)
 
     spool2 = Spool(material_id=test_material.id, weight_full=1000)
+    spool2.spool_number = get_next_spool_number(session)
     assign_spool_number(spool2, session)
     session.add(spool2)
 
     spool3 = Spool(material_id=test_material.id, weight_full=1000)
+    spool3.spool_number = get_next_spool_number(session)
     assign_spool_number(spool3, session)
     session.add(spool3)
     session.commit()
@@ -135,6 +142,7 @@ def test_recycling_fills_gaps(session: Session, test_material: Material):
 
     # Neue Spule sollte #2 bekommen (Recycling!)
     spool_new = Spool(material_id=test_material.id, weight_full=1000)
+    spool_new.spool_number = get_next_spool_number(session)
     assign_spool_number(spool_new, session)
 
     assert spool_new.spool_number == 2, "Gelöschte Nummer #2 sollte recycelt werden"
@@ -176,6 +184,8 @@ def test_job_snapshot_creation(session: Session, test_material: Material, test_p
         color="black",
         created_at=datetime.utcnow().isoformat()  # FIX: created_at setzen
     )
+    # NEUES VERHALTEN: Manuell Nummer zuweisen
+    spool.spool_number = get_next_spool_number(session)
     assign_spool_number(spool, session)
     session.add(spool)
     session.commit()
@@ -209,6 +219,8 @@ def test_job_history_survives_spool_deletion(session: Session, test_material: Ma
         color="red",
         created_at=datetime.utcnow().isoformat()  # FIX: created_at setzen
     )
+    # NEUES VERHALTEN: Manuell Nummer zuweisen
+    spool.spool_number = get_next_spool_number(session)
     assign_spool_number(spool, session)
     session.add(spool)
     session.commit()
@@ -246,6 +258,8 @@ def test_recycled_number_detection(session: Session, test_material: Material, te
         weight_full=1000,
         created_at=datetime.utcnow().isoformat()  # FIX: created_at setzen
     )
+    # NEUES VERHALTEN: Manuell Nummer zuweisen
+    spool1.spool_number = get_next_spool_number(session)
     assign_spool_number(spool1, session)
     session.add(spool1)
     session.commit()
@@ -269,6 +283,8 @@ def test_recycled_number_detection(session: Session, test_material: Material, te
         weight_full=1000,
         created_at=datetime.utcnow().isoformat()  # FIX: created_at setzen
     )
+    # NEUES VERHALTEN: Manuell Nummer zuweisen (recycelt die #1)
+    spool2.spool_number = get_next_spool_number(session)
     assign_spool_number(spool2, session)
     session.add(spool2)
     session.commit()
@@ -408,25 +424,27 @@ def test_rfid_spool_gets_no_number(session: Session, test_material: Material):
 
 
 def test_manual_spool_gets_number(session: Session, test_material: Material):
-    """Manuelle Spule (ohne tray_uuid) bekommt Nummer"""
+    """Manuelle Spule (ohne tray_uuid) kann Nummer erhalten (manuell zugewiesen)"""
     spool = Spool(
         material_id=test_material.id,
         weight_full=1000,
         tray_uuid=None  # Kein RFID
     )
+    # NEUES VERHALTEN: Alle Nummern sind jetzt manuell (auch für nicht-RFID Spulen)
+    spool.spool_number = get_next_spool_number(session)
     assign_spool_number(spool, session)
     session.add(spool)
     session.commit()
     session.refresh(spool)
 
-    assert spool.spool_number == 1, "Manuelle Spule sollte Nummer bekommen"
+    assert spool.spool_number == 1, "Manuelle Spule kann Nummer bekommen (wenn manuell zugewiesen)"
     assert spool.tray_uuid is None
     assert spool.name == "PLA Basic"
 
 
 def test_mixed_rfid_and_manual_spools(session: Session, test_material: Material):
-    """Gemischte RFID- und manuelle Spulen - nur manuelle bekommen Nummern"""
-    # RFID-Spule #1
+    """Gemischte RFID- und manuelle Spulen - User entscheidet über Nummern"""
+    # RFID-Spule #1 (keine Nummer)
     rfid1 = Spool(
         material_id=test_material.id,
         weight_full=1000,
@@ -435,16 +453,18 @@ def test_mixed_rfid_and_manual_spools(session: Session, test_material: Material)
     assign_spool_number(rfid1, session)
     session.add(rfid1)
 
-    # Manuelle Spule #1
+    # Manuelle Spule #1 (User gibt Nummer)
     manual1 = Spool(
         material_id=test_material.id,
         weight_full=1000,
         tray_uuid=None
     )
+    # NEUES VERHALTEN: User weist Nummer zu
+    manual1.spool_number = get_next_spool_number(session)
     assign_spool_number(manual1, session)
     session.add(manual1)
 
-    # RFID-Spule #2
+    # RFID-Spule #2 (keine Nummer)
     rfid2 = Spool(
         material_id=test_material.id,
         weight_full=1000,
@@ -453,20 +473,22 @@ def test_mixed_rfid_and_manual_spools(session: Session, test_material: Material)
     assign_spool_number(rfid2, session)
     session.add(rfid2)
 
-    # Manuelle Spule #2
+    # Manuelle Spule #2 (User gibt Nummer)
     manual2 = Spool(
         material_id=test_material.id,
         weight_full=1000,
         tray_uuid=None
     )
+    # NEUES VERHALTEN: User weist Nummer zu
+    manual2.spool_number = get_next_spool_number(session)
     assign_spool_number(manual2, session)
     session.add(manual2)
 
     session.commit()
 
     # Prüfe Nummern
-    assert rfid1.spool_number is None, "RFID-Spule 1 sollte keine Nummer haben"
-    assert rfid2.spool_number is None, "RFID-Spule 2 sollte keine Nummer haben"
+    assert rfid1.spool_number is None, "RFID-Spule 1 hat keine Nummer (User hat keine vergeben)"
+    assert rfid2.spool_number is None, "RFID-Spule 2 hat keine Nummer (User hat keine vergeben)"
     assert manual1.spool_number == 1, "Manuelle Spule 1 sollte #1 sein"
     assert manual2.spool_number == 2, "Manuelle Spule 2 sollte #2 sein"
 
