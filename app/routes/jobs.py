@@ -102,6 +102,29 @@ def get_job(job_id: str, session: Session = Depends(get_session)):
 def create_job(job: JobCreate, session: Session = Depends(get_session)):
     """Neuen Druckauftrag anlegen"""
     db_job = Job.model_validate(job)
+
+    # Wenn Spule zugewiesen und Verbrauch vorhanden: Von Spule abziehen
+    if db_job.spool_id and db_job.filament_used_g and db_job.filament_used_g > 0:
+        spool = session.get(Spool, db_job.spool_id)
+        if spool:
+            # Gewicht abziehen
+            if spool.weight_current is not None:
+                new_weight = max(0, float(spool.weight_current) - float(db_job.filament_used_g))
+                spool.weight_current = new_weight
+
+                # Prozentsatz neu berechnen
+                if spool.weight_full and spool.weight_empty:
+                    weight_range = float(spool.weight_full) - float(spool.weight_empty)
+                    if weight_range > 0:
+                        spool.remain_percent = ((new_weight - float(spool.weight_empty)) / weight_range) * 100
+                        spool.remain_percent = max(0, min(100, spool.remain_percent))  # Clamp auf 0-100
+
+                # Spule als "leer" markieren wenn unter 50g
+                if new_weight < 50:
+                    spool.is_empty = True
+
+                session.add(spool)
+
     session.add(db_job)
     session.commit()
     session.refresh(db_job)
@@ -114,11 +137,61 @@ def update_job(job_id: str, job: JobCreate, session: Session = Depends(get_sessi
     db_job = session.get(Job, job_id)
     if not db_job:
         raise HTTPException(status_code=404, detail="Druckauftrag nicht gefunden")
-    
+
+    # Merke alte Werte für Differenz-Berechnung
+    old_spool_id = db_job.spool_id
+    old_used_g = db_job.filament_used_g or 0
+
     job_data = job.model_dump(exclude_unset=True)
     for key, value in job_data.items():
         setattr(db_job, key, value)
-    
+
+    # Wenn Spule oder Verbrauch geändert wurde: Gewicht anpassen
+    new_spool_id = db_job.spool_id
+    new_used_g = db_job.filament_used_g or 0
+
+    # Fall 1: Spule wurde geändert oder hinzugefügt
+    if new_spool_id and new_spool_id != old_spool_id and new_used_g > 0:
+        spool = session.get(Spool, new_spool_id)
+        if spool:
+            # Ganzen Verbrauch abziehen
+            if spool.weight_current is not None:
+                new_weight = max(0, float(spool.weight_current) - float(new_used_g))
+                spool.weight_current = new_weight
+
+                # Prozentsatz neu berechnen
+                if spool.weight_full and spool.weight_empty:
+                    weight_range = float(spool.weight_full) - float(spool.weight_empty)
+                    if weight_range > 0:
+                        spool.remain_percent = ((new_weight - float(spool.weight_empty)) / weight_range) * 100
+                        spool.remain_percent = max(0, min(100, spool.remain_percent))
+
+                if new_weight < 50:
+                    spool.is_empty = True
+
+                session.add(spool)
+
+    # Fall 2: Gleiche Spule, aber Verbrauch hat sich geändert
+    elif new_spool_id and new_spool_id == old_spool_id and new_used_g != old_used_g:
+        spool = session.get(Spool, new_spool_id)
+        if spool and spool.weight_current is not None:
+            # Differenz berechnen und anpassen
+            diff_g = new_used_g - old_used_g
+            new_weight = max(0, float(spool.weight_current) - diff_g)
+            spool.weight_current = new_weight
+
+            # Prozentsatz neu berechnen
+            if spool.weight_full and spool.weight_empty:
+                weight_range = float(spool.weight_full) - float(spool.weight_empty)
+                if weight_range > 0:
+                    spool.remain_percent = ((new_weight - float(spool.weight_empty)) / weight_range) * 100
+                    spool.remain_percent = max(0, min(100, spool.remain_percent))
+
+            if new_weight < 50:
+                spool.is_empty = True
+
+            session.add(spool)
+
     session.add(db_job)
     session.commit()
     session.refresh(db_job)
@@ -151,6 +224,12 @@ def override_job_spool(job_id: str, payload: JobSpoolUpdate, session: Session = 
         if not spool:
             raise HTTPException(status_code=400, detail="Spule nicht gefunden")
 
+        # Status auf "Aktiv" setzen bei manueller Zuweisung (wenn nicht leer)
+        if not spool.is_empty and spool.status != "Aktiv":
+            spool.status = "Aktiv"
+            spool.is_open = True
+            session.add(spool)
+
     db_job.spool_id = payload.spool_id
     session.add(db_job)
     session.commit()
@@ -179,6 +258,11 @@ def update_manual_usage(job_id: str, payload: JobManualUsageUpdate, session: Ses
     # Spule zuordnen
     db_job.spool_id = payload.spool_id
 
+    # Status auf "Aktiv" setzen bei manueller Zuweisung (wenn nicht leer)
+    if not spool.is_empty and spool.status != "Aktiv":
+        spool.status = "Aktiv"
+        spool.is_open = True
+
     # Verbrauch setzen (mindestens einer muss angegeben sein)
     if payload.used_g is None and payload.used_mm is None:
         raise HTTPException(status_code=400, detail="Verbrauch (used_g oder used_mm) muss angegeben werden")
@@ -197,7 +281,7 @@ def update_manual_usage(job_id: str, payload: JobManualUsageUpdate, session: Ses
         if new_weight < 50:
             spool.is_empty = True
 
-        session.add(spool)
+    session.add(spool)
 
     session.add(db_job)
     session.commit()

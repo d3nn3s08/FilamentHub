@@ -2,6 +2,7 @@
 let jobs = [];
 let printers = [];
 let spools = [];
+let materials = [];
 let currentJobId = null;
 let deleteJobId = null;
 let overrideJobId = null;
@@ -10,6 +11,7 @@ let overrideJobId = null;
 document.addEventListener('DOMContentLoaded', async () => {
     // Stammdaten ERST laden, dann Jobs rendern, damit IDs aufgelöst werden
     try {
+        await loadMaterials();
         await loadPrinters();
         await loadSpools();
         await loadJobs();
@@ -22,12 +24,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('startedAt').value = now.toISOString().slice(0, 16);
-    
+
     // Search and filter
     document.getElementById('searchInput').addEventListener('input', filterJobs);
     document.getElementById('filterPrinter').addEventListener('change', filterJobs);
     document.getElementById('filterStatus').addEventListener('change', filterJobs);
-    
+
+    // Spulen-Suche (Job-Formular)
+    const spoolSearch = document.getElementById('spoolSearch');
+    if (spoolSearch) {
+        spoolSearch.addEventListener('input', filterSpoolList);
+    }
+
+    // Spulen-Suche (Manual Usage Modal)
+    const usageSpoolSearch = document.getElementById('usageSpoolSearch');
+    if (usageSpoolSearch) {
+        usageSpoolSearch.addEventListener('input', filterUsageSpoolList);
+    }
+
     // Auto-refresh alle 15 Sekunden
     setInterval(async () => {
         await loadJobs();
@@ -64,21 +78,109 @@ async function loadPrinters() {
     }
 }
 
+async function loadMaterials() {
+    try {
+        const response = await fetch('/api/materials/');
+        materials = await response.json();
+    } catch (error) {
+        console.error('Fehler beim Laden der Materialien:', error);
+    }
+}
+
 async function loadSpools() {
     try {
         const response = await fetch('/api/spools/');
         spools = await response.json();
-        
-        const spoolSelect = document.getElementById('jobSpool');
-        spools.forEach(spool => {
-            const name = spool.label || `Spule ${spool.id.substring(0, 6)}`;
-            const slot = spool.ams_slot ?? '-';
-            const mat = spool.material_id ? ` | ${spool.material_id}` : '';
-            spoolSelect.innerHTML += `<option value="${spool.id}">${name} (Slot ${slot}${mat})</option>`;
-        });
+        renderSpoolList(spools);
     } catch (error) {
         console.error('Fehler beim Laden der Spulen:', error);
     }
+}
+
+function renderSpoolList(spoolsToRender) {
+    const spoolSelect = document.getElementById('jobSpool');
+    const usageSpoolSelect = document.getElementById('usageSpool');
+
+    // Reset
+    spoolSelect.innerHTML = '<option value="">-- Keine Spule --</option>';
+    if (usageSpoolSelect) {
+        usageSpoolSelect.innerHTML = '<option value="">-- Spule wählen --</option>';
+    }
+
+    spoolsToRender.forEach(spool => {
+        // Material-Info holen
+        const material = materials.find(m => m.id === spool.material_id);
+        const materialName = material ? material.name : 'Unbekannt';
+        const brand = material && material.brand ? ` (${material.brand})` : '';
+
+        // Spulen-Nummer oder "RFID"
+        const spoolNumber = spool.spool_number ? `#${spool.spool_number}` : (spool.tray_uuid ? '📡 RFID' : '-');
+
+        // Farbe als Punkt
+        const color = spool.tray_color ? `🎨` : '';
+
+        // Restgewicht
+        const remaining = spool.weight_current || spool.weight_remaining || 0;
+        const weight = `${Math.round(remaining)}g`;
+
+        // Label erstellen: "Material | #Nummer | Gewicht"
+        const displayText = `${materialName}${brand} | ${spoolNumber} | ${weight} ${color}`;
+
+        const option = `<option value="${spool.id}" data-search="${materialName.toLowerCase()} ${brand.toLowerCase()} ${spoolNumber.toLowerCase()}">${displayText}</option>`;
+        spoolSelect.innerHTML += option;
+
+        if (usageSpoolSelect) {
+            usageSpoolSelect.innerHTML += option;
+        }
+    });
+}
+
+function filterSpoolList() {
+    const searchTerm = document.getElementById('spoolSearch').value.toLowerCase();
+
+    if (!searchTerm) {
+        renderSpoolList(spools);
+        return;
+    }
+
+    const filtered = spools.filter(spool => {
+        const material = materials.find(m => m.id === spool.material_id);
+        const materialName = material ? material.name.toLowerCase() : '';
+        const brand = material && material.brand ? material.brand.toLowerCase() : '';
+        const spoolNumber = spool.spool_number ? spool.spool_number.toString() : '';
+        const label = spool.label ? spool.label.toLowerCase() : '';
+
+        return materialName.includes(searchTerm) ||
+               brand.includes(searchTerm) ||
+               spoolNumber.includes(searchTerm) ||
+               label.includes(searchTerm);
+    });
+
+    renderSpoolList(filtered);
+}
+
+function filterUsageSpoolList() {
+    const searchTerm = document.getElementById('usageSpoolSearch').value.toLowerCase();
+
+    if (!searchTerm) {
+        renderSpoolList(spools);
+        return;
+    }
+
+    const filtered = spools.filter(spool => {
+        const material = materials.find(m => m.id === spool.material_id);
+        const materialName = material ? material.name.toLowerCase() : '';
+        const brand = material && material.brand ? material.brand.toLowerCase() : '';
+        const spoolNumber = spool.spool_number ? spool.spool_number.toString() : '';
+        const label = spool.label ? spool.label.toLowerCase() : '';
+
+        return materialName.includes(searchTerm) ||
+               brand.includes(searchTerm) ||
+               spoolNumber.includes(searchTerm) ||
+               label.includes(searchTerm);
+    });
+
+    renderSpoolList(filtered);
 }
 
 async function loadStats() {

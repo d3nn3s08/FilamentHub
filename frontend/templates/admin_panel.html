@@ -585,6 +585,7 @@ try {
                             <option value="error">Fehler</option>
                             <option value="material_low">Material niedrig</option>
                             <option value="temperature">Temperatur</option>
+                            <option value="humidity">Luftfeuchtigkeit</option>
                             <option value="filament_weight">Filament-Gewicht</option>
                             <option value="custom">Custom</option>
                         </select>
@@ -650,6 +651,28 @@ try {
                             <div class="form-group">
                                 <label>Temperatur (°C)</label>
                                 <input type="number" id="temp-value" placeholder="z.B. 250">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Humidity Condition -->
+                    <div id="condition-humidity" class="condition-config" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Operator</label>
+                                <select id="humidity-operator">
+                                    <option value=">">Größer als (>)</option>
+                                    <option value="<">Kleiner als (<)</option>
+                                    <option value=">=">Größer gleich (>=)</option>
+                                    <option value="<=">Kleiner gleich (<=)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Luftfeuchtigkeit (%)</label>
+                                <input type="number" id="humidity-value" placeholder="z.B. 60" min="0" max="100">
+                                <small style="color: var(--text-dim); font-size: 12px; display: block; margin-top: 4px;">
+                                    💡 Empfohlen: < 60% für optimale Filament-Lagerung
+                                </small>
                             </div>
                         </div>
                     </div>

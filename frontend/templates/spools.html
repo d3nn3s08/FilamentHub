@@ -180,11 +180,12 @@
                         <label for="spoolStatus">Status</label>
                         <select id="spoolStatus" class="form-control">
                             <option value="Lager" selected>🏪 Lager</option>
+                            <option value="Aktiv">✅ Aktiv</option>
                             <option value="In Benutzung">🖨️ In Benutzung (ohne AMS)</option>
                             <option value="Leer">🚫 Spule ist leer</option>
                         </select>
-                        <small style="color: var(--text-dim); font-size: 0.875rem;">
-                            💡 "Aktiv" wird automatisch bei AMS-Nutzung gesetzt
+                        <small id="spoolStatusHint" style="color: var(--text-dim); font-size: 0.875rem;">
+                            💡 Status wird bei AMS-Nutzung automatisch aktualisiert
                         </small>
                     </div>
                 </div>

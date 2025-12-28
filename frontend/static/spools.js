@@ -273,7 +273,7 @@ function renderSpools(spoolsToRender) {
                                     ` : '<span style="color: var(--error);">Unbekannt</span>'}
                                 </td>
                                 <td>
-                                    <strong>${Math.round(remaining || 0)}g</strong>
+                                    <strong>${(remaining || 0).toFixed(2)}g</strong>
                                     <small style="color: var(--text-dim);"> / ${weightFull}g</small>
                                 </td>
                                 <td>${statusBadge}</td>
@@ -400,6 +400,25 @@ function openEditModal(id) {
         statusValue = 'Leer';
     }
     document.getElementById('spoolStatus').value = statusValue;
+
+    // Status-Dropdown sperren wenn Spule im AMS ist
+    const statusDropdown = document.getElementById('spoolStatus');
+    const statusHint = document.getElementById('spoolStatusHint');
+    const isInAMS = spool.ams_slot != null && spool.printer_id != null;
+
+    if (isInAMS) {
+        statusDropdown.disabled = true;
+        statusDropdown.style.opacity = '0.6';
+        statusDropdown.style.cursor = 'not-allowed';
+        statusHint.textContent = '🔒 Status kann nicht geändert werden (Spule ist im AMS)';
+        statusHint.style.color = 'var(--warning)';
+    } else {
+        statusDropdown.disabled = false;
+        statusDropdown.style.opacity = '1';
+        statusDropdown.style.cursor = 'pointer';
+        statusHint.textContent = '💡 Status wird bei AMS-Nutzung automatisch aktualisiert';
+        statusHint.style.color = 'var(--text-dim)';
+    }
 
     document.getElementById('spoolModal').classList.add('active');
 }

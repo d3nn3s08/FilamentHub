@@ -177,6 +177,7 @@ async function openEditModal(id) {
         document.getElementById("editType").value = p.printer_type || "";
         document.getElementById("editIp").value = p.ip_address || "";
         document.getElementById("editPort").value = p.port || "";
+        document.getElementById("editMqttVersion").value = p.mqtt_version || "311";
         document.getElementById("editPower").value = p.power_consumption_kw ?? "";
         document.getElementById("editMaintenance").value = p.maintenance_cost_yearly ?? "";
         document.getElementById("editSerial").value = p.cloud_serial || "";
@@ -191,11 +192,13 @@ async function openEditModal(id) {
 async function savePrinterEdit(ev) {
     ev.preventDefault();
     const id = document.getElementById("editId").value;
+    const mqttVersion = document.getElementById("editMqttVersion").value;
     const payload = {
         name: document.getElementById("editName").value,
         printer_type: document.getElementById("editType").value,
         ip_address: document.getElementById("editIp").value,
         port: document.getElementById("editPort").value ? Number(document.getElementById("editPort").value) : null,
+        mqtt_version: mqttVersion || null, // Leerer String → null für Auto-Erkennung
         power_consumption_kw: document.getElementById("editPower").value ? Number(document.getElementById("editPower").value) : null,
         maintenance_cost_yearly: document.getElementById("editMaintenance").value ? Number(document.getElementById("editMaintenance").value) : null,
         cloud_serial: document.getElementById("editSerial").value,

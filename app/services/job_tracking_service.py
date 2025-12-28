@@ -252,8 +252,8 @@ class JobTrackingService:
                 session.commit()
                 session.refresh(new_job)
 
-                # Spulen-Status aktualisieren (für manuell angelegte Spulen)
-                if spool and spool.spool_number:
+                # Spulen-Status aktualisieren (für ALLE Spulen, nicht nur mit spool_number)
+                if spool and not spool.is_empty:
                     if spool.status != "Aktiv":
                         spool.status = "Aktiv"
                         spool.is_open = True

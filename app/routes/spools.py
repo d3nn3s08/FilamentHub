@@ -191,6 +191,12 @@ def unassign_spool(spool_id: str, session: Session = Depends(get_session)):
     spool.printer_id = None
     spool.ams_slot = None
 
+    # Status-Logik: Spule zurück ins Lager
+    # Wenn Spule nicht leer ist und Status "Aktiv" war, zurück auf "Lager" setzen
+    if not spool.is_empty and spool.status == "Aktiv":
+        spool.status = "Lager"
+        # is_open bleibt True, da Spule bereits geöffnet wurde
+
     session.add(spool)
     session.commit()
     session.refresh(spool)

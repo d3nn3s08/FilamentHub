@@ -7,26 +7,44 @@
   async function loadLogs(){
     const root = document.getElementById('log-entries');
     if (root) root.textContent = 'Lade Logs...';
+
+    // Lese aktuelles Modul aus Dropdown
+    const moduleSelect = document.getElementById('logModuleSelect');
+    const limitSelect = document.getElementById('logLimitSelect');
+    const module = moduleSelect ? moduleSelect.value : 'app';
+    const limit = limitSelect ? limitSelect.value : '500';
+
     try{
-      const res = await fetch('/api/debug/logs?module=app&limit=500');
+      const res = await fetch(`/api/debug/logs?module=${module}&limit=${limit}`);
       const data = await res.json();
       let items = [];
-      if (Array.isArray(data.items)) {
+
+      // API gibt { logs: [...], count: X, module: "..." } zurück
+      if (Array.isArray(data.logs)) {
+        items = data.logs;
+      } else if (Array.isArray(data.items)) {
         items = data.items;
       } else if (typeof data.lines === 'string') {
-        items = data.lines.split('\n').map(m=>({level:'INFO', module:'app', message:m}));
+        items = data.lines.split('\n').map(m=>({level:'INFO', module:module, message:m}));
       } else if (Array.isArray(data.lines)) {
-        items = data.lines.map(m=>({level:'INFO', module:'app', message:m}));
+        items = data.lines.map(m=>({level:'INFO', module:module, message:m}));
       }
 
       // Store und Render via lokale Filter
       allLogs = items;
       populateModuleOptions(allLogs);
       applyFilters();
+
+      // Update Last Update Zeit
+      const lastUpdateEl = document.getElementById('logLastUpdate');
+      if (lastUpdateEl) {
+        const now = new Date();
+        lastUpdateEl.textContent = now.toLocaleTimeString('de-DE');
+      }
     } catch (err) {
       console.error('Fehler beim Laden der Logs:', err);
       const rootEl = document.getElementById('log-entries');
-      if (rootEl) rootEl.textContent = 'Fehler beim Laden der Logs.';
+      if (rootEl) rootEl.textContent = `Fehler beim Laden der Logs für Modul "${module}": ${err.message}`;
     }
   }
 
@@ -89,7 +107,17 @@
     const lvl = document.getElementById('logLevelFilter');
     const mod = document.getElementById('logModuleFilter');
     const q = document.getElementById('logSearchInput');
+
+    // Modul-Selector (lädt neue Logs bei Änderung)
+    const moduleSelect = document.getElementById('logModuleSelect');
+    const limitSelect = document.getElementById('logLimitSelect');
+
     if (reload) reload.onclick = loadLogs;
+
+    // Modul-Wechsel → Logs neu laden
+    if (moduleSelect) moduleSelect.onchange = loadLogs;
+    if (limitSelect) limitSelect.onchange = loadLogs;
+
     // Pause-Button: toggelt nur Label (reine UI, da Autoscroll lokal nicht verwaltet wird)
     if (pause) pause.onclick = () => {
       pause.textContent = (pause.textContent === 'Pause') ? 'Fortsetzen' : 'Pause';

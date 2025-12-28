@@ -159,6 +159,8 @@ def sync_ams_slots(ams_units: List[Dict[str, Any]], printer_id: Optional[str] = 
                         first_seen=now,
                         used_count=0,
                         label=f"AMS Slot {ams_slot}" if ams_slot is not None else None,
+                        status="Aktiv",  # Neue Spulen im AMS sind "Aktiv"
+                        is_open=True,  # Spulen im AMS sind geöffnet
                     )
                     session.add(spool)
                     updated += 1
@@ -171,6 +173,11 @@ def sync_ams_slots(ams_units: List[Dict[str, Any]], printer_id: Optional[str] = 
                 spool.tray_uuid = tray_uuid or spool.tray_uuid
                 spool.tray_color = tray_color or spool.tray_color
                 spool.tray_type = tray_type or spool.tray_type
+
+                # Status aktualisieren: Wenn Spule im AMS ist, auf "Aktiv" setzen
+                if not spool.is_empty:
+                    spool.status = "Aktiv"
+                    spool.is_open = True
                 # Neue Rolle erkennen: Remain steigt deutlich an
                 if remain_percent is not None and spool.remain_percent is not None and remain_percent > spool.remain_percent + 5:
                     spool.used_count = 0

@@ -42,6 +42,9 @@ function fillForm(notification) {
         if (triggerType === 'temperature') {
             document.getElementById("temp-operator").value = condition.operator || ">";
             document.getElementById("temp-value").value = condition.value || "";
+        } else if (triggerType === 'humidity') {
+            document.getElementById("humidity-operator").value = condition.operator || ">";
+            document.getElementById("humidity-value").value = condition.value || "";
         } else if (triggerType === 'print_time') {
             document.getElementById("printtime-operator").value = condition.operator || ">";
             document.getElementById("printtime-value").value = condition.value || "";
@@ -87,6 +90,12 @@ function readForm() {
             type: 'temperature',
             operator: document.getElementById("temp-operator").value,
             value: parseFloat(document.getElementById("temp-value").value) || 0
+        };
+    } else if (triggerType === 'humidity') {
+        data.trigger.condition = {
+            type: 'humidity',
+            operator: document.getElementById("humidity-operator").value,
+            value: parseFloat(document.getElementById("humidity-value").value) || 0
         };
     } else if (triggerType === 'print_time') {
         data.trigger.condition = {
@@ -285,6 +294,8 @@ function createNewNotification() {
     // Reset all condition fields
     document.getElementById('temp-operator').value = '>';
     document.getElementById('temp-value').value = '';
+    document.getElementById('humidity-operator').value = '>';
+    document.getElementById('humidity-value').value = '';
     document.getElementById('printtime-operator').value = '>';
     document.getElementById('printtime-value').value = '';
     document.getElementById('filament-operator').value = '<';
@@ -312,6 +323,9 @@ function updateTriggerSection() {
     if (triggerType === 'temperature') {
         triggerSection.style.display = 'block';
         document.getElementById('condition-temperature').style.display = 'block';
+    } else if (triggerType === 'humidity') {
+        triggerSection.style.display = 'block';
+        document.getElementById('condition-humidity').style.display = 'block';
     } else if (triggerType === 'print_time') {
         triggerSection.style.display = 'block';
         document.getElementById('condition-print_time').style.display = 'block';

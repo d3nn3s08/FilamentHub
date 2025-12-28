@@ -176,6 +176,20 @@ def _check_start_trigger(payload: str) -> bool:
         except (ValueError, TypeError):
             pass
 
+    elif trigger_type == "humidity":
+        # Search for any humidity >= trigger_value
+        # Pattern matches "humidity" field
+        humidity_pattern = r'"humidity"\s*:\s*"?(\d+\.?\d*)"?'
+        matches = re.findall(humidity_pattern, str(payload), re.IGNORECASE)
+
+        try:
+            trigger_humidity = float(trigger_value)
+            for match in matches:
+                if float(match) >= trigger_humidity:
+                    return True
+        except (ValueError, TypeError):
+            pass
+
     return False
 
 
@@ -466,7 +480,22 @@ def _build_printer_connect_payload(printer: Printer) -> Optional[Dict[str, Any]]
     # WICHTIG: PrinterMQTTClient verwendet IMMER Port 8883 (TLS)
     # Auch wenn in der DB ein anderer Port gespeichert ist (z.B. 6000 für Tests)
     port = 8883
-    protocol = str(getattr(printer, "mqtt_version", "5") or "5")
+
+    # MQTT-Protokoll bestimmen: Modell-basiert mit Fallback
+    protocol = str(getattr(printer, "mqtt_version", None) or "")
+
+    # Falls nicht gesetzt: Modell-basierte Auto-Erkennung
+    if not protocol:
+        from app.services.printer_auto_detector import PrinterAutoDetector
+        model = getattr(printer, "model", None)
+        if model and model.upper() in PrinterAutoDetector.MODEL_MQTT_PROTOCOL:
+            protocol = PrinterAutoDetector.MODEL_MQTT_PROTOCOL[model.upper()]
+            logger = logging.getLogger("mqtt_runtime")
+            logger.info(f"[MQTT] Modell '{model}' → Auto-Protokoll {protocol}")
+        else:
+            # Letzter Fallback: MQTT v5
+            protocol = "5"
+
     client_id = f"filamenthub_{getattr(printer, 'name', 'printer')}_{str(getattr(printer, 'id', ''))[:6]}"
     return {
         "host": ip,

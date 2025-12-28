@@ -49,6 +49,19 @@
                         <input type="number" id="editPort" placeholder="6000">
                     </label>
                 </div>
+                <label class="field">
+                    <span>MQTT Protokoll Version</span>
+                    <select id="editMqttVersion">
+                        <option value="" selected>🤖 Auto (Empfohlen - basierend auf Modell)</option>
+                        <option value="31">MQTT 3.1</option>
+                        <option value="311">MQTT 3.1.1</option>
+                        <option value="50">MQTT 5.0</option>
+                    </select>
+                    <small style="color: var(--text-dim); font-size: 0.875rem; display: block; margin-top: 4px; line-height: 1.4;">
+                        💡 <strong>Auto:</strong> X1C/P1S/P1P/X1E/H2D → MQTT v5 | A1/A1 Mini → MQTT v3.1.1<br>
+                        ⚙️ Manuell: Überschreibt Auto-Erkennung (nur bei Problemen verwenden)
+                    </small>
+                </label>
                 <div class="field-row">
                     <label class="field">
                         <span>Stromverbrauch (kW)</span>
