@@ -35,7 +35,7 @@ htmlcov/
 .github/
 
 # Environment
-# .env wird für Admin-Credentials benötigt und sollte hochgeladen werden
+# .env enthält lokale Konfiguration (Secrets) und darf NICHT committed werden
 .env.local
 .env.*.local
 

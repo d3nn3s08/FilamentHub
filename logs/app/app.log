@@ -7230,3 +7230,48 @@ ConnectionResetError: [WinError 10054] Eine vorhandene Verbindung wurde vom Remo
 2025-12-29 00:25:50,159 [INFO] httpx - HTTP Request: GET http://testserver/api/statistics/costs "HTTP/1.1 200 OK"
 2025-12-29 00:25:50,170 [DEBUG] asyncio - Using proactor: IocpProactor
 2025-12-29 00:25:50,177 [INFO] httpx - HTTP Request: GET http://testserver/api/statistics/timeline-by-material?days=1 "HTTP/1.1 200 OK"
+2025-12-29 14:09:37,057 [INFO] uvicorn.error - Started server process [16768]
+2025-12-29 14:09:37,057 [INFO] uvicorn.error - Started server process [16768]
+2025-12-29 14:09:37,057 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-29 14:09:37,057 [INFO] uvicorn.error - Waiting for application startup.
+2025-12-29 14:09:37,058 [INFO] root - Initialisiere Datenbank...
+2025-12-29 14:09:37,059 [INFO] root - Foreign Keys aktiviert.
+2025-12-29 14:09:37,059 [INFO] root - Starte Alembic-Migrationen...
+2025-12-29 14:09:37,164 [INFO] root - Aktuelle DB-Revision: 20251228_add_eta_seconds_to_job
+2025-12-29 14:09:37,173 [INFO] root - Datenbank ist bereits auf der neuesten Version (head). Keine Migrationen nötig.
+2025-12-29 14:09:37,174 [INFO] root - Datenbank-Initialisierung abgeschlossen.
+2025-12-29 14:09:37,181 [INFO] uvicorn.error - Application startup complete.
+2025-12-29 14:09:37,181 [INFO] uvicorn.error - Application startup complete.
+2025-12-29 14:09:37,181 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-29 14:09:37,181 [INFO] uvicorn.error - Uvicorn running on http://0.0.0.0:8085 (Press CTRL+C to quit)
+2025-12-29 14:10:08,334 [INFO] uvicorn.error - 127.0.0.1:25157 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-29 14:10:08,334 [INFO] uvicorn.error - 127.0.0.1:25157 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-29 14:10:08,335 [INFO] uvicorn.error - connection open
+2025-12-29 14:10:08,335 [INFO] uvicorn.error - connection open
+2025-12-29 14:10:10,245 [INFO] admin.audit - {"ts": "2025-12-29T13:10:10Z", "event": "welcome_status_set", "details": {"ip": "127.0.0.1", "shown": true}}
+2025-12-29 14:10:30,173 [INFO] admin.audit - {"ts": "2025-12-29T13:10:30Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-29 14:10:30,195 [INFO] uvicorn.error - connection closed
+2025-12-29 14:10:30,195 [INFO] uvicorn.error - connection closed
+2025-12-29 14:10:33,832 [INFO] admin.audit - {"ts": "2025-12-29T13:10:33Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-29 14:10:35,939 [INFO] admin.audit - {"ts": "2025-12-29T13:10:35Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
+2025-12-29 14:10:35,952 [INFO] admin.audit - {"ts": "2025-12-29T13:10:35Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+2025-12-29 14:10:42,856 [INFO] uvicorn.error - 127.0.0.1:47461 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-29 14:10:42,856 [INFO] uvicorn.error - 127.0.0.1:47461 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-29 14:10:42,857 [INFO] uvicorn.error - connection open
+2025-12-29 14:10:42,857 [INFO] uvicorn.error - connection open
+2025-12-29 14:10:43,129 [INFO] uvicorn.error - connection closed
+2025-12-29 14:10:43,129 [INFO] uvicorn.error - connection closed
+2025-12-29 14:10:44,671 [INFO] uvicorn.error - 127.0.0.1:39352 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-29 14:10:44,671 [INFO] uvicorn.error - 127.0.0.1:39352 - "WebSocket /api/notifications/ws" [accepted]
+2025-12-29 14:10:44,671 [INFO] uvicorn.error - connection open
+2025-12-29 14:10:44,671 [INFO] uvicorn.error - connection open
+2025-12-29 14:10:50,745 [INFO] uvicorn.error - Shutting down
+2025-12-29 14:10:50,745 [INFO] uvicorn.error - Shutting down
+2025-12-29 14:10:50,746 [INFO] uvicorn.error - connection closed
+2025-12-29 14:10:50,746 [INFO] uvicorn.error - connection closed
+2025-12-29 14:10:50,855 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-29 14:10:50,855 [INFO] uvicorn.error - Waiting for application shutdown.
+2025-12-29 14:10:50,855 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-29 14:10:50,855 [INFO] uvicorn.error - Application shutdown complete.
+2025-12-29 14:10:50,856 [INFO] uvicorn.error - Finished server process [16768]
+2025-12-29 14:10:50,856 [INFO] uvicorn.error - Finished server process [16768]

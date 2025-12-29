@@ -7,6 +7,7 @@ from sqlmodel import SQLModel, Session, create_engine
 
 DB_PATH = os.environ.get("FILAMENTHUB_DB_PATH", "data/filamenthub.db")
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
+logger = logging.getLogger("app")
 
 
 def verify_schema_or_exit(engine, required_schema: dict | None = None) -> None:
@@ -145,6 +146,14 @@ def init_db() -> None:
         logging.info("Foreign Keys aktiviert.")
     except Exception as exc:
         logging.error("Fehler beim Aktivieren der Foreign Keys: %s", exc)
+    # Ensure DB directory exists and create an empty DB file if missing
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+
+    if not os.path.exists(DB_PATH):
+        logging.info("[DB] Datenbank existiert nicht – erstelle leere SQLite-Datei.")
+        open(DB_PATH, "a").close()
 
     try:
         run_migrations()
@@ -165,6 +174,8 @@ def init_db() -> None:
         sys.exit(1)
 
     logging.info("Datenbank-Initialisierung abgeschlossen.")
+    # Sichtbare Abschlussmeldung für Betreiber (Migrationen + Schema-Validierung sind durchlaufen)
+    logger.info("[DB] Migrationen abgeschlossen, Schema validiert – Datenbank bereit")
 
 
 def get_session():

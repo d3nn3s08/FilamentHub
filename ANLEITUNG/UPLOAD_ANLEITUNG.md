@@ -1,4 +1,4 @@
-# FilamentHub Server Upload Anleitung
+﻿# FilamentHub Server Upload Anleitung
 
 ## Methode 1: WinSCP Script (Empfohlen für Automatisierung)
 
@@ -45,10 +45,10 @@ Doppelklick auf `upload.bat` oder führe in CMD aus:
 3. Verbinden
 
 ### Schritt 2: Synchronisieren
-1. Im Menü: Commands → Synchronize
+1. Im Menü: Commands -> Synchronize
 2. Local directory: `C:\Users\Denis\Desktop\FilamentHub_Projekt\FilamentHub`
 3. Remote directory: `/home/filamenthub` (oder dein Pfad)
-4. Direction: Local → Remote
+4. Direction: Local -> Remote
 5. Klick auf "Options"
 6. Bei "Exclude mask" einfügen:
 
@@ -58,7 +58,7 @@ __pycache__/; *.pyc; .venv/; venv/; .pytest_cache/; .git/; logs/; data/*.db; Bac
 
 Oder nutze den Inhalt von `winscp_exclude.txt`
 
-7. OK → Synchronize
+7. OK -> Synchronize
 
 ---
 
@@ -173,3 +173,4 @@ Bei PowerShell Script: SSH Fingerprint im Script anpassen
 ### Upload dauert zu lange
 - Nutze Exclude-Liste um unnötige Dateien auszuschließen
 - Komprimiere große Dateien vorher
+

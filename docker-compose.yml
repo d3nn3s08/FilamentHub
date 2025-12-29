@@ -10,7 +10,7 @@ services:
       FILAMENTHUB_DB_PATH: /app/data/filamenthub.db
       PYTHONPATH: /app
       # Versionsbezeichnungen (optional - überschreibt Dockerfile Defaults)
-      # APP_VERSION: "Beta v1.5 · FilamentHub"
+      # APP_VERSION: "Beta v1.6 · FilamentHub"
       # DESIGN_VERSION: "Design Beta-1.0"
     volumes:
       - /mnt/user/appdata/filamenthub/data:/app/data

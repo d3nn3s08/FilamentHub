@@ -1,4 +1,4 @@
-# FilamentHub - Installationsanleitung
+﻿# FilamentHub - Installationsanleitung
 
 ## Voraussetzungen
 - **Für lokale Installation:** Python 3.10 oder neuer
@@ -37,10 +37,10 @@ Alle benötigten Dateien sind bereits im Repository enthalten:
 
 **3. Admin-Bereich (Nur für Entwickler - überspringen für normale Nutzer)**
 
-> **⚠️ Hinweis für Nutzer:** Der Admin-Bereich ist **NICHT** für normale Benutzer!
+> **Hinweis für Nutzer:** Der Admin-Bereich ist **NICHT** für normale Benutzer!
 > **Die App funktioniert vollständig ohne Admin-Zugang.** Überspringen Sie diesen Schritt.
 
-> **⚠️ Hinweis für Entwickler:** Die `.env` Datei im Repository enthält einen Fake-Hash.
+> **Hinweis für Entwickler:** Die `.env` Datei im Repository enthält einen Fake-Hash.
 > Verwenden Sie Ihre separate `.env` mit dem echten Admin-Hash auf Ihrem Server.
 > **Admin-Zugang wird nur auf Anfrage beim Entwickler vergeben.**
 
@@ -157,7 +157,7 @@ ADMIN_COOKIE_SECURE=false
 "@ | Out-File -Encoding UTF8 .env
 ```
 
-> **⚠️ Hinweis:** Platzhalter-Hash! Generiere deinen eigenen Hash für den Admin-Zugang.
+> **Hinweis:** Platzhalter-Hash! Generiere deinen eigenen Hash für den Admin-Zugang.
 
 **5. Datenbank initialisieren**
 ```powershell
@@ -203,7 +203,7 @@ ADMIN_COOKIE_SECURE=false
 EOF
 ```
 
-> **⚠️ Hinweis:** Platzhalter-Hash! Generiere deinen eigenen Hash für den Admin-Zugang.
+> **Hinweis:** Platzhalter-Hash! Generiere deinen eigenen Hash für den Admin-Zugang.
 
 **5. Datenbank initialisieren**
 ```bash
@@ -378,7 +378,7 @@ docker-compose up -d
 
 ### Admin-Passwort vergessen (Developer/Advanced)
 
-> **⚠️ Hinweis:** Nur für Entwickler/Administratoren relevant.
+> **Hinweis:** Nur für Entwickler/Administratoren relevant.
 
 **Neues Passwort generieren:**
 
@@ -406,3 +406,4 @@ docker-compose restart
 
 **Letzte Aktualisierung:** 2025-12-25
 **Version:** 0.1.0
+

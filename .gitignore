@@ -1,11 +1,15 @@
-# Python
+# =========================
+# Python / Bytecode
+# =========================
 __pycache__/
 *.py[cod]
 *.pyd
 *.so
 .Python
 
-# Test / coverage caches
+# =========================
+# Test / Coverage
+# =========================
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -13,43 +17,57 @@ __pycache__/
 coverage.xml
 htmlcov/
 
-# Virtual environments
+# =========================
+# Virtual Environments
+# =========================
 .venv/
 venv/
 ENV/
 
-# OS / editor
+# =========================
+# OS / Editor
+# =========================
 .DS_Store
 Thumbs.db
 .vscode/
 
-# App runtime output
+# =========================
+# Runtime Output
+# =========================
 logs/
 
-# Database files
+# =========================
+# Database (lokal & Test)
+# =========================
+data/*.db
 data/filamenthub.db
 data/filamenthub.db-*
-data/*.db
+data/test*.db
 data/backups/
 
-# Local backups folder
-Backup/
+# =========================
+# Snapshots (Runtime-State)
+# =========================
+data/job_snapshots.json
 
-# Local / temporary scripts and notes
+# =========================
+# Temporary / Debug Scripts
+# =========================
 scripts/_tmp_*
+scripts/tmp_*
 
-# Backup / scratch files (generated during debugging)
+# =========================
+# Backup / Scratch Files
+# =========================
 *.bak
 *.bak*
 *.backup
 *.backup*
-
-# Catch backups anywhere in tree
 **/*.bak*
 **/*.backup*
-
-# Environment file (local secrets)
-# HINWEIS: .env wird MIT ins Repository aufgenommen (mit Fake-Hash)
-# Produktions-.env mit echtem Hash wird über .env.local überschrieben
+Backup/
+# =========================
+# Environment / Secrets
+# =========================
 .env.local
-data/job_snapshots.json
+.env.*.local

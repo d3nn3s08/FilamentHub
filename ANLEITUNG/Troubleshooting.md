@@ -1,4 +1,4 @@
-# Fehlerbehebung (Troubleshooting)
+﻿# Fehlerbehebung (Troubleshooting)
 
 ## Typische Fehler
 - Datenbank kann nicht beschrieben werden
@@ -15,7 +15,7 @@
 - Debugcenter im Webinterface nutzen
 
 ## Debugcenter
-- Seite „Debug“ für Systemstatus und Live-Logs
+- Seite "Debug" für Systemstatus und Live-Logs
 - Websocket-Streaming für Echtzeit-Logs
 
 ## Lösungen
@@ -23,3 +23,4 @@
 
 ## Hinweise
 - Bei Problemen immer zuerst die Logs prüfen!
+

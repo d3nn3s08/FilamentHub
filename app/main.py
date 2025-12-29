@@ -48,6 +48,26 @@ logging.getLogger().addHandler(console_handler)
 # WICHTIG: Access-Logs explizit NICHT in app.log
 for h in list(logging.getLogger("uvicorn.access").handlers):
     logging.getLogger("uvicorn.access").removeHandler(h)
+from app.admin import enable_admin
+
+
+def init_admin():
+    import os
+
+    logger = logging.getLogger("app")
+    admin_hash = os.getenv("ADMIN_PASSWORD_HASH")
+    if admin_hash:
+        try:
+            enable_admin(admin_hash)
+            logger.info("Admin enabled via environment variable")
+        except Exception:
+            logger.exception("Failed to enable admin from environment variable")
+    else:
+        logger.info("Admin disabled (no ADMIN_PASSWORD_HASH)")
+
+
+# Initialisiere optionalen Admin-Modus (einmalig)
+init_admin()
 from fastapi import FastAPI, Request, WebSocket
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
@@ -136,6 +156,12 @@ async def health():
     return {'status': 'healthy', 'service': 'filamenthub'}
 
 app.add_event_handler("startup", init_db)
+
+
+@app.on_event("startup")
+def log_startup_complete():
+    logger = logging.getLogger("app")
+    logger.info("[APP] Startup abgeschlossen – FilamentHub ist bereit")
 
 
 # -----------------------------------------------------

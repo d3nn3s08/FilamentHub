@@ -7,3 +7,8 @@
 {"ts": "2025-12-28T23:25:47Z", "event": "admin_delete_invalid", "details": {"ip": "testclient", "table": "", "id": ""}}
 {"ts": "2025-12-28T23:25:49Z", "event": "admin_login_success", "details": {"ip": "testclient"}}
 {"ts": "2025-12-28T23:25:49Z", "event": "admin_login_failed", "details": {"ip": "testclient", "reason": "no_password"}}
+{"ts": "2025-12-29T13:10:10Z", "event": "welcome_status_set", "details": {"ip": "127.0.0.1", "shown": true}}
+{"ts": "2025-12-29T13:10:30Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-29T13:10:33Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-29T13:10:35Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
+{"ts": "2025-12-29T13:10:35Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}

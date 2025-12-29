@@ -1,8 +1,8 @@
-# FilamentHub – Troubleshooting & Lösungen
+﻿# FilamentHub - Troubleshooting & Lösungen
 
 ## 1. Datenbank kann nicht beschrieben werden
 **Problem:**
-Fehlermeldung: „Keine Schreibrechte auf data/filamenthub.db“
+Fehlermeldung: "Keine Schreibrechte auf data/filamenthub.db"
 **Lösung:**
 - Prüfe, ob der Benutzer/Container Schreibrechte auf den Ordner `data/` hat.
 - Unter Docker: `-v $(pwd)/data:/app/data` und `--user` korrekt setzen.
@@ -22,7 +22,7 @@ Tabellen fehlen, App startet ohne Fehler, aber keine Datenbankstruktur.
 
 ## 3. Alembic nicht installiert / nicht gefunden
 **Problem:**
-Fehlermeldung: „alembic: command not found“
+Fehlermeldung: "alembic: command not found"
 **Lösung:**
 - Im venv: `pip install alembic`
 - Prüfe, ob das venv aktiviert ist (`.venv\Scripts\Activate.ps1` unter Windows).
@@ -32,11 +32,11 @@ Fehlermeldung: „alembic: command not found“
 
 ## 4. Webinterface nicht erreichbar
 **Problem:**
-Browser zeigt „Seite nicht gefunden“ oder „Connection refused“.
+Browser zeigt "Seite nicht gefunden" oder "Connection refused".
 **Lösung:**
 - Prüfe, ob die App läuft (`python run.py` oder `uvicorn app.main:app`).
-- Prüfe die Portfreigabe (Standard: 8080).
-- Unter Docker: Port mit `-p 8080:8080` freigeben.
+- Prüfe die Portfreigabe (Standard: 8085).
+- Unter Docker: Port mit `-p 8085:8085` freigeben.
 
 ---
 
@@ -54,7 +54,7 @@ Keine Einträge im Logfile, Debugcenter zeigt nichts an.
 **Problem:**
 Nach dem ersten Start sind keine Drucker, Materialien oder Spulen vorhanden.
 **Lösung:**
-- Führe das zentrale Setup-Skript aus (z. B. `python setup.py`), das Beispiel-Daten einträgt.
+- Führe das zentrale Setup-Skript aus (z. B. `python setup.py`), das Beispiel-Daten einträgt.
 - Alternativ: Manuell im Webinterface anlegen.
 
 ---
@@ -66,3 +66,4 @@ Fehlermeldung beim Start, Container beendet sich sofort.
 - Prüfe die Logs mit `docker logs <container>`.
 - Prüfe, ob alle Umgebungsvariablen und Volumes korrekt gesetzt sind.
 - Stelle sicher, dass alle Abhängigkeiten installiert sind (`requirements.txt`).
+

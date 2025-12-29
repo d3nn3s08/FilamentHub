@@ -6,6 +6,27 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ---
 
+## [2025-12-29] - Startup-Logging & DB-Bereitschaftsprüfungen
+
+### Hinzugefügt
+- **Sichtbares DB-Startup-Log**: In `app/database.py` am Ende von `init_db()` wurde eine eindeutige INFO-Logmeldung ergänzt:
+  - `logger.info("[DB] Migrationen abgeschlossen, Schema validiert – Datenbank bereit")`
+  - Zweck: Betreiber sehen klar, dass Migrationen und Schema-Validierung erfolgreich durchlaufen wurden.
+
+- **Optionales App-Startup-Log**: In `app/main.py` wurde ein schneller Startup-Handler ergänzt, der nach `init_db()` die INFO-Logzeile ausgibt:
+  - `logger.info("[APP] Startup abgeschlossen – FilamentHub ist bereit")`
+  - Zweck: Visuelle Bestätigung im Log, dass die App vollständig initialisiert ist.
+
+- **Bereinigung `app/routes/database_routes.py`**: Datei bereinigt und repariert (nur Anpassungen, keine API-Änderungen):
+  - Entferntes direktes `sqlite3`-Handling zugunsten von `session_scope()` und `engine`/`text()`.
+  - Modulare Fehlerbehandlung: keine Modul-Initialisierung außerhalb von Funktionen; alle Try/Except-Blöcke innerhalb der Endpunkte.
+  - Behebung von Syntax-/Indentationsproblemen, sodass die Datei wieder importierbar und testbar ist.
+  - Zweck: Keine Verhaltensänderung der API, bessere Wartbarkeit und sichere DB-Zugriffe.
+
+### Hinweis
+- Keine funktionalen Änderungen am API-Verhalten; Änderungen sind rein betrieblich/logging- und wartungsbezogen.
+
+
 ## [2025-12-28] - Filament-Tracking Robustheit
 
 ### Behoben

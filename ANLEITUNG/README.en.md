@@ -1,4 +1,4 @@
-<p align="center">
+﻿<p align="center">
   <img src="docs/logo.png" width="280" />
 </p>
 
@@ -66,14 +66,14 @@
 python -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt  # Windows
 # or: source .venv/bin/activate && pip install -r requirements.txt  # Linux/Mac
-python run.py  # starts FastAPI/uvicorn, default port 8080
+python run.py  # starts FastAPI/uvicorn, default port 8085
 ```
-Open the Debug/Service tab (browser on port 8080), test the backup button: ZIP will be in `data/backups/`.
+Open the Debug/Service tab (browser on port 8085), test the backup button: ZIP will be in `data/backups/`.
 
 ## Quickstart (Docker)
 ```bash
 docker build -t filamenthub .
-docker run -d -p 8080:8080 -v $(pwd)/data:/app/data filamenthub
+docker run -d -p 8085:8085 -v $(pwd)/data:/app/data filamenthub
 ```
 
 ---
@@ -85,3 +85,4 @@ MIT License
 
 ## Contact
 Built by **d3nn3s08**
+
