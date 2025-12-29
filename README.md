@@ -59,7 +59,9 @@ Open-Source Dashboard für Filament-, Drucker- und Systemverwaltung – lokal, u
 
 ---
 
+
 ## 🚧 Projektstatus – Public Beta
+![Beta](https://img.shields.io/badge/Beta-v1.6.0--beta-yellow)
 
 ⚠️ **FilamentHub befindet sich aktuell in einer öffentlichen Beta-Phase (v1.6.0-beta).**
 
@@ -71,6 +73,15 @@ Open-Source Dashboard für Filament-, Drucker- und Systemverwaltung – lokal, u
 
 Diese Beta richtet sich an technisch versierte Nutzer und Early Adopter.  
 Feedback, Bugreports und Verbesserungsvorschläge sind ausdrücklich erwünscht.
+
+⏳ **Hinweis:**  
+Ein Build von **15–25 Minuten** ist auf dem Raspberry Pi normal, besonders beim ersten Start.  
+Währenddessen wirkt es so, als würde nichts passieren – **das ist kein Fehler**.
+
+Empfehlung:
+- Geduld haben
+- Konsole offen lassen
+- Nicht abbrechen
 
 ---
 
