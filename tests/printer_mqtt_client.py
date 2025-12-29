@@ -1,5 +1,6 @@
 import ssl
 import json
+import logging
 import paho.mqtt.client as mqtt
 from printer_mapper import UniversalMapper
 
@@ -38,10 +39,11 @@ class PrinterMQTTClient:
         self.client.subscribe("device/+/report")
 
     def _on_message(self, client, userdata, msg):
+        logger = logging.getLogger(__name__)
         try:
             raw = json.loads(msg.payload.decode("utf-8"))
-        except:
-            print("[MQTT] JSON Fehler")
+        except Exception as exc:
+            logger.debug("[MQTT] JSON Fehler beim Parsen der Payload: %s", exc)
             return
 
         mapped = self.mapper.map(raw)

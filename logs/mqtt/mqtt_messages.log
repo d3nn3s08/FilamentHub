@@ -21419,3 +21419,12 @@
 2025-12-29 00:25:49,676 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
 2025-12-29 00:25:49,678 | [AMS SYNC] printer_id=None ams_count=1
 2025-12-29 00:25:49,683 | [AMS SYNC] done printer_id=None
+2025-12-29 13:18:29,499 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-29 13:18:29,501 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-29 13:18:29,510 | [AMS SYNC] done printer_id=None
+2025-12-29 13:18:29,517 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-29 13:18:29,518 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-29 13:18:29,524 | [AMS SYNC] done printer_id=None
+2025-12-29 13:18:29,525 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-29 13:18:29,525 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-29 13:18:29,529 | [AMS SYNC] done printer_id=None

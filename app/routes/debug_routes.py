@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 import logging
 from pydantic import BaseModel
-import sqlite3
+from sqlalchemy import text
+from app.db.session import session_scope
 import yaml
 import os
 import logging
@@ -71,14 +72,16 @@ def get_db_tables():
     """Tabellenübersicht für Admin-Panel (SQLite)."""
     db_path = "data/filamenthub.db"
     tables = []
-    with sqlite3.connect(db_path) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
-        for (table_name,) in cursor.fetchall():
-            cursor.execute(f"PRAGMA table_info({table_name})")
-            columns = [{"name": col[1], "type": col[2], "primary_key": bool(col[5])} for col in cursor.fetchall()]
-            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-            count = cursor.fetchone()[0]
+    with session_scope() as session:
+        res = session.exec(text("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"))
+        for row in res.all():
+            table_name = row[0]
+            cols_res = session.exec(text(f"PRAGMA table_info({table_name})"))
+            columns_raw = cols_res.all()
+            columns = [{"name": col[1], "type": col[2], "primary_key": bool(col[5])} for col in columns_raw]
+            cnt_res = session.exec(text(f"SELECT COUNT(*) FROM {table_name}"))
+            cnt_row = cnt_res.first()
+            count = int(cnt_row[0]) if cnt_row else 0
             tables.append({"name": table_name, "columns": columns, "count": count})
     return {"tables": tables}
 

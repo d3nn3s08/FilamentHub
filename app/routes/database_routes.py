@@ -1,23 +1,25 @@
 import os
 import logging
-import sqlite3
 import subprocess
+from sqlalchemy import text
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any
 from pathlib import Path
-
-router = APIRouter(prefix="/api/database", tags=["Database"])
-
-DB_PATH = os.environ.get("FILAMENTHUB_DB_PATH", "data/filamenthub.db")
-
-logger = logging.getLogger("app.routes.database")
-
-# -----------------------------
-# DB EDITOR REQUEST MODEL
-# -----------------------------
-class SQLEditorRequest(BaseModel):
-    sql: str
+from app.db.session import session_scope
+from app.database import engine
+    try:
+        with session_scope() as session:
+            res = session.exec(text(f"DELETE FROM {table} WHERE id = :id"), {"id": id})
+            session.commit()
+            affected = getattr(res, "rowcount", None)
+        if not affected:
+            raise HTTPException(status_code=404, detail="Kein Eintrag mit dieser ID gefunden")
+        return {"success": True, "message": f"Eintrag gelöscht ({table}, id={id})", "affected": affected}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Delete-Fehler: {e}")
 
 # -----------------------------
 # DB EDITOR ENDPOINT
@@ -42,11 +44,9 @@ async def execute_editor_query(payload: SQLEditorRequest):
         raise HTTPException(status_code=404, detail="Datenbank nicht gefunden")
 
     try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(sql)
-        conn.commit()
-        conn.close()
+        with session_scope() as session:
+            session.exec(text(sql))
+            session.commit()
         return {"success": True, "message": "Befehl erfolgreich ausgeführt"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Query Fehler: {str(e)}")
@@ -59,29 +59,25 @@ def get_database_info():
     """Gibt Informationen über die Datenbank zurück"""
     
     if not os.path.exists(DB_PATH):
-        return {
-            "exists": False,
-            "path": DB_PATH,
-            "size_mb": 0,
-            "tables": []
-        }
-    
-    # File Info
-    file_size = os.path.getsize(DB_PATH)
-    file_stats = os.stat(DB_PATH)
-    
-    # Tabellen auslesen
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-    tables = [row[0] for row in cursor.fetchall()]
-    
-    conn.close()
-    
-    return {
-        "exists": True,
-        "path": os.path.abspath(DB_PATH),
+        try:
+            size_before = os.path.getsize(DB_PATH)
+
+            # VACUUM must run outside of an explicit transaction; use autocommit on the connection
+            with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+                conn.exec_driver_sql("VACUUM")
+
+            size_after = os.path.getsize(DB_PATH)
+            saved_kb = round((size_before - size_after) / 1024, 2)
+
+            return {
+                "success": True,
+                "message": "Datenbank optimiert",
+                "size_before_mb": round(size_before / 1024 / 1024, 3),
+                "size_after_mb": round(size_after / 1024 / 1024, 3),
+                "saved_kb": saved_kb
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"VACUUM Fehler: {str(e)}")
         "size_mb": round(file_size / 1024 / 1024, 3),
         "size_kb": round(file_size / 1024, 2),
         "tables": tables,
@@ -98,46 +94,41 @@ def get_table_info():
     if not os.path.exists(DB_PATH):
         raise HTTPException(status_code=404, detail="Datenbank nicht gefunden")
     
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    # Alle Tabellen
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
-    tables = [row[0] for row in cursor.fetchall()]
-    
-    table_info = []
-    
-    for table in tables:
-        # Row Count
-        cursor.execute(f"SELECT COUNT(*) FROM {table}")
-        row_count = cursor.fetchone()[0]
-        # Columns
-        cursor.execute(f"PRAGMA table_info({table})")
-        columns = cursor.fetchall()
-        # Preview Rows
-        cursor.execute(f"SELECT * FROM {table} LIMIT 5")
-        preview_rows = cursor.fetchall()
-        preview_headers = [col[1] for col in columns]
-        table_info.append({
-            "name": table,
-            "row_count": row_count,
-            "column_count": len(columns),
-            "columns": [
-                {
-                    "name": col[1],
-                    "type": col[2],
-                    "not_null": bool(col[3]),
-                    "primary_key": bool(col[5])
+    with session_scope() as session:
+        table_info = []
+        for table in tables:
+            # Row Count
+            cnt_res = session.exec(text(f"SELECT COUNT(*) as c FROM {table}"))
+            cnt_row = cnt_res.first()
+            row_count = int(cnt_row[0]) if cnt_row else 0
+
+            # Columns
+            cols_res = session.exec(text(f"PRAGMA table_info({table})"))
+            columns = cols_res.all()
+
+            # Preview Rows
+            preview_res = session.exec(text(f"SELECT * FROM {table} LIMIT 5"))
+            preview_rows = [tuple(r) for r in preview_res.all()]
+
+            preview_headers = [col[1] for col in columns]
+            table_info.append({
+                "name": table,
+                "row_count": row_count,
+                "column_count": len(columns),
+                "columns": [
+                    {
+                        "name": col[1],
+                        "type": col[2],
+                        "not_null": bool(col[3]),
+                        "primary_key": bool(col[5])
+                    }
+                    for col in columns
+                ],
+                "preview": {
+                    "headers": preview_headers,
+                    "rows": preview_rows
                 }
-                for col in columns
-            ],
-            "preview": {
-                "headers": preview_headers,
-                "rows": preview_rows
-            }
-        })
-    
-    conn.close()
+            })
     
     return {"tables": table_info}
 
@@ -156,53 +147,55 @@ def get_database_stats():
             "spools_empty": 0
         }
     
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    stats = {}
-    
-    # Materials
-    try:
-        cursor.execute("SELECT COUNT(*) FROM material")
-        stats["materials_count"] = cursor.fetchone()[0]
-    except Exception as exc:
-        logger.debug("Failed to read material count: %s", exc, exc_info=True)
-        stats["materials_count"] = 0
-    
-    # Spools
-    try:
-        cursor.execute("SELECT COUNT(*) FROM spool")
-        stats["spools_count"] = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM spool WHERE is_open = 1")
-        stats["spools_open"] = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM spool WHERE is_empty = 1")
-        stats["spools_empty"] = cursor.fetchone()[0]
-    except Exception as exc:
-        logger.debug("Failed to read spool stats: %s", exc, exc_info=True)
-        stats["spools_count"] = 0
-        stats["spools_open"] = 0
-        stats["spools_empty"] = 0
-    
-    # Printers
-    try:
-        cursor.execute("SELECT COUNT(*) FROM printer")
-        stats["printers_count"] = cursor.fetchone()[0]
-    except Exception as exc:
-        logger.debug("Failed to read printers count: %s", exc, exc_info=True)
-        stats["printers_count"] = 0
-    
-    # Jobs
-    try:
-        cursor.execute("SELECT COUNT(*) FROM job")
-        stats["jobs_count"] = cursor.fetchone()[0]
-    except Exception as exc:
-        logger.debug("Failed to read jobs count: %s", exc, exc_info=True)
-        stats["jobs_count"] = 0
-    
-    conn.close()
-    
+    with session_scope() as session:
+        stats = {}
+
+        # Materials
+        try:
+            res = session.exec(text("SELECT COUNT(*) FROM material"))
+            r = res.first()
+            stats["materials_count"] = int(r[0]) if r else 0
+        except Exception as exc:
+            logger.debug("Failed to read material count: %s", exc, exc_info=True)
+            stats["materials_count"] = 0
+
+        # Spools
+        try:
+            res = session.exec(text("SELECT COUNT(*) FROM spool"))
+            r = res.first()
+            stats["spools_count"] = int(r[0]) if r else 0
+
+            res = session.exec(text("SELECT COUNT(*) FROM spool WHERE is_open = 1"))
+            r = res.first()
+            stats["spools_open"] = int(r[0]) if r else 0
+
+            res = session.exec(text("SELECT COUNT(*) FROM spool WHERE is_empty = 1"))
+            r = res.first()
+            stats["spools_empty"] = int(r[0]) if r else 0
+        except Exception as exc:
+            logger.debug("Failed to read spool stats: %s", exc, exc_info=True)
+            stats["spools_count"] = 0
+            stats["spools_open"] = 0
+            stats["spools_empty"] = 0
+
+        # Printers
+        try:
+            res = session.exec(text("SELECT COUNT(*) FROM printer"))
+            r = res.first()
+            stats["printers_count"] = int(r[0]) if r else 0
+        except Exception as exc:
+            logger.debug("Failed to read printers count: %s", exc, exc_info=True)
+            stats["printers_count"] = 0
+
+        # Jobs
+        try:
+            res = session.exec(text("SELECT COUNT(*) FROM job"))
+            r = res.first()
+            stats["jobs_count"] = int(r[0]) if r else 0
+        except Exception as exc:
+            logger.debug("Failed to read jobs count: %s", exc, exc_info=True)
+            stats["jobs_count"] = 0
+
     return stats
 
 
@@ -218,18 +211,10 @@ def execute_query(sql: str):
         raise HTTPException(status_code=403, detail="Nur SELECT Queries erlaubt")
     
     try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        cursor.execute(sql)
-        rows = cursor.fetchall()
-        
-        # Convert to dict
-        result = [dict(row) for row in rows]
-        
-        conn.close()
-        
+        with session_scope() as session:
+            res = session.exec(text(sql))
+            rows = res.mappings().all()
+            result = [dict(r) for r in rows]
         return {
             "success": True,
             "row_count": len(result),
