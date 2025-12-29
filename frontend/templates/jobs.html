@@ -1,0 +1,245 @@
+{% extends "layout.html" %}
+{% set page_title = "Jobs" %}
+{% set page_subtitle = "Verwalte laufende und vergangene Druckaufträge" %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='jobs.css') }}">
+{% endblock %}
+
+{% block header_actions %}
+<div class="actions">
+    <button class="btn btn-primary" onclick="openAddModal()">
+        ➕ Neuer Job
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Statistiken -->
+<section class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-content">
+            <div class="stat-label">Gesamt Jobs</div>
+            <div class="stat-value" id="totalJobs">0</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-content">
+            <div class="stat-label">Abgeschlossen</div>
+            <div class="stat-value" id="completedJobs">0</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">🔄</div>
+        <div class="stat-content">
+            <div class="stat-label">Aktiv</div>
+            <div class="stat-value" id="activeJobs">0</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">🧵</div>
+        <div class="stat-content">
+            <div class="stat-label">Filament (g)</div>
+            <div class="stat-value" id="totalFilament">0g</div>
+        </div>
+    </div>
+</section>
+
+<!-- Filter & Search -->
+<section class="filter-section">
+    <div class="filter-group">
+        <input type="text" id="searchInput" placeholder="🔍 Suchen..." class="search-input">
+        
+        <select id="filterPrinter" class="filter-select">
+            <option value="">Alle Drucker</option>
+        </select>
+        
+        <select id="filterStatus" class="filter-select">
+            <option value="">Alle Status</option>
+            <option value="active">Aktiv</option>
+            <option value="completed">Abgeschlossen</option>
+            <option value="no-tracking">⚠️ Ohne Tracking</option>
+        </select>
+        
+        <button class="btn btn-secondary" onclick="clearFilters()">
+            🔄 Filter zurücksetzen
+        </button>
+    </div>
+    
+    <div class="result-count">
+        <span id="jobCount">0</span> Jobs
+    </div>
+</section>
+
+<!-- Jobs Tabelle -->
+<section class="table-section">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Job Name</th>
+                    <th>Drucker</th>
+                    <th>Spule(n)</th>
+                    <th>Verbrauch</th>
+                    <th>Status</th>
+                    <th>Dauer</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody id="jobsTable">
+                <!-- Wird von JavaScript gefüllt -->
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Add/Edit Modal -->
+<div id="jobModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Neuer Job</h2>
+            <button class="modal-close" onclick="closeAddModal()">✕</button>
+        </div>
+        <form id="jobForm" onsubmit="saveJob(event)">
+            <!-- 2-Spalten Layout -->
+            <div class="form-columns">
+                <!-- Linke Spalte -->
+                <div class="form-column">
+                    <div class="form-group">
+                        <label for="jobName">Job Name*</label>
+                        <input type="text" id="jobName" required placeholder="z.B. Benchy" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="jobPrinter">Drucker*</label>
+                        <select id="jobPrinter" required class="form-control">
+                            <option value="">-- Drucker wählen --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="jobSpool">Spule</label>
+                        <input type="text" id="spoolSearch" class="form-control" placeholder="🔍 Spule suchen..." autocomplete="off">
+                        <select id="jobSpool" class="form-control" size="5" style="margin-top: 8px;">
+                            <option value="">-- Keine Spule --</option>
+                        </select>
+                        <small style="color: var(--text-dim); font-size: 0.875rem;">
+                            💡 Suche nach Material, Nummer oder Farbe
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="filamentUsedG">Filament (g)</label>
+                        <input type="number" id="filamentUsedG" step="0.1" placeholder="0.0" class="form-control">
+                    </div>
+                </div>
+
+                <!-- Rechte Spalte -->
+                <div class="form-column">
+                    <div class="form-group">
+                        <label for="startedAt">Startzeit*</label>
+                        <input type="datetime-local" id="startedAt" required class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="finishedAt">Endzeit</label>
+                        <input type="datetime-local" id="finishedAt" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="filamentUsedMm">Filament (mm)</label>
+                        <input type="number" id="filamentUsedMm" step="0.1" placeholder="0.0" class="form-control">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Speichern</button>
+                <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Abbrechen</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal" style="display: none;">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>Job löschen?</h2>
+            <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+        </div>
+        <p>Möchtest du diesen Job wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</p>
+        <div class="form-actions">
+            <button class="btn btn-primary btn-danger" onclick="confirmDelete()">Löschen</button>
+            <button class="btn btn-secondary" onclick="closeDeleteModal()">Abbrechen</button>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Usage Modal -->
+<div id="manualUsageModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Verbrauch nachtragen</h2>
+            <button class="modal-close" onclick="closeManualUsageModal()">✕</button>
+        </div>
+        <form id="manualUsageForm" onsubmit="saveManualUsage(event)">
+            <div style="margin-bottom: 16px; padding: 12px; background: var(--warning-bg, #fff3cd); border-left: 4px solid var(--warning, #ffc107); border-radius: 4px;">
+                <strong>ℹ️ Hinweis:</strong> Job <span id="usageJobName" style="font-weight: bold;">-</span> hat keinen automatischen Verbrauch erfasst.
+            </div>
+
+            <div class="form-group">
+                <label for="usageSpool">Spule* (Pflicht)</label>
+                <input type="text" id="usageSpoolSearch" class="form-control" placeholder="🔍 Spule suchen..." autocomplete="off">
+                <select id="usageSpool" required class="form-control" size="5" style="margin-top: 8px;">
+                    <option value="">-- Spule wählen --</option>
+                </select>
+                <small style="color: var(--text-dim);">💡 Suche nach Material, Nummer oder Farbe</small>
+            </div>
+
+            <div class="form-group">
+                <label for="usageGrams">Verbrauch (Gramm)*</label>
+                <input type="number" id="usageGrams" step="0.1" min="0" placeholder="z.B. 42.5" required>
+                <small style="color: var(--text-dim);">Du kannst den Verbrauch mit einer Waage messen.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="usageMm">Verbrauch (Meter)</label>
+                <input type="number" id="usageMm" step="0.1" min="0" placeholder="Optional">
+                <small style="color: var(--text-dim);">Optional: Länge in Metern (wird automatisch in mm umgerechnet).</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Speichern</button>
+                <button type="button" class="btn btn-secondary" onclick="closeManualUsageModal()">Abbrechen</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Notification Toast -->
+<div id="notification" class="notification"></div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='jobs.js') }}"></script>
+<script>
+// Notification System
+function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.className = `notification notification-${type} show`;
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+    }, 3000);
+}
+</script>
+{% endblock %}

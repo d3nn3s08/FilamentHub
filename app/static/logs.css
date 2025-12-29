@@ -1,0 +1,38 @@
+body {
+    margin: 0;
+    background: #121212;
+    color: #e5e5e5;
+    font-family: Consolas, monospace;
+}
+
+#container {
+    width: 95%;
+    margin: 20px auto;
+}
+
+header h1 {
+    color: #00ffae;
+    text-align: center;
+}
+
+#controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+#logOutput {
+    background: #1b1b1b;
+    padding: 15px;
+    border-radius: 6px;
+    height: 70vh;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    font-size: 14px;
+}
+
+.error { color: #ff4e4e; }
+.warning { color: #ffbf00; }
+.info { color: #00d9ff; }

@@ -1,11 +1,11 @@
-# Entwickleranleitung
+﻿# Entwickleranleitung
 
 ## Projektstruktur
-- `app/` – Backend, Modelle, Routen
-- `frontend/` – UI, Templates, JS/CSS
-- `services/` – externe Schnittstellen
-- `data/` – Datenbank
-- `docs/` – Dokumentation
+- `app/` - Backend, Modelle, Routen
+- `frontend/` - UI, Templates, JS/CSS
+- `services/` - externe Schnittstellen
+- `data/` - Datenbank
+- `docs/` - Dokumentation
 
 ## PR-Workflow
 1. Forke das Repo
@@ -27,3 +27,4 @@
 
 ## Hinweise
 - Feedback und Beiträge sind willkommen!
+

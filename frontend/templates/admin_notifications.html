@@ -1,0 +1,100 @@
+{% extends "layout.html" %}
+{% set page_title = "Benachrichtigungen" %}
+{% set page_subtitle = "Globale Alerts verwalten" %}
+{% set active_page = "admin_notifications" %}
+
+{% block content %}
+<script>
+// Automatischer Logout bei Reload (serverseitig, da HttpOnly-Cookie)
+try {
+    const nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    if (nav && nav.type === 'reload') {
+        fetch('/api/admin/logout', { method: 'POST' }).finally(() => {
+            window.location.href = '/admin';
+        });
+    }
+} catch {}
+</script>
+<section class="panel" style="margin-bottom:16px;">
+    <div class="content__header" style="margin-bottom:12px;">
+        <div>
+            <p class="eyebrow">Notifications</p>
+            <h3 style="margin:6px 0 4px 0;">Globale Benachrichtigungen</h3>
+            <p class="subtitle">Erstelle, teste und triggere systemweite Alerts.</p>
+        </div>
+        <div class="actions">
+            <button class="btn primary" id="btn-save">Speichern</button>
+            <button class="btn ghost" id="btn-test">Testen</button>
+            <button class="btn ghost" id="btn-trigger">Triggern</button>
+        </div>
+    </div>
+    <div class="field-row" style="margin-bottom:10px;">
+        <div class="field">
+            <label for="notif-id">ID</label>
+            <input id="notif-id" type="text" placeholder="z.B. print_done">
+        </div>
+        <div class="field">
+            <label for="notif-label">Label</label>
+            <input id="notif-label" type="text" placeholder="Lesbarer Name">
+        </div>
+    </div>
+    <div class="field">
+        <label for="notif-message">Nachricht</label>
+        <input id="notif-message" type="text" placeholder="Der Druck wurde erfolgreich abgeschlossen.">
+    </div>
+    <div class="field-row" style="margin:10px 0;">
+        <div class="field">
+            <label for="notif-type">Typ</label>
+            <select id="notif-type">
+                <option value="success">Success</option>
+                <option value="warn">Warnung</option>
+                <option value="error">Error</option>
+                <option value="info">Info</option>
+            </select>
+        </div>
+        <div class="field">
+            <label>Status</label>
+            <div class="toggle">
+                <label><input id="notif-enabled" type="checkbox" checked> Aktiv</label>
+                <label><input id="notif-persistent" type="checkbox" style="margin-left:10px;"> Persistent</label>
+            </div>
+        </div>
+        <div class="field">
+            <label for="notif-trigger">Trigger</label>
+            <select id="notif-trigger">
+                <option value="manual">Manuell</option>
+                <!-- Job Status: Erfolg -->
+                <option value="job_completed">✅ Job abgeschlossen</option>
+                <!-- Job Status: Abbruch -->
+                <option value="job_cancelled">❌ Job abgebrochen</option>
+                <option value="job_aborted">❌ Job abgebrochen (Abort)</option>
+                <option value="job_stopped">❌ Job gestoppt</option>
+                <!-- Job Status: Fehler -->
+                <option value="job_failed">❌ Job fehlgeschlagen</option>
+                <option value="job_error">❌ Job Fehler</option>
+                <option value="job_exception">❌ Job Exception</option>
+                <!-- Sonstige -->
+                <option value="material_low">⚠️ Material niedrig</option>
+                <option value="custom">Custom</option>
+            </select>
+        </div>
+        </div>
+    </div>
+</section>
+
+<section class="panel">
+    <p class="eyebrow">Gespeicherte Notifications</p>
+    <div id="notification-list" class="card-grid"></div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Automatischer Logout bei Reload
+if (performance.navigation.type === 1) {
+    document.cookie = 'admin_token=; Max-Age=0; path=/';
+    window.location.href = '/admin/notifications';
+}
+</script>
+<script src="{{ url_for('frontend_static', path='js/admin_notifications.js') }}"></script>
+{% endblock %}

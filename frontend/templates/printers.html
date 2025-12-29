@@ -1,0 +1,100 @@
+{% extends "layout.html" %}
+{% set page_title = "Drucker" %}
+{% set page_subtitle = "Übersicht und Steuerung aller Drucker" %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='css/printers.css') }}">
+{% endblock %}
+
+{% block header_actions %}
+<div class="actions">
+    <button class="btn primary" id="refreshBtn">Aktualisieren</button>
+</div>
+{% endblock %}
+
+{% block content %}
+<section id="cardsContainer" class="card-grid">
+    <div class="empty">Lade Drucker ...</div>
+</section>
+
+<!-- Edit-Modal -->
+<div class="modal" id="printerEditModal" aria-hidden="true">
+    <div class="modal__dialog">
+        <div class="modal__header">
+            <h2 id="modalTitle">Drucker bearbeiten</h2>
+            <button class="modal__close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <div class="modal__body">
+            <form id="printerEditForm" onsubmit="savePrinterEdit(event)">
+                <label class="field">
+                    <span>Name</span>
+                    <input type="text" id="editName" required>
+                </label>
+                <label class="field">
+                    <span>Typ</span>
+                    <select id="editType" required>
+                        <option value="">-- wählen --</option>
+                        <option value="bambu">Bambu Lab (MQTT)</option>
+                        <option value="klipper">Klipper</option>
+                        <option value="manual">Manuell</option>
+                    </select>
+                </label>
+                <div class="field-row">
+                    <label class="field">
+                        <span>IP-Adresse</span>
+                        <input type="text" id="editIp" placeholder="192.168.0.10">
+                    </label>
+                    <label class="field">
+                        <span>Port</span>
+                        <input type="number" id="editPort" placeholder="6000">
+                    </label>
+                </div>
+                <label class="field">
+                    <span>MQTT Protokoll Version</span>
+                    <select id="editMqttVersion">
+                        <option value="" selected>🤖 Auto (Empfohlen - basierend auf Modell)</option>
+                        <option value="31">MQTT 3.1</option>
+                        <option value="311">MQTT 3.1.1</option>
+                        <option value="50">MQTT 5.0</option>
+                    </select>
+                    <small style="color: var(--text-dim); font-size: 0.875rem; display: block; margin-top: 4px; line-height: 1.4;">
+                        💡 <strong>Auto:</strong> X1C/P1S/P1P/X1E/H2D → MQTT v5 | A1/A1 Mini → MQTT v3.1.1<br>
+                        ⚙️ Manuell: Überschreibt Auto-Erkennung (nur bei Problemen verwenden)
+                    </small>
+                </label>
+                <div class="field-row">
+                    <label class="field">
+                        <span>Stromverbrauch (kW)</span>
+                        <input type="number" step="0.01" min="0" id="editPower" placeholder="z.B. 0.35">
+                    </label>
+                    <label class="field">
+                        <span>Wartungskosten (€ / Jahr)</span>
+                        <input type="number" step="0.01" min="0" id="editMaintenance" placeholder="z.B. 50">
+                    </label>
+                </div>
+                <label class="field">
+                    <span>Seriennummer</span>
+                    <input type="text" id="editSerial" placeholder="optional">
+                </label>
+                <label class="field">
+                    <span>Access Code / API Key</span>
+                    <input type="text" id="editApiKey" placeholder="optional">
+                </label>
+                <label class="toggle">
+                    <input type="checkbox" id="editAutoConnect">
+                    <span>Auto Connect</span>
+                </label>
+                <input type="hidden" id="editId">
+                <div class="modal__actions">
+                    <button type="button" class="btn ghost" onclick="closeEditModal()">Abbrechen</button>
+                    <button type="submit" class="btn success">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='js/printers.js') }}"></script>
+{% endblock %}

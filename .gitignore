@@ -1,0 +1,73 @@
+# =========================
+# Python / Bytecode
+# =========================
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.Python
+
+# =========================
+# Test / Coverage
+# =========================
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# =========================
+# Virtual Environments
+# =========================
+.venv/
+venv/
+ENV/
+
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+
+# =========================
+# Runtime Output
+# =========================
+logs/
+
+# =========================
+# Database (lokal & Test)
+# =========================
+data/*.db
+data/filamenthub.db
+data/filamenthub.db-*
+data/test*.db
+data/backups/
+
+# =========================
+# Snapshots (Runtime-State)
+# =========================
+data/job_snapshots.json
+
+# =========================
+# Temporary / Debug Scripts
+# =========================
+scripts/_tmp_*
+scripts/tmp_*
+
+# =========================
+# Backup / Scratch Files
+# =========================
+*.bak
+*.bak*
+*.backup
+*.backup*
+**/*.bak*
+**/*.backup*
+Backup/
+# =========================
+# Environment / Secrets
+# =========================
+.env.local
+.env.*.local

@@ -1,0 +1,33 @@
+<aside class="sidebar">
+    <div class="sidebar__brand">
+        <div class="brand__icon">FH</div>
+        <div class="brand__name">FilamentHub</div>
+    </div>
+    <nav class="sidebar__nav">
+        <a class="nav__item {% if active_page == 'dashboard' %}nav__item--active{% endif %}" href="/">Dashboard</a>
+        <a class="nav__item {% if active_page == 'spools' %}nav__item--active{% endif %}" href="/spools">Spulenverwaltung</a>
+        <a class="nav__item {% if active_page == 'ams' %}nav__item--active{% endif %}" href="/ams">AMS Übersicht</a>
+        <a class="nav__item {% if active_page == 'materials' %}nav__item--active{% endif %}" href="/materials">Materialverwaltung</a>
+        <a class="nav__item {% if active_page in ['printers', 'printers-modern'] %}nav__item--active{% endif %}" href="/printers">Druckerverwaltung</a>
+        <a class="nav__item {% if active_page == 'jobs' %}nav__item--active{% endif %}" href="/jobs">Druckaufträge</a>
+        <a class="nav__item {% if active_page == 'statistics' %}nav__item--active{% endif %}" href="/statistics">Statistiken</a>
+    </nav>
+    <div class="sidebar__footer">
+        <div class="foot-label" id="sidebarVersion">Alpha v1 · FilamentHub</div>
+        <div class="foot-desc"></div>
+    </div>
+</aside>
+
+<script>
+// Beim Laden der Seite App-Version laden
+(async () => {
+    try {
+        const res = await fetch('/api/admin/app-version');
+        const data = await res.json();
+        const versionEl = document.getElementById('sidebarVersion');
+        if (versionEl) versionEl.textContent = data.app_version || 'Alpha v1 · FilamentHub';
+    } catch (err) {
+        console.error('Fehler beim Laden der App-Version:', err);
+    }
+})();
+</script>

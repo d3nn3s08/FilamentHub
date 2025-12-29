@@ -1,4 +1,4 @@
-# UI/Frontend-Anleitung
+﻿# UI/Frontend-Anleitung
 
 ## Dashboard
 - Übersicht über alle Drucker, Materialien, Spulen und Jobs
@@ -18,3 +18,4 @@
 
 ## Hinweise
 - UI wird laufend erweitert und kann individuell angepasst werden.
+

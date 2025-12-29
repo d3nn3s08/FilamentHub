@@ -1,0 +1,63 @@
+/* Minimal CSS for new Log Viewer */
+.log-entries { display:flex; flex-direction:column; gap:8px; }
+.log-line { border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; background:rgba(0,0,0,0.18); }
+.log-line { cursor: pointer; }
+.log-summary { display:flex; align-items:center; gap:10px; }
+.log-toggle-icon { margin-left:auto; opacity:0.6; font-size:12px; }
+.log-line.expanded .log-toggle-icon { opacity:0.75; }
+.log-level { min-width:76px; font-weight:700; opacity:0.9; }
+.log-timestamp { font-size:12px; opacity:0.55; margin-right:8px; white-space:nowrap; }
+.log-message { flex:1; opacity:0.95; }
+.log-message { line-height:1.4; }
+.log-toggle { border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.06); color:inherit; border-radius:8px; padding:6px 10px; cursor:pointer; }
+.log-stacktrace { display:none; margin-top:10px; white-space:pre-wrap; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; opacity:0.85; }
+.log-line.expanded .log-stacktrace { display:block; }
+.log-info .log-level { opacity:0.85; }
+.log-debug { opacity:0.75; }
+.log-warning { border-color: rgba(255,200,0,0.25); }
+.log-error { border-color: rgba(255,80,80,0.30); }
+/* Toolbar styles */
+.log-toolbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 12px;
+	margin-bottom: 12px;
+	background: rgba(0,0,0,0.25);
+	border: 1px solid rgba(255,255,255,0.06);
+	border-radius: 12px;
+}
+
+.log-toolbar-left,
+.log-toolbar-right {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.log-btn {
+	background: rgba(255,255,255,0.06);
+	border: 1px solid rgba(255,255,255,0.12);
+	color: #e6e6e6;
+	padding: 6px 12px;
+	border-radius: 8px;
+	cursor: pointer;
+}
+
+.log-btn:hover {
+	background: rgba(255,255,255,0.10);
+}
+
+.log-select,
+.log-search {
+	background: rgba(0,0,0,0.35);
+	border: 1px solid rgba(255,255,255,0.12);
+	color: #e6e6e6;
+	padding: 6px 10px;
+	border-radius: 8px;
+}
+
+.log-search {
+	min-width: 180px;
+}

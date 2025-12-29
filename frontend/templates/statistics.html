@@ -1,0 +1,282 @@
+{% extends "layout.html" %}
+{% set page_title = "Statistiken" %}
+{% set page_subtitle = "Charts und Kennzahlen rund um Drucker, Spulen und Jobs" %}
+
+{% block extra_styles %}
+<style>
+.stats-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.kpi-value { font-size: 28px; font-weight: 700; margin: 6px 0; }
+.kpi-label { color: var(--text-dim); font-size: 13px; }
+.kpi-trend { color: var(--text-dim); font-size: 12px; }
+.stats-split { display: grid; grid-template-columns: 2fr 1.2fr; gap: 16px; align-items: start; }
+.stats-list { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.stat-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.pill { padding: 4px 10px; border-radius: 999px; font-size: 12px; background: var(--panel); border: 1px solid var(--border); color: var(--text); }
+.bar { width: 100%; height: 8px; border-radius: 999px; background: rgba(255,255,255,0.04); overflow: hidden; }
+.bar > span { display: block; height: 100%; border-radius: 999px; }
+.hint { color: var(--text-dim); font-size: 12px; }
+.rankings-list { display: flex; flex-direction: column; gap: 12px; }
+.ranking-item { display: flex; flex-direction: column; gap: 6px; }
+.ranking-label { display: flex; justify-content: space-between; font-size: 13px; }
+.ranking-label span:first-child { font-weight: 500; }
+.ranking-label span:last-child { color: var(--text-dim); font-weight: 600; }
+.ranking-bar { width: 100%; height: 20px; background: rgba(255,255,255,0.04); border-radius: 6px; overflow: hidden; }
+.ranking-bar-fill { height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 11px; font-weight: 600; color: #fff; }
+.time-filter { display: flex; gap: 6px; }
+.filter-btn { padding: 6px 14px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 12px; cursor: pointer; transition: all 0.2s; }
+.filter-btn:hover { background: rgba(255,255,255,0.05); border-color: var(--accent); }
+.filter-btn.active { background: var(--accent); border-color: var(--accent); color: #0f141c; font-weight: 600; }
+.heatmap-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 3px; width: 100%; }
+.heatmap-cell { width: 100%; aspect-ratio: 1; background: rgba(255,255,255,0.03); border-radius: 2px; cursor: pointer; transition: all 0.2s; }
+.heatmap-cell.level-0 { background: rgba(255,255,255,0.03); }
+.heatmap-cell.level-1 { background: rgba(0,198,255,0.2); }
+.heatmap-cell.level-2 { background: rgba(0,198,255,0.4); }
+.heatmap-cell.level-3 { background: rgba(0,198,255,0.6); }
+.heatmap-cell.level-4 { background: rgba(0,198,255,0.8); }
+.heatmap-cell:hover { transform: scale(1.3); box-shadow: 0 0 6px rgba(0,198,255,0.5); }
+.heatmap-tooltip { position: fixed; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 12px; pointer-events: none; z-index: 1000; box-shadow: var(--shadow); }
+.chart-grid { display: grid; grid-template-columns: 2fr 1.4fr; gap: 16px; align-items: start; }
+.chart-card { background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.03), transparent 40%), var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: var(--shadow); max-height: 280px; display: flex; flex-direction: column; }
+.chart-card canvas { flex: 1; min-height: 0 !important; max-height: 220px !important; }
+.chart-card.split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; max-height: 280px; }
+
+/* Moderne Printer Cards (Grid Layout) */
+.printer-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+.printer-card {
+    background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.03), transparent 40%), var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+.printer-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2), 0 0 20px rgba(243, 156, 18, 0.1);
+    border-color: var(--accent);
+}
+.printer-card-icon {
+    font-size: 2rem;
+    opacity: 0.9;
+}
+.printer-card-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text);
+    text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.printer-card-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.printer-card-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+.printer-card-stats {
+    display: flex;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+}
+.printer-card-time {
+    font-weight: 700;
+    color: var(--accent);
+}
+.printer-card-jobs {
+    color: var(--text-dim);
+}
+.chart-half { background: #0f141c; border: 1px solid var(--border); border-radius: 12px; padding: 10px; box-shadow: var(--shadow); display: flex; flex-direction: column; max-height: 250px; }
+.chart-half canvas { flex: 1; min-height: 0 !important; max-height: 180px !important; }
+.chart-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-shrink: 0; }
+@media (max-width: 1400px) { 
+    .chart-grid { grid-template-columns: 1fr; } 
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 960px) { 
+    .stats-split { grid-template-columns: 1fr; } 
+    .chart-card.split { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) { 
+    .stats-grid { grid-template-columns: 1fr; }
+    .time-filter { flex-wrap: wrap; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="card-grid stats-grid" id="kpiGrid">
+    <div class="panel">
+        <p class="eyebrow">Druckzt.</p>
+        <div class="kpi-value" id="kpiDurationH">–</div>
+        <div class="kpi-label">Gesamtlaufzeit</div>
+        <div class="kpi-trend" id="kpiLongestJob">Längster Job: –</div>
+    </div>
+    <div class="panel">
+        <p class="eyebrow">Verbrch.</p>
+        <div class="kpi-value" id="kpiFilamentKg">–</div>
+        <div class="kpi-label">Filament verbraucht</div>
+        <div class="kpi-trend" id="kpiTopMaterial">Häufigstes Material: –</div>
+    </div>
+    <div class="panel">
+        <p class="eyebrow">Kosten</p>
+        <div class="kpi-value" id="kpiEnergyCost">–</div>
+        <div class="kpi-label">Energiekosten</div>
+        <div class="kpi-trend" id="kpiEnergyBreakdown">Exakt: – · Geschätzt: –</div>
+    </div>
+    <div class="panel">
+        <p class="eyebrow">Jobs</p>
+        <div class="kpi-value" id="kpiTotalJobs">–</div>
+        <div class="kpi-label">Druckaufträge</div>
+        <div class="kpi-trend" id="kpiSuccessRate">Erfolgsquote: –</div>
+    </div>
+</section>
+
+<section class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-top:16px; gap: 16px;">
+    <div class="panel" style="display: flex; flex-direction: column;">
+        <p class="eyebrow">Druckaktivität (90 Tage)</p>
+        <p class="hint" style="margin-bottom:12px; font-size: 11px;">Dunkler = mehr Aktivität</p>
+        <div style="flex: 1; display: flex; align-items: flex-start; min-height: 100px;">
+            <div id="heatmapContainer" class="heatmap-grid"></div>
+        </div>
+        <div id="heatmapTooltip" class="heatmap-tooltip" style="display:none;"></div>
+    </div>
+    
+    <div class="panel" style="display: flex; flex-direction: column;">
+        <p class="eyebrow">Kosten-Breakdown</p>
+        <div class="stats-list" style="margin-top:12px;">
+            <div class="stat-row">
+                <span>Gesamt</span>
+                <span class="pill" id="costEnergy">–</span>
+            </div>
+            <div class="stat-row">
+                <span>Exakt</span>
+                <span class="pill" id="costExact">–</span>
+            </div>
+            <div class="stat-row">
+                <span>Geschätzt</span>
+                <span class="pill" id="costEstimated">–</span>
+            </div>
+            <div class="stat-row">
+                <span>Ø pro Job</span>
+                <span class="pill" id="costPerJob">–</span>
+            </div>
+        </div>
+        <p class="hint" style="margin-top:auto; padding-top:8px;">Strompreis: <span id="electricityPrice">–</span> €/kWh</p>
+    </div>
+    
+    <div class="panel" style="display: flex; flex-direction: column;">
+        <p class="eyebrow">Performance-Metriken</p>
+        <div class="stats-list" style="margin-top:12px;">
+            <div class="stat-row">
+                <span>Ø Druckzeit</span>
+                <span class="pill" id="perfAvgDuration">–</span>
+            </div>
+            <div class="stat-row">
+                <span>Ø Filament</span>
+                <span class="pill" id="perfAvgFilament">–</span>
+            </div>
+            <div class="stat-row">
+                <span>Längster Job</span>
+                <span class="pill" id="perfLongestJob">–</span>
+            </div>
+            <div class="stat-row">
+                <span>Erfolgsquote</span>
+                <div class="bar"><span id="barSuccess" style="background: linear-gradient(90deg,#00c6ff,#0072ff); width:0%;"></span></div>
+            </div>
+        </div>
+        <p class="hint" style="margin-top:auto; padding-top:8px;">Basierend auf allen Jobs.</p>
+    </div>
+</section>
+
+<section class="panel" style="margin-top:16px;">
+    <div class="chart-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="chart-card">
+            <p class="eyebrow">Top 5 Materialien</p>
+            <p class="hint" style="margin-bottom:12px;">Nach Verbrauch (kg)</p>
+            <div id="topMaterialsList" class="rankings-list"></div>
+        </div>
+        <div class="chart-card" style="max-height: none;">
+            <p class="eyebrow">Top 5 Drucker</p>
+            <p class="hint" style="margin-bottom:12px;">Nach Laufzeit (h)</p>
+            <div id="topPrintersList" class="rankings-list"></div>
+        </div>
+    </div>
+</section>
+
+<section class="panel" style="margin-top:16px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <p class="eyebrow">Zeitverlauf & Verteilung</p>
+        <div class="time-filter">
+            <button class="filter-btn active" data-days="7">7T</button>
+            <button class="filter-btn" data-days="30">30T</button>
+            <button class="filter-btn" data-days="90">3M</button>
+            <button class="filter-btn" data-days="365">1J</button>
+        </div>
+    </div>
+    <div class="chart-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="chart-card">
+            <div class="chart-head">
+                <div>
+                    <p class="eyebrow">Filamentverbrauch über Zeit</p>
+                    <p class="hint">Nach Material gruppiert</p>
+                </div>
+            </div>
+            <canvas id="chartTimelineMaterial" height="120"></canvas>
+        </div>
+        <div class="chart-card">
+            <div class="chart-head">
+                <div>
+                    <p class="eyebrow">Material-Verteilung</p>
+                    <p class="hint">Verbrauch nach Typ</p>
+                </div>
+            </div>
+            <canvas id="chartMaterial" height="140"></canvas>
+        </div>
+        <div class="chart-card">
+            <div class="chart-head">
+                <div>
+                    <p class="eyebrow">Druckzeit je Drucker</p>
+                    <p class="hint">Stunden & Jobs</p>
+                </div>
+            </div>
+            <canvas id="chartPrinter" height="140"></canvas>
+        </div>
+    </div>
+</section>
+
+<section class="panel" style="margin-top:16px;">
+    <p class="eyebrow">Kosten-Entwicklung</p>
+    <div class="chart-card" style="max-height: 300px;">
+        <div class="chart-head">
+            <div>
+                <p class="eyebrow">Energiekosten im Zeitverlauf</p>
+                <p class="hint">Tägliche Kosten & kumuliert</p>
+            </div>
+        </div>
+        <canvas id="chartCosts" height="140"></canvas>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('frontend_static', path='js/statistics.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,471 @@
+{% extends "layout.html" %}
+{% set page_title = "Dashboard" %}
+{% set page_subtitle = "Live Übersicht aller Operationen" %}
+
+{% block extra_styles %}
+<style>
+    .live-status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .live-card {
+        background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.03), transparent 40%), var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: var(--shadow);
+    }
+    .live-card .big-number {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--accent);
+        margin: 8px 0;
+    }
+    .active-jobs-section {
+        margin-top: 24px;
+    }
+    .active-jobs-list {
+        display: grid;
+        gap: 12px;
+    }
+    .job-card {
+        background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.03), transparent 40%), var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        align-items: center;
+    }
+    .job-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .job-name {
+        font-weight: 600;
+        color: var(--text);
+        font-size: 14px;
+    }
+    .job-printer {
+        color: var(--text-dim);
+        font-size: 12px;
+        margin-top: 2px;
+    }
+    .job-progress {
+        grid-column: 1 / -1;
+    }
+    .progress-bar {
+        background: var(--panel-2);
+        border-radius: 8px;
+        height: 6px;
+        overflow: hidden;
+        margin-bottom: 4px;
+    }
+    .progress-fill {
+        background: linear-gradient(90deg, var(--accent-2), var(--accent-3));
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+    .progress-text {
+        font-size: 12px;
+        color: var(--text-dim);
+        display: flex;
+        justify-content: space-between;
+    }
+    .job-stats {
+        display: flex;
+        gap: 12px;
+        font-size: 12px;
+        color: var(--text-dim);
+        grid-column: 1 / -1;
+    }
+    .stat-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .stat-label {
+        color: var(--text-dim);
+        font-size: 10px;
+        text-transform: uppercase;
+        opacity: 0.7;
+    }
+    .stat-value {
+        color: var(--text);
+        font-weight: 500;
+    }
+
+    /* Willkommens-Popup Styles */
+    .welcome-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .welcome-modal.active {
+        opacity: 1;
+        pointer-events: all;
+    }
+
+    .welcome-modal__overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+    }
+
+    .welcome-modal__dialog {
+        position: relative;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow: auto;
+        z-index: 1;
+    }
+
+    .welcome-modal__header {
+        padding: 24px 24px 16px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .welcome-modal__header h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .welcome-modal__close {
+        background: transparent;
+        border: none;
+        font-size: 28px;
+        color: var(--text-dim);
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .welcome-modal__close:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text);
+    }
+
+    .welcome-modal__body {
+        padding: 24px;
+    }
+
+    .welcome-modal__content {
+        line-height: 1.6;
+        color: var(--text);
+        font-size: 15px;
+    }
+
+    .welcome-modal__actions {
+        margin-top: 24px;
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    .welcome-btn {
+        background: linear-gradient(135deg, var(--accent-2), var(--accent-3));
+        border: none;
+        border-radius: 8px;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        padding: 12px 32px;
+        font-size: 15px;
+    }
+
+    .welcome-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(92, 211, 255, 0.3);
+    }
+
+    /* Matrix Dissolve Animation */
+    @keyframes matrixDissolve {
+        0% {
+            opacity: 1;
+            filter: blur(0px);
+        }
+        50% {
+            opacity: 0.5;
+            filter: blur(2px);
+        }
+        100% {
+            opacity: 0;
+            filter: blur(8px);
+            transform: translateY(20px);
+        }
+    }
+
+    @keyframes matrixGlitch {
+        0%, 100% { transform: translate(0, 0); }
+        10% { transform: translate(-2px, 2px); }
+        20% { transform: translate(2px, -2px); }
+        30% { transform: translate(-2px, -2px); }
+        40% { transform: translate(2px, 2px); }
+        50% { transform: translate(-2px, 2px); }
+        60% { transform: translate(2px, -2px); }
+        70% { transform: translate(-2px, -2px); }
+        80% { transform: translate(2px, 2px); }
+        90% { transform: translate(-2px, 2px); }
+    }
+
+    .welcome-modal.matrix-exit .welcome-modal__dialog {
+        animation: matrixGlitch 0.5s ease-in-out, matrixDissolve 1.2s ease-out 0.5s forwards;
+    }
+
+    .welcome-modal.matrix-exit .welcome-modal__overlay {
+        animation: matrixDissolve 1.7s ease-out forwards;
+    }
+
+    /* Matrix Particles */
+    .matrix-particle {
+        position: fixed;
+        color: #0f0;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        pointer-events: none;
+        z-index: 10000;
+        text-shadow: 0 0 10px #0f0;
+        animation: matrixFall linear forwards;
+    }
+
+    @keyframes matrixFall {
+        0% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        100% {
+            opacity: 0;
+            transform: translateY(100vh) scale(0.3);
+        }
+    }
+</style>
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='css/activePrintCard.css') }}">
+{% endblock %}
+
+{% block header_actions %}{% endblock %}
+
+{% block content %}
+<!-- Live Status Cards -->
+<section class="live-status-grid">
+    <div class="live-card">
+        <p class="eyebrow">🟢 Online Drucker</p>
+        <div class="big-number" id="onlinePrinters">–</div>
+        <p class="subtitle" style="margin:0;" id="printerStats">0/0</p>
+    </div>
+    <div class="live-card">
+        <p class="eyebrow">📊 Laufende Jobs</p>
+        <div class="big-number" id="activeJobCount">–</div>
+        <p class="subtitle" style="margin:0;">Jobs in Druck</p>
+    </div>
+    <div class="live-card">
+        <p class="eyebrow">⏱️ Durchschn. heute</p>
+        <div class="big-number" id="avgTimeTodayValue">–</div>
+        <p class="subtitle" style="margin:0;" id="avgTimeTodayLabel">Druckzeit</p>
+    </div>
+    <div class="live-card">
+        <p class="eyebrow">📈 Filament heute</p>
+        <div class="big-number" id="filamentTodayValue">–</div>
+        <p class="subtitle" style="margin:0;">Verbraucht</p>
+    </div>
+</section>
+
+<!-- Active Print Jobs -->
+<section class="panel active-jobs-section">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <p class="eyebrow">Aktive Drucke</p>
+        <span style="font-size: 12px; color: var(--text-dim);" id="refreshTime">Aktualisiert</span>
+    </div>
+    <div class="active-jobs-list" id="activeJobsList">
+        <p style="color: var(--text-dim); text-align: center; padding: 20px;">Keine aktiven Drucke</p>
+    </div>
+</section>
+
+<!-- Upcoming & Alerts -->
+<section class="panel" style="margin-top:24px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+    <div>
+        <p class="eyebrow">Nächste Jobs</p>
+        <div id="upcomingJobs" style="display: grid; gap: 8px;">
+            <p style="color: var(--text-dim); font-size: 12px;">Keine anstehenden Jobs</p>
+        </div>
+    </div>
+    <div>
+        <p class="eyebrow">⚠️ Alerts</p>
+        <div id="alertsList" style="display: grid; gap: 8px;">
+            <p style="color: var(--text-dim); font-size: 12px;">Keine Alerts</p>
+        </div>
+    </div>
+</section>
+
+<!-- Willkommens-Popup -->
+<div class="welcome-modal" id="welcomePopup">
+    <div class="welcome-modal__overlay" onclick="closeWelcomePopup()"></div>
+    <div class="welcome-modal__dialog">
+        <div class="welcome-modal__header">
+            <h2>👋 Willkommen bei FilamentHub!</h2>
+            <button class="welcome-modal__close" onclick="closeWelcomePopup()">&times;</button>
+        </div>
+        <div class="welcome-modal__body">
+            <div class="welcome-modal__content" id="welcomePopupContent">
+                <p>Lade Begrüßungstext...</p>
+            </div>
+            <div class="welcome-modal__actions">
+                <button type="button" class="welcome-btn" onclick="closeWelcomePopup()">
+                    Los geht's!
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='js/activePrintCard.js') }}"></script>
+<script src="{{ url_for('frontend_static', path='js/dashboard.js') }}"></script>
+<script>
+// === WILLKOMMENS-POPUP SYSTEM ===
+
+// Prüfe beim Laden, ob Popup angezeigt werden soll
+async function checkAndShowWelcomePopup() {
+    try {
+        // Prüfe globales Flag (nur einmal pro Installation)
+        const res = await fetch('/api/admin/welcome-status');
+        const data = await res.json();
+
+        // Wenn Popup noch nie angezeigt wurde, zeige es
+        if (!data.welcome_shown) {
+            await showWelcomePopup();
+        }
+    } catch (error) {
+        console.error('Fehler beim Prüfen des Welcome-Status:', error);
+    }
+}
+
+// Zeige das Willkommens-Popup
+async function showWelcomePopup() {
+    const popup = document.getElementById('welcomePopup');
+    const content = document.getElementById('welcomePopupContent');
+
+    try {
+        // Lade den Begrüßungstext vom Server
+        const res = await fetch('/api/admin/greeting');
+        const data = await res.json();
+        const text = data.greeting_text || 'Willkommen bei FilamentHub! Verwalte deine 3D-Drucker, Materialien und Druckaufträge zentral an einem Ort.';
+        content.innerHTML = text.replace(/\n/g, '<br>');
+    } catch (error) {
+        content.innerHTML = 'Willkommen bei FilamentHub! Verwalte deine 3D-Drucker, Materialien und Druckaufträge zentral an einem Ort.';
+    }
+
+    popup.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+// Schließe das Popup mit Matrix-Effekt
+async function closeWelcomePopup() {
+    const popup = document.getElementById('welcomePopup');
+    const dialog = popup.querySelector('.welcome-modal__dialog');
+
+    // Matrix-Effekt starten
+    createMatrixEffect(dialog);
+
+    // Matrix-Exit Animation hinzufügen
+    popup.classList.add('matrix-exit');
+
+    // Setze globales Flag, dass Popup angezeigt wurde
+    try {
+        await fetch('/api/admin/welcome-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ shown: true })
+        });
+    } catch (error) {
+        console.error('Fehler beim Setzen des Welcome-Status:', error);
+    }
+
+    // Nach der Animation Popup entfernen
+    setTimeout(() => {
+        popup.classList.remove('active', 'matrix-exit');
+        document.body.style.overflow = 'auto';
+    }, 2200);
+}
+
+// Matrix-Partikel-Effekt
+function createMatrixEffect(element) {
+    const rect = element.getBoundingClientRect();
+    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+    const particleCount = 200;
+
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'matrix-particle';
+        particle.textContent = chars[Math.floor(Math.random() * chars.length)];
+
+        const startX = rect.left + Math.random() * rect.width;
+        const startY = rect.top + Math.random() * rect.height;
+
+        particle.style.left = startX + 'px';
+        particle.style.top = startY + 'px';
+        particle.style.fontSize = (10 + Math.random() * 18) + 'px';
+
+        const duration = 2 + Math.random() * 2.5;
+        particle.style.animationDuration = duration + 's';
+        particle.style.animationDelay = (Math.random() * 0.5) + 's';
+
+        document.body.appendChild(particle);
+
+        setTimeout(() => {
+            particle.remove();
+        }, (duration + 0.5) * 1000);
+    }
+}
+
+// ESC-Taste schließt das Popup
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const popup = document.getElementById('welcomePopup');
+        if (popup.classList.contains('active')) {
+            closeWelcomePopup();
+        }
+    }
+});
+
+// Beim Laden der Seite prüfen und ggf. Popup anzeigen
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(checkAndShowWelcomePopup, 500);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Coverage Report — FilamentHub</title>
+  <link rel="stylesheet" href="/frontend/admin_panel.css">
+  <style>
+    .coverage-ui { display:flex; height:100vh; gap:12px; padding:12px; box-sizing:border-box }
+    .coverage-side { width:420px; background:rgba(0,0,0,0.7); padding:12px; border-radius:6px; color:#fff }
+    .coverage-main { flex:1; border-radius:6px; overflow:hidden }
+    .coverage-iframe { width:100%; height:100%; border:0; }
+    .cov-badge { font-size:20px; font-weight:700; padding:6px 10px; border-radius:6px; display:inline-block }
+    .cov-good { background:#1b5e20; color:#c8f5d0 }
+    .cov-medium { background:#f57f17; color:#fff7e6 }
+    .cov-bad { background:#b71c1c; color:#ffd6d6 }
+    .small { font-size:12px; color:#ddd }
+    .panel-row { margin-bottom:10px }
+    .status-box { margin-top:8px; padding:10px; background:rgba(255,255,255,0.03); border-radius:6px; color:#ddd; font-size:13px }
+    .status-title { font-weight:700; margin-bottom:6px }
+    .status-badge { display:inline-block; padding:4px 8px; border-radius:6px; margin-bottom:8px }
+    .status-alpha { background:#37474f; color:#fff }
+    .status-beta { background:#2e7d32; color:#fff }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="coverage-ui">
+  <div class="coverage-side">
+    <h3>Coverage Übersicht</h3>
+    <div class="panel-row">
+      <div id="overallBadge" class="cov-badge">— %</div>
+      <div class="small">Gesamt-Coverage</div>
+    </div>
+
+    <div class="panel-row">
+      <canvas id="coverageChart" width="300" height="150"></canvas>
+    </div>
+
+    <div class="panel-row small">
+      Letzter Lauf: <span id="lastRun">—</span>
+    </div>
+
+    <div class="panel-row">
+      <button onclick="window.open('/api/admin/coverage/report', '_blank')">Vollständigen Report in neuem Tab öffnen</button>
+    </div>
+
+    <div class="panel-row small">Hinweis: Tabelle im Report wird farbig markiert (grün/orange/rot).</div>
+    <div id="coverageStatus" class="status-box">
+      <div class="status-title">Status</div>
+      <div id="statusBadge" class="status-badge status-alpha">🧪 Alpha‑Phase</div>
+      <div id="statusText" style="white-space:pre-wrap;margin-top:6px;font-size:13px;color:#ddd">Coverage: ~20–40 % → völlig okay
+
+Warum?
+Architektur ist im Aufbau
+APIs ändern sich ständig
+viel Experimentieren
+Tests wären sonst dauernd kaputt
+
+Ziel in Alpha:
+App startet
+Kernlogik explodiert nicht
+Smoke‑Tests + 1–2 wichtige Services
+
+👉 30 % Coverage = absolut in Ordnung</div>
+    </div>
+  </div>
+
+  <div class="coverage-main">
+    <iframe id="reportFrame" class="coverage-iframe" src="/api/admin/coverage/report"></iframe>
+  </div>
+</div>
+
+<script>
+async function fetchHistory() {
+  try {
+    const res = await fetch('/api/admin/coverage/history');
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (e) { return []; }
+}
+
+let coverageChartInstance = null;
+
+function colorBadge(el, pct) {
+  el.textContent = pct + ' %';
+  el.classList.remove('cov-good','cov-medium','cov-bad');
+  if (pct >= 85) el.classList.add('cov-good');
+  else if (pct >= 60) el.classList.add('cov-medium');
+  else el.classList.add('cov-bad');
+}
+
+function formatTs(ts) {
+  const d = new Date(ts*1000);
+  return d.toLocaleString();
+}
+
+function updateStatus(pct) {
+  const badge = document.getElementById('statusBadge');
+  const text = document.getElementById('statusText');
+  if (!badge || !text) return;
+  if (pct <= 40) {
+    badge.className = 'status-badge status-alpha';
+    badge.textContent = '🧪 Alpha‑Phase';
+    text.textContent = `Coverage: ~20–40 % → völlig okay\n\nWarum?\nArchitektur ist im Aufbau\nAPIs ändern sich ständig\nviel Experimentieren\nTests wären sonst dauernd kaputt\n\nZiel in Alpha:\nApp startet\nKernlogik explodiert nicht\nSmoke-Tests + 1–2 wichtige Services\n\n👉 30 % Coverage = absolut in Ordnung`;
+  } else if (pct < 75) {
+    badge.className = 'status-badge status-beta';
+    badge.textContent = '🟡 Beta‑Phase';
+    text.textContent = `Coverage: ~50–70 % → guter Standard\n\nWarum?\nAPIs stabilisieren sich\nFeatures sind da\nBugs sollen reproduzierbar werden\nRefactoring ohne Angst\n\nZiel in Beta:\nKritische Logik abgedeckt\nHaupt-APIs getestet\nFehlerfälle wenigstens angerissen\n\n👉 60 % Coverage = „gesundes“ Beta`;
+  } else {
+    badge.className = 'status-badge';
+    badge.textContent = '✅ Stable/Release';
+    text.textContent = `Coverage: >=75 % → sehr gut\n\nWeiteres Ziel: hohe Stabilität, umfangreiche Tests, Automatisierung`;
+  }
+}
+
+async function render() {
+  const history = await fetchHistory();
+  const chartEl = document.getElementById('coverageChart');
+  const chartCtx = chartEl.getContext('2d');
+  const labels = history.map(e => new Date(e.ts*1000).toLocaleString());
+  const data = history.map(e => e.percent);
+  // clean up previous chart instance to avoid "Canvas is already in use" errors
+  try {
+    if (coverageChartInstance) {
+      coverageChartInstance.destroy();
+      coverageChartInstance = null;
+    }
+  } catch (e) {
+    // ignore destruction errors
+  }
+  // simple line chart
+  try {
+    coverageChartInstance = new Chart(chartCtx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{ label: 'Gesamt-Coverage %', data: data, borderColor: '#4caf50', backgroundColor: 'rgba(76,175,80,0.15)', tension:0.2 }]
+      },
+      options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ min:0, max:100 } }, plugins:{ tooltip:{enabled:true} } }
+    });
+  } catch (e) {
+    console.warn('Chart init failed', e);
+  }
+
+  if (history.length>0) {
+    const last = history[history.length-1];
+    colorBadge(document.getElementById('overallBadge'), last.percent);
+    document.getElementById('lastRun').textContent = formatTs(last.ts);
+    // update status panel based on percent
+    try { updateStatus(last.percent); } catch(e) {}
+  }
+}
+
+// Colorize percentage cells inside iframe once loaded (same-origin)
+function colorizeIframe() {
+  const frame = document.getElementById('reportFrame');
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    if (!doc) return;
+    // wait for coverage table to exist (coverage.js may build it asynchronously)
+    const table = doc.querySelector('table.index') || doc.querySelector('table');
+    if (!table) {
+      // try again shortly
+      return;
+    }
+    // find any element that contains a percentage like '42%'
+    const elems = table.querySelectorAll('td, th, span, div, a');
+    elems.forEach(el => {
+      const txt = el.textContent && el.textContent.trim();
+      if (!txt) return;
+      const m = txt.match(/(\d+)%/);
+      if (m) {
+        const val = parseInt(m[1],10);
+        el.style.fontWeight = '700';
+        if (val >= 85) el.style.color = '#b9f6ca';
+        else if (val >= 60) el.style.color = '#ffd54f';
+        else el.style.color = '#ff8a80';
+      }
+    });
+    // also color overall header if present
+    const h = doc.querySelector('h1') || doc.querySelector('h2') || doc.querySelector('h3');
+    if (h) {
+      const mm = h.textContent && h.textContent.match(/(\d+)%/);
+      if (mm) {
+        const v = parseInt(mm[1],10);
+        const badge = document.getElementById('overallBadge');
+        colorBadge(badge, v);
+        try { updateStatus(v); } catch(e) {}
+      }
+    }
+  } catch (e) {
+    // cross-origin or not ready
+  }
+}
+
+window.addEventListener('load', async () => {
+  await render();
+  const frame = document.getElementById('reportFrame');
+  frame.addEventListener('load', () => {
+    // try earlier: small initial delay then poll aggressively until table exists
+    setTimeout(() => {
+      try {
+        // immediate attempt
+        const ok = colorizeIframe();
+        if (ok) {
+          // attach observer immediately
+          try {
+            const doc = frame.contentDocument || frame.contentWindow.document;
+            if (doc && doc.body) {
+              const observer = new MutationObserver(() => colorizeIframe());
+              observer.observe(doc.body, { childList: true, subtree: true, attributes: true });
+            }
+          } catch (e) {}
+          return;
+        }
+      } catch (e) {}
+
+      // aggressive polling: every 200ms, stop when table found or after ~5s
+      let tries = 0;
+      const iv = setInterval(() => {
+        tries++;
+        try {
+          const ok2 = colorizeIframe();
+          if (ok2) {
+            clearInterval(iv);
+            try {
+              const doc = frame.contentDocument || frame.contentWindow.document;
+              if (doc && doc.body) {
+                const observer = new MutationObserver(() => colorizeIframe());
+                observer.observe(doc.body, { childList: true, subtree: true, attributes: true });
+              }
+            } catch (e) {}
+          }
+        } catch (e) {}
+        if (tries > 25) clearInterval(iv);
+      }, 200);
+    }, 50);
+  });
+  // refresh chart every 30s in case a new run finished
+  setInterval(async () => {
+    await render();
+    colorizeIframe();
+  }, 30000);
+});
+</script>
+</body>
+</html>

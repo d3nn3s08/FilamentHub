@@ -1,4 +1,4 @@
-# Integration externer Systeme
+﻿# Integration externer Systeme
 
 ## Bambu Cloud Integration
 - API-Key und Cloud-Seriennummer im Drucker hinterlegen
@@ -32,3 +32,4 @@ mqtt:
 ## Hinweise
 - Integration ist optional und kann schrittweise aktiviert werden.
 - Für Tests können Dummy-Daten genutzt werden.
+

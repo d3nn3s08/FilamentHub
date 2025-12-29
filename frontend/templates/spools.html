@@ -1,0 +1,252 @@
+{% extends "layout.html" %}
+{% set page_title = "Spulen" %}
+{% set page_subtitle = "Spulen-Bestand und Materialverwaltung" %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='spools.css') }}">
+{% endblock %}
+
+{% block header_actions %}
+<div class="actions">
+    <button class="btn btn-primary" onclick="openAddModal()">
+        ➕ Neue Spule
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Statistiken -->
+<section class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">🧵</div>
+        <div class="stat-content">
+            <div class="stat-label">Gesamt Spulen</div>
+            <div class="stat-value" id="statTotal">0</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-content">
+            <div class="stat-label">Aktiv</div>
+            <div class="stat-value" id="statActive">0</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">🚫</div>
+        <div class="stat-content">
+            <div class="stat-label">Leer</div>
+            <div class="stat-value" id="statEmpty">0</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">⚖️</div>
+        <div class="stat-content">
+            <div class="stat-label">Gewicht (g)</div>
+            <div class="stat-value" id="statWeight">0</div>
+        </div>
+    </div>
+    
+    <!-- Warnungen Card (nur wenn Warnungen vorhanden) -->
+    <div class="stat-card stat-card-warning" id="warningCard" onclick="toggleWarnings()" style="display: none;">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-content">
+            <div class="stat-label">Warnungen</div>
+            <div class="stat-value" id="warningCount">0</div>
+            <button class="btn-details" onclick="toggleWarnings(); event.stopPropagation();">
+                <span id="warningToggleText">Details</span> 
+                <span id="warningToggleIcon">▼</span>
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Warnungen Details (eingeklappt) -->
+<section class="warnings-details" id="warningsDetails" style="display: none;">
+    <div class="warnings-card">
+        <div class="warnings-list" id="warningList">
+            <!-- Wird von JavaScript gefüllt -->
+        </div>
+    </div>
+</section>
+
+<!-- Filter & Search -->
+<section class="filter-section">
+    <div class="filter-group">
+        <input type="text" id="searchInput" placeholder="🔍 Suchen..." class="search-input">
+        
+        <select id="filterMaterial" class="filter-select">
+            <option value="">Alle Materialien</option>
+        </select>
+        
+        <select id="filterStatus" class="filter-select">
+            <option value="">Alle Status</option>
+            <option value="active">Aktiv</option>
+            <option value="empty">Leer</option>
+            <option value="low">Niedrig</option>
+            <option value="ams">Im AMS</option>
+            <option value="in-use">In Benutzung (ohne AMS)</option>
+            <option value="storage">Im Lager</option>
+        </select>
+        
+        <button class="btn btn-secondary" onclick="clearFilters()">
+            🔄 Filter zurücksetzen
+        </button>
+    </div>
+    
+    <div class="result-count">
+        <span id="spoolCount">0</span> Spulen
+    </div>
+</section>
+
+<!-- Spulen Tabelle -->
+<section class="table-section">
+    <div id="spoolsTable">
+        <!-- Wird von JavaScript gefüllt -->
+    </div>
+</section>
+
+<!-- Edit/Add Modal -->
+<div id="spoolModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">➕ Spule hinzufügen</h2>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        
+        <form id="spoolForm" onsubmit="saveSpool(event)">
+            <input type="hidden" id="spoolId">
+
+            <!-- Linke Spalte -->
+            <div class="form-columns">
+                <div class="form-column">
+                    <div class="form-group">
+                        <label for="spoolMaterial">Material *</label>
+                        <select id="spoolMaterial" required class="form-control">
+                            <option value="">-- Material wählen --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolVendor">Marke / Hersteller</label>
+                        <input type="text" id="spoolVendor" class="form-control" placeholder="z.B. Prusament">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolColor">Farbe</label>
+                        <div class="color-picker-row">
+                            <input type="color" id="spoolColor" class="form-control color-input" value="#ffffff">
+                            <input type="text" id="spoolColorHex" placeholder="#ffffff" class="form-control color-hex" readonly>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="spoolWeightFull">Gewicht voll (g) *</label>
+                            <input type="number" id="spoolWeightFull" class="form-control" required value="1000">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="spoolWeightEmpty">Gewicht leer (g) *</label>
+                            <input type="number" id="spoolWeightEmpty" class="form-control" required value="250">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rechte Spalte -->
+                <div class="form-column">
+                    <div class="form-group">
+                        <label for="spoolWeightRemaining">Restgewicht (g)</label>
+                        <input type="number" id="spoolWeightRemaining" class="form-control" placeholder="Optional">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolManufacturerId">RFID / Hersteller ID</label>
+                        <input type="text" id="spoolManufacturerId" class="form-control" placeholder="Optional">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolNumber">Spulen-Nummer (optional)</label>
+                        <input type="number" id="spoolNumber" class="form-control" placeholder="z.B. 5" min="1">
+                        <small style="color: var(--text-dim); font-size: 0.875rem;">
+                            💡 Nummer für Lager-System
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolStatus">Status</label>
+                        <select id="spoolStatus" class="form-control">
+                            <option value="Lager" selected>🏪 Lager</option>
+                            <option value="Aktiv">✅ Aktiv</option>
+                            <option value="In Benutzung">🖨️ In Benutzung (ohne AMS)</option>
+                            <option value="Leer">🚫 Spule ist leer</option>
+                        </select>
+                        <small id="spoolStatusHint" style="color: var(--text-dim); font-size: 0.875rem;">
+                            💡 Status wird bei AMS-Nutzung automatisch aktualisiert
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-info">
+                💡 <strong>Hinweis:</strong> Neue Spulen sind standardmäßig verschlossen und bekommen den Status "Lager". Bei Einlage ins AMS und erstem Druck wechselt der Status automatisch zu "Aktiv".
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">
+                    Abbrechen
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    💾 Speichern
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>🗑️ Spule löschen?</h2>
+            <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+        </div>
+        
+        <div class="modal-body">
+            <p>Möchten Sie diese Spule wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</p>
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeDeleteModal()">
+                Abbrechen
+            </button>
+            <button class="btn btn-danger" onclick="confirmDelete()">
+                🗑️ Löschen
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Toast -->
+<div id="notification" class="notification"></div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='spools.js') }}"></script>
+<script>
+// Notification System
+function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.className = `notification notification-${type} show`;
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+    }, 3000);
+}
+</script>
+{% endblock %}

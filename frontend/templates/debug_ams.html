@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% set page_title = "AMS Debug View" %}
+{% set page_subtitle = "Visualisierte AMS-Daten (parsed & mapped)" %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='css/debug_ams.css') }}">
+{% endblock %}
+
+{% block content %}
+{% if debug_center_mode == 'pro' %}
+<section>
+    <div class="raw-toggle">
+        <button class="btn ghost" data-toggle="raw">Rohdaten anzeigen</button>
+        <button class="btn ghost" data-toggle="parsed">parse_ams Ergebnis</button>
+        <button class="btn ghost" data-toggle="mapped">Mapper Ergebnis</button>
+    </div>
+    <div id="rawBlock" class="raw-block"><pre id="rawJson"></pre></div>
+    <div id="parsedBlock" class="raw-block"><pre id="parsedJson"></pre></div>
+    <div id="mappedBlock" class="raw-block"><pre id="mappedJson"></pre></div>
+</section>
+
+<section style="margin-top:18px;">
+    <div id="amsRoot" class="ams-grid">
+        <div class="panel">AMS Daten werden geladen ...</div>
+    </div>
+</section>
+{% else %}
+<section>
+    <div class="panel" style="margin:32px auto;max-width:500px;text-align:center;">
+        AMS Debug ist nur im <b>Pro-Modus</b> verfügbar.
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='js/debug_ams.js') }}"></script>
+{% endblock %}

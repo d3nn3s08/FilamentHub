@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title or "FilamentHub" }}</title>
+    <link rel="stylesheet" href="{{ url_for('frontend_static', path='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='debug.css') }}?v=20251227">
+    {% block extra_styles %}{% endblock %}
+</head>
+<body class="page" data-active-page="{{ active_page|default('dashboard') }}" data-mode="{{ data_mode|default('lite') }}">
+    {% include "sidebar.html" %}
+
+    <main class="content">
+        {% block header %}
+        {% if active_page != "debug" %}
+        <header class="content__header">
+            <div>
+                <p class="eyebrow">FilamentHub</p>
+                <h1 class="title">{{ page_title or title or "Übersicht" }}</h1>
+                <p class="subtitle">{{ page_subtitle or "Modernes Dark-Layout basierend auf der printers-modern Vorschau." }}</p>
+            </div>
+            <div class="header__right">
+                {% block header_actions %}{% endblock %}
+                <div class="user-menu" data-component="user-menu">
+                    <button class="user-menu__trigger" aria-haspopup="true" aria-expanded="false">
+                        <div class="user-menu__avatar">L</div>
+                        <div class="user-menu__info">
+                            <div class="user-menu__name">Local User</div>
+                            <div class="user-menu__meta">FilamentHub Instance</div>
+                        </div>
+                        <span class="user-menu__chevron">▾</span>
+                    </button>
+                    <div class="user-menu__dropdown" role="menu">
+                        <div class="user-menu__section">
+                            <div class="user-menu__section-title">Version</div>
+                            <div class="user-menu__section-item">Design Alpha-0.1</div>
+                        </div>
+                        <div class="user-menu__section">
+                            <div class="user-menu__section-title">AMS Settings</div>
+                            <label class="user-menu__option">
+                                <input type="radio" name="ams_mode" value="single" data-setting="ams_mode">
+                                <span>Single AMS</span>
+                            </label>
+                            <label class="user-menu__option">
+                                <input type="radio" name="ams_mode" value="multi" data-setting="ams_mode">
+                                <span>Multi AMS (Experimental)</span>
+                            </label>
+                        </div>
+                            <div class="user-menu__section">
+                                <div class="user-menu__section-title">Debug</div>
+                                <label class="user-menu__option">
+                                    <input type="checkbox" data-setting="debug_ws_logging">
+                                    <span>WS JSON Logging aktivieren</span>
+                                    <span class="tooltip-container">
+                                        <span class="tooltip-icon" tabindex="0">i</span>
+                                        <span class="tooltip-box">Loggt alle eingehenden WebSocket-Events als JSON zur Fehlersuche. Empfohlen nur für Debug-Zwecke.</span>
+                                    </span>
+                                </label>
+                                <a href="/debug" role="menuitem" class="user-menu__link">Debug Center</a>
+                            </div>
+                        <div class="user-menu__section">
+                            <div class="user-menu__section-title">Sonstiges</div>
+                            <button type="button" role="menuitem" data-action="theme-toggle" class="user-menu__link">Theme Toggle</button>
+                            <button type="button" role="menuitem" data-action="about" class="user-menu__link">About FilamentHub</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        {% endif %}
+        {% endblock %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Global scripts (laufen auf allen Seiten) -->
+    <script src="/frontend/js/global_notifications.js"></script>
+    <script src="/frontend/js/navbar.js"></script>
+
+    <!-- Page-specific scripts -->
+    {% if active_page == "debug" %}
+        <script src="/static/debug_v2.js?v=20251225"></script>
+        <script src="/static/json_inspector_new.js?v=20251220_001"></script>
+    {% endif %}
+
+    {% if active_page == "dashboard" %}
+        <script src="/static/dashboard.js"></script>
+    {% endif %}
+
+    {% if active_page == "materials" %}
+        <script src="/static/materials.js"></script>
+    {% endif %}
+
+    {% if active_page == "spools" %}
+        <script src="/static/spools.js"></script>
+    {% endif %}
+
+    {% if active_page == "printers" %}
+        <script src="/static/printers.js"></script>
+    {% endif %}
+
+    {% block scripts %}{% endblock %}
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

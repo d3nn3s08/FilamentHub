@@ -1,10 +1,14 @@
-# Release/Deployment
+﻿# Release/Deployment
 
 ## Docker-Image
 - Im Projektverzeichnis:
   ```bash
   docker build -t filamenthub .
+<<<<<<< Updated upstream
   docker run -d -p 8000:8000 -v $(pwd)/data:/app/data filamenthub
+=======
+  docker run -d -p 8085:8085 -v $(pwd)/data:/app/data filamenthub
+>>>>>>> Stashed changes
   ```
 - Volumes für Datenbank und Logs konfigurieren
 
@@ -27,3 +31,4 @@
 ## Hinweise
 - Nach jedem Release: Backup und Testlauf durchführen
 - Windows-Startskripte (`Start_FilamentHub.bat`/`menu_pro_v3.ps1`) sind nur für lokale Entwicklung; in Docker/Pi nicht erforderlich
+

@@ -1,4 +1,4 @@
-# Update & Backup
+﻿# Update & Backup
 
 ## Update-Prozess
 1. Prüfe, ob neue Versionen verfügbar sind (GitHub Releases oder Pull).
@@ -32,3 +32,4 @@
 ## Hinweise
 - Vor jedem Update Backup anlegen!
 - Bei Problemen siehe [Fehlermeldung.md](Fehlermeldung.md)
+

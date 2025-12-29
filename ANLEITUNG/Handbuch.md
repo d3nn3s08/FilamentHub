@@ -1,4 +1,4 @@
-# FilamentHub – Handbuch
+﻿# FilamentHub - Handbuch
 
 Willkommen zum FilamentHub-Handbuch! Hier findest du alle wichtigen Anleitungen und Dokumentationen für Installation, Nutzung, Entwicklung und Fehlerbehebung.
 
@@ -15,4 +15,14 @@ Willkommen zum FilamentHub-Handbuch! Hier findest du alle wichtigen Anleitungen 
 - [Fehlerbehebung](Troubleshooting.md)
 - [Release/Deployment](Release.md)
 
+<<<<<<< Updated upstream
 Jeder Punkt ist als eigene Datei im Ordner `ANLEITUNG` abgelegt und kann direkt auf GitHub angezeigt werden.
+=======
+## Weitere Anleitungen
+
+- [Installation.md](Installation.md): Installationsanleitung für Windows, Linux, Docker, Unraid
+- [Unraid_Image_bauen.md](Unraid_Image_bauen.md): Schritt-für-Schritt-Anleitung zum Bau und Start des Docker-Images auf Unraid
+
+Jeder Punkt ist als eigene Datei im Ordner `ANLEITUNG` abgelegt und kann direkt auf GitHub angezeigt werden.
+
+>>>>>>> Stashed changes

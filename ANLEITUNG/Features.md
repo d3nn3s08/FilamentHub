@@ -1,4 +1,4 @@
-# Erweiterte Features
+﻿# Erweiterte Features
 
 ## AMS-Integration
 - AMS-Status und Slot-Infos abrufen
@@ -17,7 +17,7 @@
 - Charts im Dashboard
 
 ## Automatische Zuordnung
-- Beim Druckstart: Material → passende Spule finden
+- Beim Druckstart: Material -> passende Spule finden
 - Vorschlag bei mehreren passenden Spulen
 - AMS-Slot automatisch verlinken
 
@@ -28,3 +28,4 @@
 
 ## Hinweise
 - Erweiterte Features können schrittweise aktiviert werden.
+
