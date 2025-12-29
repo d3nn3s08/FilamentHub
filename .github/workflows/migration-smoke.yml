@@ -1,0 +1,37 @@
+name: Migration Smoke
+
+on:
+  pull_request:
+    paths:
+      - '**'
+
+jobs:
+  migration-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run migration smoke test
+        env:
+          FILAMENTHUB_DB_PATH: data/filamenthub_ci.db
+        run: |
+          python -m pytest -q tests/test_migration_smoke.py
