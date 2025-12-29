@@ -3,25 +3,27 @@
 </p>
 
 <h1 align="center">FilamentHub</h1>
-<p align="center">Open-source dashboard for filament, printer and system management. Local, independent, and inspired by the modern Unraid UI.</p>
-
+<p align="center">
+Open-source dashboard for filament, printer, and system management – local, independent, and inspired by the Unraid UI.
+</p>
 
 <p align="center">
 
   <!-- Status -->
-  <img src="https://img.shields.io/badge/Status-Aktive%20Entwicklung-orange" />
-  <img src="https://img.shields.io/badge/Phase-Alpha-orange" />
+  <img src="https://img.shields.io/badge/Status-Active%20Development-orange" />
+  <img src="https://img.shields.io/badge/Phase-Public%20Beta-yellow" />
+  <img src="https://img.shields.io/badge/Release-v1.6.0--beta-blue" />
 
-  <!-- Technologie -->
+  <!-- Technology -->
   <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python" />
   <img src="https://img.shields.io/badge/Backend-FastAPI-009688?logo=fastapi" />
   <img src="https://img.shields.io/badge/Docker-Ready-0db7ed?logo=docker" />
 
-  <!-- Plattform -->
-  <img src="https://img.shields.io/badge/Plattform-Windows%20%7C%20Linux%20%7C%20Unraid-blue" />
+  <!-- Platform -->
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Unraid-blue" />
 
-  <!-- Lizenz -->
-  <img src="https://img.shields.io/badge/Lizenz-MIT-green" />
+  <!-- License -->
+  <img src="https://img.shields.io/badge/License-MIT-green" />
 
   <!-- Build -->
   <img src="https://img.shields.io/github/actions/workflow/status/d3nn3s08/FilamentHub/docker-publish.yml?branch=main&label=Docker%20Build" />
@@ -33,28 +35,66 @@
 
   <!-- Integration -->
   <img src="https://img.shields.io/badge/Bambu-LAN%20%26%20Cloud-green" />
-  <img src="https://img.shields.io/badge/Klipper-Unterstützt-purple" />
+  <img src="https://img.shields.io/badge/Klipper-Supported-purple" />
 
 </p>
-  </p>
+
+<p align="center">
+----------------------------------------------------
+</p>
+
 <p align="center">
   <a href="https://www.paypal.me/Denis10" target="_blank">
-    <img src="https://img.shields.io/badge/Spenden%20via%20PayPal-0070ba?logo=paypal&logoColor=white" />
+    <img src="https://img.shields.io/badge/Donate%20via%20PayPal-0070ba?logo=paypal&logoColor=white" />
   </a>
 </p>
+
+<p align="center">
+  <a href="https://ko-fi.com/BOB51PV6CH">
+    <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" />
+  </a>
+</p>
+
+> 🇩🇪 **German version:** [README.md](README.md)
+
+---
+
+## 🚧 Project Status – Public Beta
+
+⚠️ **FilamentHub is currently in a public beta phase (v1.6.0-beta).**
+
+- Core features are stable and ready for active use
+- Database migrations run automatically on startup
+- Job and filament tracking is production-ready
+- APIs, UI, and data models may still change
+- **Regular database backups are strongly recommended**
+
+This beta is intended for technically experienced users and early adopters.  
+Feedback, bug reports, and suggestions are highly welcome.
 
 ---
 
 # 🧩 Project Overview
 
-FilamentHub originally started as a small, lightweight filament management tool.  
-Just local inventory, colors, material and spool usage.
+FilamentHub originally started as a **small, local filament management tool**  
+for spools, colors, remaining material, and usage tracking.
 
-Over time it grew into something much larger:  
-a complete **3D printing management dashboard** for printers, filament, analytics and system diagnostics — all running locally and without cloud dependencies.
+Over time, the project grew significantly.  
+What began as a simple tool evolved step by step into a full  
+**3D printing management dashboard**, covering much more than filament alone:
 
-The name remained.  
-The project evolved.
+- Filament management  
+- Printer monitoring  
+- System diagnostics  
+- MQTT integration  
+- Debug and maintenance tools  
+- Unraid-inspired web interface  
+- Docker-based deployment  
+
+The name stayed the same – the scope expanded.
+
+Today, FilamentHub is in a **public beta phase**, focused on  
+**stability, data integrity, and a clean technical foundation**.
 
 ---
 
@@ -62,54 +102,110 @@ The project evolved.
 
 ## **Printer Management**
 - Overview of all registered printers  
-- Live status, temperatures, active job  
-- Bambu LAN MQTT integration  
-- Usage statistics & print history  
-- WebSocket-based live monitoring with ping/pong debug tools  
+- Live status, temperatures, and current job  
+- Bambu LAN MQTT support  
+- Print history and usage statistics  
+- Stable WebSocket status with ping/pong analysis (debug view)
 
 ## **Filament Management**
-- Spool inventory with brand, color, material, remaining length  
+- Spool management with manufacturer, color, material, and remaining amount  
 - Last usage per printer  
-- Consumption by job / day / month  
-- Cost estimation  
-- Low-inventory warnings  
+- Consumption per job / day / month  
+- Cost estimations  
+- Low-stock warnings  
 
-## **Analytics**
+## **Analytics & Statistics**
 - Print time per printer  
-- Filament usage trends  
-- Cost dashboards  
-- Material and color distribution  
+- Filament consumption over time  
+- Cost analysis  
+- Distribution by material, color, and machine  
 
-## **Web UI (Unraid-style)**
-- Clean navigation: **Dashboard / Printer / Filament / System / Debug**  
-- Cards, tables, status badges  
-- Minimalistic and dark UI design  
-- Fully local, no cloud dependency  
+## **Web Interface (Unraid-inspired)**
+- Clear navigation: **Dashboard / Printer / Filament / System / Debug**  
+- Cards, tables, icons, and status badges  
+- Dark, calm UI  
+- Responsive design for desktop and server environments  
 
 ## **Database & Backups**
-- Local SQLite database (autogenerated)  
-- One-click backup: ZIP (DB + logs) → `data/backups/filamenthub_backup_<timestamp>.zip`  
-- DB tools: VACUUM, table browser, quick SQL testing  
+- Local SQLite database (created automatically)  
+- Integrated backup button  
+  → creates a ZIP containing **database + logs**  
+  → stored at:  
+  `data/backups/filamenthub_backup_<timestamp>.zip`  
+- Database tools: VACUUM, table viewer, test queries  
 
-## **Debug Center**
-- System monitor  
-- Service overview  
-- Log viewer  
-- MQTT activity visualization with sparkline  
-- Smoke tests & DB tests  
-- Log rotation & cleanup  
+## **Debug & Maintenance**
+- Debug center including:
+  - System overview  
+  - Service status  
+  - Log viewer  
+  - MQTT monitor with lock times, ping, last message, sparklines  
+  - Test runner (DB tests, smoke tests)  
+  - Log rotation and cleanup  
+
+---
+
+# 🖼️ Screenshots
+
+<p align="center">
+  <a href="data/screenshots/Dashboard.png">
+    <img src="data/screenshots/Dashboard.png" width="320" alt="Dashboard">
+  </a>
+  <a href="data/screenshots/Material.png">
+    <img src="data/screenshots/Material.png" width="320" alt="Material management">
+  </a>
+  <a href="data/screenshots/AMS_übersicht.png">
+    <img src="data/screenshots/AMS_übersicht.png" width="300">
+  </a>
+  <a href="data/screenshots/Spulen.png">
+    <img src="data/screenshots/Spulen.png" width="320" alt="Spool management">
+  </a>
+</p>
+
+<p align="center">
+  <sub>Dashboard · Material · Spools</sub>
+</p>
+
+<p align="center">
+  <a href="data/screenshots/statistiken.png">
+    <img src="data/screenshots/statistiken.png" width="300" alt="Statistics">
+  </a>
+  <a href="data/screenshots/statistiken_02.png">
+    <img src="data/screenshots/statistiken_02.png" width="300" alt="Statistics details">
+  </a>
+  <a href="data/screenshots/jobs.png">
+    <img src="data/screenshots/jobs.png" width="300" alt="Jobs overview">
+  </a>
+</p>
+
+<p align="center">
+  <sub>Statistics · Details · Jobs</sub>
+</p>
+
+<p align="center">
+  <a href="data/screenshots/mini_user_menu.png">
+    <img src="data/screenshots/mini_user_menu.png" width="280" alt="Mini user menu">
+  </a>
+</p>
+
+<p align="center">
+  <sub>UI details · User menu</sub>
+</p>
 
 ---
 
 # 📅 Status & Roadmap
 
-- Target for stable release: **May 2026**  
-- Roadmap: `ANLEITUNG/Roadmap.md`  
-- Documentation: `ANLEITUNG/Handbuch.md`  
+- Target for stable version 1.0: **May 2026**
+- Current state: **Public Beta – stable for use, actively developed**
+- Roadmap: [ANLEITUNG/Roadmap.md](ANLEITUNG/Roadmap.md)
+- Manual: [ANLEITUNG/Handbuch.md](ANLEITUNG/Handbuch.md)
 
 ---
 
 # 🛠️ Quickstart (Development)
+
+> ⚠️ Note: This setup is intended for developers and beta testers.
 
 ```bash
 python -m venv .venv
@@ -117,21 +213,4 @@ python -m venv .venv
 # or
 source .venv/bin/activate && pip install -r requirements.txt  # Linux/Mac
 
-python run.py  # Starts API + UI (Port 8080)
-```
-
-
-# Quickstart (Docker)
-```
-docker build -t filamenthub .
-docker run -d -p 8080:8080 -v $(pwd)/data:/app/data filamenthub
-```
-Unter Unraid nutzbar über Docker-Compose oder direkt im Docker-Template.
-
-📄 Lizenz
-
-MIT License
-
-👤 Kontakt
-
-Entwickelt von d3nn3s08
+python run.py  # Starts API + UI (Port 8085)
