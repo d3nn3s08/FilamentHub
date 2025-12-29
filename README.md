@@ -75,8 +75,6 @@ Diese Beta richtet sich an technisch versierte Nutzer und Early Adopter.
 Feedback, Bugreports und Verbesserungsvorschläge sind ausdrücklich erwünscht.
 
 
-Link to the sample section: [Link Text](#main/ANLEITUNG/Installation-Beta.md).
-
 👉 **Anleitung: Installation der Beta-Version**  
 [Installation-Beta.md](https://github.com/d3nn3s08/FilamentHub/blob/main/ANLEITUNG/Installation-Beta.md)
 
