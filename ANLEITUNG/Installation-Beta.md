@@ -61,16 +61,6 @@ git checkout beta
 git pull
 ```
 
-
-```
-
-🔑 **Hinweise**
-- Es muss ein **bcrypt-Hash** sein
-- `$`-Zeichen sind erlaubt (Compose liest sie korrekt aus `.env`)
-- Ohne `ADMIN_PASSWORD_HASH` ist der Admin deaktiviert
-
----
-
 ### 3️⃣ Docker Image bauen
 
 ```bash
