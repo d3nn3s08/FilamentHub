@@ -25,6 +25,11 @@ class JobBase(SQLModel):
     spool_vendor: Optional[str] = None
     spool_color: Optional[str] = None
     spool_created_at: Optional[str] = None
+    # Optionales, berechnetes Feld für UI: ETA in Sekunden (oder None)
+    eta_seconds: Optional[int] = None
+
+    # Filament-Tracking: Startwert beim ersten Auftreten von layer_num >= 1
+    filament_start_mm: Optional[float] = None
 
 
 class Job(JobBase, table=True):
@@ -49,7 +54,7 @@ class JobSpoolUsageBase(SQLModel):
 
 
 class JobSpoolUsage(JobSpoolUsageBase, table=True):
-    __tablename__: ClassVar[str] = "job_spool_usage"
+    __tablename__ = "job_spool_usage"  # type: ignore[reportAssignmentType]
     id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
 
 

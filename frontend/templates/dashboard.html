@@ -273,6 +273,7 @@
         }
     }
 </style>
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='css/activePrintCard.css') }}">
 {% endblock %}
 
 {% block header_actions %}{% endblock %}
@@ -353,35 +354,24 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='js/activePrintCard.js') }}"></script>
 <script src="{{ url_for('frontend_static', path='js/dashboard.js') }}"></script>
 <script>
 // === WILLKOMMENS-POPUP SYSTEM ===
 
-// Hole oder erstelle User-ID
-function getUserId() {
-    let userId = localStorage.getItem('fh_userid');
-    if (!userId) {
-        userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('fh_userid', userId);
-    }
-    return userId;
-}
-
 // Prüfe beim Laden, ob Popup angezeigt werden soll
 async function checkAndShowWelcomePopup() {
-    const userId = getUserId();
-
     try {
-        // Prüfe, ob User das Popup schon gesehen hat
-        const flagRes = await fetch(`/api/user/flag/${userId}/welcome_popup`);
-        const flagData = await flagRes.json();
+        // Prüfe globales Flag (nur einmal pro Installation)
+        const res = await fetch('/api/admin/welcome-status');
+        const data = await res.json();
 
-        // Wenn Flag NICHT gesetzt ist (false), zeige Popup
-        if (!flagData.value) {
+        // Wenn Popup noch nie angezeigt wurde, zeige es
+        if (!data.welcome_shown) {
             await showWelcomePopup();
         }
     } catch (error) {
-        console.error('Fehler beim Prüfen des Welcome-Flags:', error);
+        console.error('Fehler beim Prüfen des Welcome-Status:', error);
     }
 }
 
@@ -408,7 +398,6 @@ async function showWelcomePopup() {
 async function closeWelcomePopup() {
     const popup = document.getElementById('welcomePopup');
     const dialog = popup.querySelector('.welcome-modal__dialog');
-    const userId = getUserId();
 
     // Matrix-Effekt starten
     createMatrixEffect(dialog);
@@ -416,15 +405,15 @@ async function closeWelcomePopup() {
     // Matrix-Exit Animation hinzufügen
     popup.classList.add('matrix-exit');
 
-    // Setze das Flag, dass User das Popup gesehen hat
+    // Setze globales Flag, dass Popup angezeigt wurde
     try {
-        await fetch(`/api/user/flag/${userId}/welcome_popup`, {
+        await fetch('/api/admin/welcome-status', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ value: true })
+            body: JSON.stringify({ shown: true })
         });
     } catch (error) {
-        console.error('Fehler beim Setzen des Welcome-Flags:', error);
+        console.error('Fehler beim Setzen des Welcome-Status:', error);
     }
 
     // Nach der Animation Popup entfernen

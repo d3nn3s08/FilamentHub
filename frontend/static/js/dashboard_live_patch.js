@@ -31,18 +31,23 @@ function updateLiveActivePrints(liveData) {
         container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 20px;">Keine aktiven Drucke</p>';
         return;
     }
-    container.innerHTML = activePrinters.map(printer => `
-        <div class="job-card">
-            <div>
-                <div class="job-name">${printer.current_job_name || 'Unbekannter Job'}</div>
-                <div class="job-printer">${printer.name || 'Unbekannter Drucker'}</div>
+    // Delegate rendering to activePrintCard if available
+    if (typeof renderActiveJobs === 'function') {
+        renderActiveJobs(container, activePrinters);
+    } else {
+        container.innerHTML = activePrinters.map(printer => `
+            <div class="job-card">
+                <div>
+                    <div class="job-name">${printer.current_job_name || 'Unbekannter Job'}</div>
+                    <div class="job-printer">${printer.name || 'Unbekannter Drucker'}</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 14px; font-weight: 600; color: var(--accent-2);">${printer.progress ? printer.progress.toFixed(0) : '?'}%</div>
+                    <div style="font-size: 11px; color: var(--text-dim);">fertig</div>
+                </div>
             </div>
-            <div style="text-align: right;">
-                <div style="font-size: 14px; font-weight: 600; color: var(--accent-2);">${printer.progress ? printer.progress.toFixed(0) : '?'}%</div>
-                <div style="font-size: 11px; color: var(--text-dim);">verbleibend</div>
-            </div>
-        </div>
-    `).join('');
+        `).join('');
+    }
 }
 
 function updateRefreshTime() {

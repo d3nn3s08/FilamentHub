@@ -79,7 +79,8 @@ async def check_port(ip: str, port: int, timeout: float = 0.3) -> bool:
         result = await loop.run_in_executor(None, sock.connect_ex, (ip, port))
         sock.close()
         return result == 0
-    except:
+    except Exception as exc:
+        log.debug("check_port failed for %s:%s -> %s", ip, port, exc, exc_info=True)
         return False
 
 
@@ -87,7 +88,8 @@ def get_hostname(ip: str) -> Optional[str]:
     """Versucht den Hostname aufzulösen"""
     try:
         return socket.gethostbyaddr(ip)[0]
-    except:
+    except Exception as exc:
+        log.debug("get_hostname failed for %s: %s", ip, exc, exc_info=True)
         return None
 
 
@@ -211,7 +213,8 @@ async def quick_scan():
 
         for host in sorted(set(host_numbers)):
             common_ips.append(f"{subnet_base}.{host}")
-    except Exception:
+    except Exception as exc:
+        log.debug("Failed to determine local IP for detect_bambu_printers: %s", exc, exc_info=True)
         base = "192.168."
         for subnet in ["0", "1", "2", "178"]:
             common_ips.extend([
@@ -335,7 +338,8 @@ async def detect_bambu_printers():
         subnet_parts = local_ip.split('.')
         local_subnet = f"{subnet_parts[0]}.{subnet_parts[1]}.{subnet_parts[2]}.0/24"
         network_ranges = [local_subnet]
-    except:
+    except Exception as exc:
+        log.debug("Failed to determine local IP for detect_bambu_printers (fallback): %s", exc, exc_info=True)
         # Fallback
         network_ranges = ["192.168.0.0/24", "192.168.1.0/24", "192.168.178.0/24"]
     
@@ -386,7 +390,8 @@ async def detect_klipper_printers():
         subnet_parts = local_ip.split('.')
         local_subnet = f"{subnet_parts[0]}.{subnet_parts[1]}.{subnet_parts[2]}.0/24"
         network_ranges = [local_subnet]
-    except:
+    except Exception as exc:
+        log.debug("Failed to determine local IP for detect_klipper_printers: %s", exc, exc_info=True)
         network_ranges = ["192.168.0.0/24", "192.168.1.0/24", "192.168.178.0/24"]
     
     found_printers = []
@@ -484,7 +489,8 @@ def get_network_info():
         s.connect(("8.8.8.8", 80))
         local_ip = s.getsockname()[0]
         s.close()
-    except:
+    except Exception as exc:
+        log.debug("Failed to determine local IP in get_network_info: %s", exc, exc_info=True)
         local_ip = "127.0.0.1"
     
     # Hostname

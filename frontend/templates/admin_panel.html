@@ -442,6 +442,7 @@ try {
             document.getElementById('welcomeStatus').innerText = 'Fehler beim Zurücksetzen!';
         }
     }
+
     function logout() {
         fetch('/api/admin/logout', { method: 'POST' })
             .finally(() => {

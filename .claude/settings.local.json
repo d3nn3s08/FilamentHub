@@ -7,7 +7,8 @@
       "Bash(grep:*)",
       "Bash(cp:*)",
       "Bash(find:*)",
-      "Bash(python -m py_compile:*)"
+      "Bash(python -m py_compile:*)",
+      "Bash(python -m json.tool:*)"
     ]
   }
 }

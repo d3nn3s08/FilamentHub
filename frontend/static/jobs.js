@@ -111,22 +111,36 @@ function renderSpoolList(spoolsToRender) {
         // Material-Info holen
         const material = materials.find(m => m.id === spool.material_id);
         const materialName = material ? material.name : 'Unbekannt';
-        const brand = material && material.brand ? ` (${material.brand})` : '';
+        const materialColor = material ? material.color : null;
+
+        // Farbe extrahieren (Material-Farbe oder Tray-Farbe)
+        let colorName = '';
+        if (materialColor) {
+            // Verwende Material-Farbe
+            colorName = materialColor.replace('#', '').toUpperCase();
+        } else if (spool.tray_color) {
+            // Verwende Tray-Farbe (Bambu Lab)
+            colorName = spool.tray_color.substring(0, 6).toUpperCase();
+        }
 
         // Spulen-Nummer oder "RFID"
-        const spoolNumber = spool.spool_number ? `#${spool.spool_number}` : (spool.tray_uuid ? '📡 RFID' : '-');
+        const spoolNumber = spool.spool_number ? `#${spool.spool_number}` : (spool.tray_uuid ? '📡 RFID' : '');
 
-        // Farbe als Punkt
-        const color = spool.tray_color ? `🎨` : '';
+        // Restgewicht mit Format: "332.50g / 1000g"
+        // API liefert weight_current als "weight" (serialization_alias in spool.py:178)
+        const weightCurrent = spool.weight || 0;
+        const weightFull = spool.weight_full || 1000;
+        const weight = `${weightCurrent.toFixed(2)}g / ${weightFull}g`;
 
-        // Restgewicht
-        const remaining = spool.weight_current || spool.weight_remaining || 0;
-        const weight = `${Math.round(remaining)}g`;
+        // Label erstellen: "PLA Basic BLAU | #5 | 332.50g / 1000g"
+        const parts = [materialName];
+        if (colorName) parts.push(colorName);
+        if (spoolNumber) parts.push(`| ${spoolNumber}`);
+        parts.push(`| ${weight}`);
 
-        // Label erstellen: "Material | #Nummer | Gewicht"
-        const displayText = `${materialName}${brand} | ${spoolNumber} | ${weight} ${color}`;
+        const displayText = parts.join(' ');
 
-        const option = `<option value="${spool.id}" data-search="${materialName.toLowerCase()} ${brand.toLowerCase()} ${spoolNumber.toLowerCase()}">${displayText}</option>`;
+        const option = `<option value="${spool.id}" data-search="${materialName.toLowerCase()} ${colorName.toLowerCase()} ${spoolNumber.toLowerCase()}">${displayText}</option>`;
         spoolSelect.innerHTML += option;
 
         if (usageSpoolSelect) {
@@ -216,9 +230,24 @@ function renderJobs(jobsList) {
         // Prüfe ob Job Tracking braucht (kein Verbrauch und keine Spule)
         const needsTracking = (!job.spool_id || job.filament_used_g === 0 || job.filament_used_mm === 0) && job.finished_at;
 
-        const status = job.finished_at ?
-            '<span class="status-badge status-online">Abgeschlossen</span>' :
-            '<span class="status-badge status-printing">Aktiv</span>';
+        // Status-Badge basierend auf job.status
+        let status;
+        const jobStatus = (job.status || 'running').toLowerCase();
+
+        if (jobStatus === 'completed') {
+            status = '<span class="status-badge status-online">✓ Abgeschlossen</span>';
+        } else if (jobStatus === 'running' || jobStatus === 'printing') {
+            status = '<span class="status-badge status-printing">▶ Aktiv</span>';
+        } else if (jobStatus === 'failed' || jobStatus === 'error' || jobStatus === 'exception') {
+            status = '<span class="status-badge status-offline">✗ Fehlgeschlagen</span>';
+        } else if (jobStatus === 'cancelled' || jobStatus === 'canceled') {
+            status = '<span class="status-badge status-paused">⊗ Abgebrochen</span>';
+        } else if (jobStatus === 'aborted' || jobStatus === 'stopped') {
+            status = '<span class="status-badge status-paused">⊘ Gestoppt</span>';
+        } else {
+            // Fallback für unbekannte Status
+            status = `<span class="status-badge status-idle">${jobStatus}</span>`;
+        }
 
         const verbrauch = needsTracking ?
             '<span style="color: var(--error, #dc3545); font-weight: bold;">⚠️ 0g</span>' :
@@ -314,18 +343,28 @@ function openAddModal() {
     document.getElementById('filamentUsedMm').value = '0';
     document.getElementById('filamentUsedG').value = '0';
     document.getElementById('finishedAt').value = '';
-    
+
+    // Bei neuen Jobs sind Verbrauchsfelder immer editierbar
+    const mmField = document.getElementById('filamentUsedMm');
+    const gField = document.getElementById('filamentUsedG');
+    mmField.readOnly = false;
+    gField.readOnly = false;
+    mmField.style.backgroundColor = '';
+    gField.style.backgroundColor = '';
+    mmField.title = '';
+    gField.title = '';
+
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('startedAt').value = now.toISOString().slice(0, 16);
-    
+
     document.getElementById('jobModal').style.display = 'flex';
 }
 
 function editJob(id) {
     const job = jobs.find(j => j.id === id);
     if (!job) return;
-    
+
     currentJobId = id;
     document.getElementById('modalTitle').textContent = 'Job bearbeiten';
     document.getElementById('jobName').value = job.name;
@@ -333,11 +372,33 @@ function editJob(id) {
     document.getElementById('jobSpool').value = job.spool_id || '';
     document.getElementById('filamentUsedMm').value = job.filament_used_mm;
     document.getElementById('filamentUsedG').value = job.filament_used_g;
-    
+
+    // Verbrauchsfelder: Nur bei manuellen Jobs editierbar
+    // MQTT-getrackte Jobs haben automatischen Verbrauch -> readonly
+    const hasTracking = job.filament_used_g > 0 || job.filament_used_mm > 0;
+    const mmField = document.getElementById('filamentUsedMm');
+    const gField = document.getElementById('filamentUsedG');
+
+    if (hasTracking) {
+        mmField.readOnly = true;
+        gField.readOnly = true;
+        mmField.style.backgroundColor = 'var(--bg-secondary, #f5f5f5)';
+        gField.style.backgroundColor = 'var(--bg-secondary, #f5f5f5)';
+        mmField.title = 'Automatisch getrackt (nicht editierbar)';
+        gField.title = 'Automatisch getrackt (nicht editierbar)';
+    } else {
+        mmField.readOnly = false;
+        gField.readOnly = false;
+        mmField.style.backgroundColor = '';
+        gField.style.backgroundColor = '';
+        mmField.title = '';
+        gField.title = '';
+    }
+
     const startDate = new Date(job.started_at);
     startDate.setMinutes(startDate.getMinutes() - startDate.getTimezoneOffset());
     document.getElementById('startedAt').value = startDate.toISOString().slice(0, 16);
-    
+
     if (job.finished_at) {
         const endDate = new Date(job.finished_at);
         endDate.setMinutes(endDate.getMinutes() - endDate.getTimezoneOffset());
@@ -345,7 +406,7 @@ function editJob(id) {
     } else {
         document.getElementById('finishedAt').value = '';
     }
-    
+
     document.getElementById('jobModal').style.display = 'flex';
 }
 

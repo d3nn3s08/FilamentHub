@@ -8,11 +8,25 @@ async function loadPrintersModern() {
         const res = await fetch("/api/printers/");
         if (!res.ok) throw new Error("Request failed");
         const data = await res.json();
+        // versuche Live-State mitzuladen und nach cloud_serial zu mappen
+        const liveRes = await fetch("/api/live-state/");
+        const liveData = liveRes.ok ? await liveRes.json() : {};
+        const liveMap = Object.fromEntries(
+            Object.entries(liveData).map(([k, v]) => {
+                let live = v.payload && v.payload.print ? { ...v.payload.print } : { ...v.payload };
+                if (v.payload?.ams?.ams && Array.isArray(v.payload.ams.ams) && v.payload.ams.ams[0]) {
+                    live.tray = v.payload.ams.ams[0].tray;
+                    live.tray_now = v.payload.ams.ams[0].tray_now;
+                }
+                return [k, live];
+            })
+        );
+
         if (!Array.isArray(data) || data.length === 0) {
             container.innerHTML = '<div class="empty">Keine Drucker konfiguriert.</div>';
             return;
         }
-        container.innerHTML = data.map(renderCard).join("");
+        container.innerHTML = data.map(p => renderCard({ ...p, live: liveMap[p.cloud_serial] || null })).join("");
     } catch (err) {
         console.error(err);
         container.innerHTML = '<div class="empty">Fehler beim Laden der Drucker.</div>';
@@ -25,8 +39,8 @@ function renderCard(printer) {
     const icon = printer.image_url
         ? `<img src="${printer.image_url}" alt="${printer.name || 'Drucker'}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #2f3a4d;">`
         : renderPrinterIcon(printer.printer_type);
-    const nozzle = printer.nozzle_temp ?? "—";
-    const bed = printer.bed_temp ?? "—";
+    const nozzle = printer.live?.nozzle_temper ?? printer.live?.nozzle_temp ?? printer.nozzle_temp ?? printer.nozzle_temper ?? printer.live?.nozzle ?? printer.live?.extruder_temp ?? printer.temperature?.nozzle ?? "—";
+    const bed = printer.live?.bed_temper ?? printer.live?.bed_temp ?? printer.bed_temp ?? printer.bed_temper ?? printer.live?.bed ?? printer.temperature?.bed ?? "—";
     const filament = printer.filament_material || printer.printer_type?.toUpperCase() || "—";
     const progress = printer.progress_percent ?? 0;
     const progressColor = pickProgressColor(progress);

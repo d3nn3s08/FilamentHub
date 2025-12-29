@@ -1,10 +1,70 @@
 import logging
 import os
-from sqlalchemy import text
+import sys
+from typing import Dict, Iterable
+from sqlalchemy import inspect, text
 from sqlmodel import SQLModel, Session, create_engine
 
 DB_PATH = os.environ.get("FILAMENTHUB_DB_PATH", "data/filamenthub.db")
 engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
+
+
+def verify_schema_or_exit(engine, required_schema: dict | None = None) -> None:
+    """
+    Prüft, ob die erwarteten Tabellen und Spalten vorhanden sind.
+    Bei fehlenden Einträgen wird ein Fehler geloggt und der Prozess beendet.
+
+    required_schema: Dict[str, List[str]]
+      z.B. {"job": ["id", "eta_seconds", "filament_start_mm"]}
+    """
+    logger = logging.getLogger("filamenthub.database")
+    # Minimal required schema: only fields that runtime code strictly depends on
+    DEFAULT_REQUIRED_SCHEMA: Dict[str, Iterable[str]] = {
+        "job": {
+            "id",
+            "started_at",
+            "finished_at",
+            "filament_used_mm",
+            "filament_start_mm",
+            "eta_seconds",
+        }
+    }
+
+    if required_schema is None:
+        required_schema = DEFAULT_REQUIRED_SCHEMA
+
+    try:
+        inspector = inspect(engine)
+        existing_tables = inspector.get_table_names()
+    except Exception as exc:
+        logger.error("[DB] Fehler beim Initialisieren des DB-Inspectors: %s", exc, exc_info=True)
+        logger.error("[DB] Server wird beendet, da die Datenbank nicht geprüft werden kann.")
+        logger.error("[DB] Database file: %s", DB_PATH)
+        sys.exit(1)
+
+    missing = []
+    for table, cols in required_schema.items():
+        if table not in existing_tables:
+            missing.append(f"Missing table: {table}")
+            continue
+        try:
+            existing_cols = {c["name"] for c in inspector.get_columns(table)}
+        except Exception as exc:
+            logger.error("Fehler beim Lesen der Spalten fuer Tabelle %s: %s", table, exc, exc_info=True)
+            missing.append(f"Cannot inspect columns for table: {table}")
+            continue
+        for col in cols:
+            if col not in existing_cols:
+                missing.append(f"Missing column: {table}.{col}")
+
+    if missing:
+        logger.error("[DB] Schema validation failed")
+        for item in missing:
+            # item is either 'Missing table: X' or 'Missing column: X.Y' or inspect error
+            logger.error("[DB] %s", item)
+        logger.error("[DB] Database file: %s", DB_PATH)
+        logger.error("[DB] Fix: run `alembic upgrade head` or follow migrations in the project README. Server will exit.")
+        sys.exit(1)
 
 
 def run_migrations() -> None:
@@ -85,7 +145,21 @@ def init_db() -> None:
     try:
         run_migrations()
     except Exception as exc:
-        logging.error("Fehler bei Migrationen: %s", exc)
+        logging.error("Fehler bei Migrationen: %s", exc, exc_info=True)
+        logging.error("Server wird beendet, da Migrationen fehlgeschlagen sind.")
+        sys.exit(1)
+
+    # Nach Migrationen das Schema verifizieren (kritische Tabellen/Spalten)
+    try:
+        verify_schema_or_exit(engine)
+    except SystemExit:
+        # bereits geloggt in verify_schema_or_exit
+        raise
+    except Exception as exc:
+        logging.error("Unbekannter Fehler bei Schema-Pruefung: %s", exc, exc_info=True)
+        logging.error("Server wird beendet.")
+        sys.exit(1)
+
     logging.info("Datenbank-Initialisierung abgeschlossen.")
 
 

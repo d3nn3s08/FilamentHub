@@ -175,7 +175,9 @@ def sync_ams_slots(ams_units: List[Dict[str, Any]], printer_id: Optional[str] = 
                 spool.tray_type = tray_type or spool.tray_type
 
                 # Status aktualisieren: Wenn Spule im AMS ist, auf "Aktiv" setzen
-                if not spool.is_empty:
+                # Some test doubles (DummySpool) may not have `is_empty` attribute,
+                # so use getattr with a sensible default.
+                if not getattr(spool, "is_empty", False):
                     spool.status = "Aktiv"
                     spool.is_open = True
                 # Neue Rolle erkennen: Remain steigt deutlich an

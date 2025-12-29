@@ -12,3 +12,5 @@ websockets
 wsproto
 bcrypt
 python-dotenv
+pytest
+pytest-cov

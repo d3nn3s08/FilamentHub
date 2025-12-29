@@ -165,7 +165,9 @@ def get_mqtt_logger():
 
         backup_count = config.get("logging", {}).get("backup_count", 3)
 
-    except:
+    except Exception as exc:
+
+        logging.getLogger("app.routes.mqtt").warning("Failed to read config.yaml for MQTT logger: %s", exc)
 
         max_size_mb = 10
 

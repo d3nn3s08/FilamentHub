@@ -52,3 +52,4 @@ scripts/_tmp_*
 # HINWEIS: .env wird MIT ins Repository aufgenommen (mit Fake-Hash)
 # Produktions-.env mit echtem Hash wird über .env.local überschrieben
 .env.local
+data/job_snapshots.json

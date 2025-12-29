@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
-from sqlmodel import select, Session
+from sqlmodel import select, Session, col
 from typing import List
 
 from app.database import get_session
@@ -53,7 +53,7 @@ def list_unnumbered_spools(session: Session = Depends(get_session)):
 
     Nützlich für Benachrichtigungen: "Neue Spule im AMS erkannt - Bitte Nummer vergeben"
     """
-    stmt = select(Spool).where(Spool.spool_number.is_(None))
+    stmt = select(Spool).where(col(Spool.spool_number).is_(None))
     result = session.exec(stmt).all()
     return [SpoolReadSchema.model_validate(s) for s in result]
 
@@ -94,6 +94,11 @@ def update_spool(spool_id: str, data: SpoolUpdateSchema, session: Session = Depe
     if not spool:
         raise HTTPException(status_code=404, detail="Spule nicht gefunden")
     update_data = _normalize_spool_payload(data, is_update=True)
+    # Schutz: Nummer darf nur freigegeben werden, wenn Spule leer ist
+    if "spool_number" in update_data and update_data.get("spool_number") is None:
+        next_is_empty = update_data.get("is_empty", spool.is_empty)
+        if not next_is_empty:
+            update_data.pop("spool_number", None)
     for key, value in update_data.items():
         setattr(spool, key, value)
 

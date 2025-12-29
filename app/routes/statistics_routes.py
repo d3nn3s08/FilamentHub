@@ -18,8 +18,8 @@ DEFAULT_POWER_KW = 0.30  # fallback when printer has no power_consumption_kw
 
 
 def _job_duration_hours(job: Job, now: datetime) -> float:
-    start = job.started_at or now
-    end = job.finished_at or now
+    start = _coerce_dt(job.started_at, now)
+    end = _coerce_dt(job.finished_at, now)
     return max((end - start).total_seconds(), 0) / 3600.0
 
 
@@ -33,6 +33,17 @@ def _energy_for_job(job: Job, printers: Dict[str, Printer], now: datetime) -> tu
     return 0.0, DEFAULT_POWER_KW * duration_h
 
 
+def _coerce_dt(value: Any, now: datetime) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return now
+    return now
+
+
 @router.get("/timeline")
 def timeline(days: int = 30, session: Session = Depends(get_session)):
     now = datetime.utcnow()
@@ -42,7 +53,7 @@ def timeline(days: int = 30, session: Session = Depends(get_session)):
 
     buckets: Dict[str, Dict[str, float]] = {}
     for job in jobs:
-        day = (job.started_at or now).date().isoformat()
+        day = _coerce_dt(job.started_at, now).date().isoformat()
         b = buckets.setdefault(day, {"jobs": 0, "filament_g": 0.0, "duration_h": 0.0, "energy_kwh": 0.0})
         b["jobs"] += 1
         b["filament_g"] += job.filament_used_g or 0.0
@@ -78,7 +89,7 @@ def timeline_by_material(days: int = 30, session: Session = Depends(get_session)
     material_names = set()
 
     for job in jobs:
-        day = (job.started_at or now).date().isoformat()
+        day = _coerce_dt(job.started_at, now).date().isoformat()
         # Try to get material from spool_id
         material_name = "Unbekannt"
         if job.spool_id:
@@ -119,8 +130,8 @@ def timeline_costs(days: int = 30, session: Session = Depends(get_session)):
     cumulative_cost = 0.0
     daily_cumulative: Dict[str, float] = {}
 
-    for job in sorted(jobs, key=lambda j: j.started_at or now):
-        day = (job.started_at or now).date().isoformat()
+    for job in sorted(jobs, key=lambda j: _coerce_dt(j.started_at, now)):
+        day = _coerce_dt(job.started_at, now).date().isoformat()
         exact, est = _energy_for_job(job, printers, now)
         energy_kwh = exact + est
         cost = energy_kwh * price_kwh
@@ -146,7 +157,7 @@ def heatmap(days: int = 90, session: Session = Depends(get_session)):
 
     activity: Dict[str, Dict[str, Any]] = {}
     for job in jobs:
-        day = (job.started_at or now).date().isoformat()
+        day = _coerce_dt(job.started_at, now).date().isoformat()
         a = activity.setdefault(day, {"jobs": 0, "filament_g": 0.0, "duration_h": 0.0})
         a["jobs"] += 1
         a["filament_g"] += job.filament_used_g or 0.0

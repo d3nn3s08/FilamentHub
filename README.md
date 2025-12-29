@@ -96,3 +96,25 @@ MIT License
 
 ## Kontakt
 Entwickelt von **d3nn3s08**
+
+---
+
+## Entwickler-Feature: Coverage
+
+Die Coverage-Funktionalität ist als reines Entwickler-Feature markiert und darf nicht im Produktivbetrieb ausgeführt werden.
+
+Aktivierung (lokal/development):
+
+Windows PowerShell:
+
+```powershell
+$env:FILAMENTHUB_DEV_FEATURES = "1"
+```
+
+Linux/macOS:
+
+```bash
+export FILAMENTHUB_DEV_FEATURES=1
+```
+
+Hinweis: `pytest` und `pytest-cov` müssen auf dem System installiert sein, damit die Coverage-Ausführung funktioniert.

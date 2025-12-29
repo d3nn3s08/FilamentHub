@@ -1,4 +1,5 @@
 import os
+import logging
 import sqlite3
 import subprocess
 from fastapi import APIRouter, HTTPException
@@ -9,6 +10,8 @@ from pathlib import Path
 router = APIRouter(prefix="/api/database", tags=["Database"])
 
 DB_PATH = os.environ.get("FILAMENTHUB_DB_PATH", "data/filamenthub.db")
+
+logger = logging.getLogger("app.routes.database")
 
 # -----------------------------
 # DB EDITOR REQUEST MODEL
@@ -162,7 +165,8 @@ def get_database_stats():
     try:
         cursor.execute("SELECT COUNT(*) FROM material")
         stats["materials_count"] = cursor.fetchone()[0]
-    except:
+    except Exception as exc:
+        logger.debug("Failed to read material count: %s", exc, exc_info=True)
         stats["materials_count"] = 0
     
     # Spools
@@ -175,7 +179,8 @@ def get_database_stats():
         
         cursor.execute("SELECT COUNT(*) FROM spool WHERE is_empty = 1")
         stats["spools_empty"] = cursor.fetchone()[0]
-    except:
+    except Exception as exc:
+        logger.debug("Failed to read spool stats: %s", exc, exc_info=True)
         stats["spools_count"] = 0
         stats["spools_open"] = 0
         stats["spools_empty"] = 0
@@ -184,14 +189,16 @@ def get_database_stats():
     try:
         cursor.execute("SELECT COUNT(*) FROM printer")
         stats["printers_count"] = cursor.fetchone()[0]
-    except:
+    except Exception as exc:
+        logger.debug("Failed to read printers count: %s", exc, exc_info=True)
         stats["printers_count"] = 0
     
     # Jobs
     try:
         cursor.execute("SELECT COUNT(*) FROM job")
         stats["jobs_count"] = cursor.fetchone()[0]
-    except:
+    except Exception as exc:
+        logger.debug("Failed to read jobs count: %s", exc, exc_info=True)
         stats["jobs_count"] = 0
     
     conn.close()

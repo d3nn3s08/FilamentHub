@@ -129,16 +129,21 @@ async function loadMaterials() {
     }
 }
 
+let amsDevices = []; // normalized devices from /api/ams/
+
 async function loadLiveState() {
     try {
-        const response = await fetch('/api/live-state/');
+        const response = await fetch('/api/ams/');
         if (response.ok) {
-            liveState = await response.json();
-            console.log('[AMS] Live-State geladen:', Object.keys(liveState).length, 'Geräte');
+            const data = await response.json();
+            amsDevices = Array.isArray(data.devices) ? data.devices : [];
+            console.log('[AMS] Normalized AMS geladen:', amsDevices.length, 'Geräte');
+        } else {
+            amsDevices = [];
         }
     } catch (error) {
-        console.error('Fehler beim Laden des Live-State:', error);
-        liveState = {};
+        console.error('Fehler beim Laden des AMS-Endpunkts:', error);
+        amsDevices = [];
     }
 }
 
@@ -147,132 +152,106 @@ function loadAMSData() {
     // Single AMS Mode: Only create 1 AMS unit
     // Multi AMS Mode: Create 4 AMS units
 
-    // Check Live-State für AMS-Status
-    const hasLiveState = Object.keys(liveState).length > 0;
-    let amsOnline = false;
-    let amsInfo = null;
-    let deviceSerial = null;
+    // Build AMS data from normalized /api/ams/ response (amsDevices)
     let printerName = 'Kein Drucker';
 
-    if (hasLiveState) {
-        // Nehme den ersten Drucker aus Live-State
-        const deviceKey = Object.keys(liveState)[0];
-        const deviceData = liveState[deviceKey];
-        deviceSerial = deviceKey; // z.B. "00M09A372601070"
-
-        if (deviceData && deviceData.payload && deviceData.payload.print) {
-            const ams = deviceData.payload.print.ams;
-            if (ams && ams.ams && ams.ams.length > 0) {
-                amsOnline = true;
-                amsInfo = ams.ams[0]; // Erstes AMS
-                console.log('[AMS] Online! Device:', deviceSerial, 'AMS ID:', amsInfo.id, 'Temp:', amsInfo.temp, 'Humidity:', amsInfo.humidity, 'Trays:', amsInfo.tray?.length || 0);
-            }
-        }
-    }
-
-    // Finde den Drucker-Namen aus der Spulen-Liste (Quick-Hack, sollte später aus Drucker-API kommen)
-    const firstSpool = spools.find(s => s.ams_slot != null);
-    if (firstSpool && firstSpool.printer_name) {
-        printerName = firstSpool.printer_name;
-    } else if (deviceSerial) {
-        printerName = `Bambu ${deviceSerial.substring(0, 8)}...`;
-    }
-
-    if (singleAmsMode) {
+    if (amsDevices.length === 0) {
+        // No normalized devices — fallback to empty single AMS
         amsData = [
-            {
-                id: 1,
-                online: amsOnline,
-                slots: [],
-                serial: deviceSerial || (amsInfo?.id ? `AMS-${amsInfo.id}` : 'AMS-001'),
-                firmware: amsInfo?.info || 'v1.2.3',
-                signal: '85%',
-                printer: printerName,
-                temp: amsInfo?.temp || null,
-                humidity: amsInfo?.humidity || null
-            }
+            { id: 1, online: false, slots: [], serial: 'AMS-001', firmware: '–', signal: '–', printer: null, temp: null, humidity: null }
         ];
     } else {
-        amsData = [
-            {
-                id: 1,
-                online: amsOnline,
-                slots: [],
-                serial: deviceSerial || (amsInfo?.id ? `AMS-${amsInfo.id}` : 'AMS-001'),
-                firmware: amsInfo?.info || 'v1.2.3',
-                signal: '85%',
-                printer: printerName,
-                temp: amsInfo?.temp || null,
-                humidity: amsInfo?.humidity || null
-            },
-            { id: 2, online: false, slots: [], serial: 'AMS-002', firmware: 'v1.2.3', signal: '–', printer: null },
-            { id: 3, online: false, slots: [], serial: 'AMS-003', firmware: 'v1.2.2', signal: '–', printer: null },
-            { id: 4, online: false, slots: [], serial: 'AMS-004', firmware: 'v1.2.3', signal: '–', printer: null }
-        ];
-    }
+        if (singleAmsMode) {
+            // Use first device + first AMS unit
+            const dev = amsDevices[0];
+            const amsUnit = (dev.ams_units && dev.ams_units[0]) || null;
+            printerName = dev.device_serial ? `Bambu ${dev.device_serial.substring(0,8)}...` : printerName;
 
-    // Map spools to AMS #1 slots (or distribute across multiple AMS in multi mode)
-    // Priorität: Live-State Spulen > Manuell zugewiesene Spulen
-
-    // 1. Füge Live-State Spulen hinzu (wenn vorhanden)
-    if (amsInfo && amsInfo.tray) {
-        console.log('[AMS] Processing', amsInfo.tray.length, 'trays from live-state');
-        amsInfo.tray.forEach((tray, index) => {
-            if (tray && tray.tray_type && tray.tray_type !== '') {
-                const ams = amsData[0];
-
-                // Versuche eine passende Spule aus der DB zu finden
-                const matchingSpool = spools.find(s =>
-                    s.ams_slot === index ||
-                    (s.rfid_uid && s.rfid_uid === tray.tag_uid)
-                );
-
-                const material = matchingSpool ? materials.find(m => m.id === matchingSpool.material_id) : null;
-
-                console.log(`[AMS] Slot ${index + 1}:`, tray.tray_type, tray.tray_color, `${tray.remain}g`, matchingSpool ? '(DB Match)' : '(Live-State only)');
-
-                ams.slots[index] = {
-                    slot: index + 1,
-                    spool: matchingSpool || {
-                        id: null,
-                        ams_slot: index,
-                        material_type: tray.tray_type,
-                        color: tray.tray_color?.substring(0, 6) || '000000',
-                        weight_remaining: tray.remain || 0,
-                        weight_total: tray.tray_weight || 1000,
-                        rfid_uid: tray.tag_uid,
-                        from_live_state: true
-                    },
-                    material: material,
-                    liveData: tray
-                };
-            }
-        });
-    } else {
-        console.log('[AMS] No trays found in live-state');
-    }
-
-    // 2. Ergänze manuell zugewiesene Spulen (wenn nicht schon durch Live-State besetzt)
-    spools.forEach(spool => {
-        if (spool.ams_slot != null && spool.ams_slot !== '') {
-            const slotId = parseInt(spool.ams_slot);
-
-            if (slotId >= 0 && slotId <= 3) {
-                const ams = amsData[0];
-
-                // Nur hinzufügen, wenn Slot noch leer ist
-                if (!ams.slots[slotId]) {
-                    const material = materials.find(m => m.id === spool.material_id);
-
-                    ams.slots[slotId] = {
-                        slot: slotId + 1,
-                        spool: spool,
-                        material: material
-                    };
+            amsData = [
+                {
+                    id: 1,
+                    online: !!dev?.online,
+                    slots: [],
+                    serial: dev.device_serial || (amsUnit ? `AMS-${amsUnit.ams_id}` : 'AMS-001'),
+                    firmware: dev.firmware || '–',
+                    signal: dev.signal || '–',
+                    printer: printerName,
+                    temp: amsUnit ? amsUnit.temp : null,
+                    humidity: amsUnit ? amsUnit.humidity : null
                 }
+            ];
+
+            if (amsUnit && Array.isArray(amsUnit.trays)) {
+                amsUnit.trays.forEach((tray, index) => {
+                    const ams = amsData[0];
+                    const matchingSpool = spools.find(s => (s.ams_slot == index) || (s.rfid_uid && s.rfid_uid === tray.tag_uid));
+                    const material = matchingSpool ? materials.find(m => m.id === matchingSpool.material_id) : null;
+
+                    ams.slots[index] = {
+                        slot: index + 1,
+                        spool: matchingSpool || {
+                            id: null,
+                            ams_slot: index,
+                            material_type: tray.material || null,
+                            color: tray.color || '#000000',
+                            weight_remaining: tray.remain_percent != null ? Math.round((tray.remain_percent || 0) * 1000) : 0,
+                            weight_total: tray.total_len || 1000,
+                            rfid_uid: tray.tag_uid,
+                            tray_uuid: tray.tray_uuid,
+                            from_live_state: true
+                        },
+                        material: material,
+                        liveData: tray
+                    };
+                });
             }
+        } else {
+            // Multi mode: create one amsData entry per device/ams_unit
+            amsData = [];
+            amsDevices.forEach((dev) => {
+                (dev.ams_units || []).forEach((u, unitIndex) => {
+                    const idx = amsData.length + 1;
+                    const amsEntry = {
+                        id: idx,
+                        online: !!dev?.online,
+                        slots: [],
+                        serial: dev.device_serial || `AMS-${u.ams_id}`,
+                        firmware: dev.firmware || '–',
+                        signal: dev.signal || '–',
+                        printer: dev.device_serial ? `Bambu ${dev.device_serial.substring(0,8)}...` : null,
+                        temp: u.temp || null,
+                        humidity: u.humidity || null
+                    };
+
+                    if (Array.isArray(u.trays)) {
+                        u.trays.forEach((tray, index) => {
+                            const matchingSpool = spools.find(s => (s.ams_slot == index) || (s.rfid_uid && s.rfid_uid === tray.tag_uid));
+                            const material = matchingSpool ? materials.find(m => m.id === matchingSpool.material_id) : null;
+
+                            amsEntry.slots[index] = {
+                                slot: index + 1,
+                                spool: matchingSpool || {
+                                    id: null,
+                                    ams_slot: index,
+                                    material_type: tray.material || null,
+                                    color: tray.color || '#000000',
+                                    weight_remaining: tray.remain_percent != null ? Math.round((tray.remain_percent || 0) * 1000) : 0,
+                                    weight_total: tray.total_len || 1000,
+                                    rfid_uid: tray.tag_uid,
+                                    tray_uuid: tray.tray_uuid,
+                                    from_live_state: true
+                                },
+                                material: material,
+                                liveData: tray
+                            };
+                        });
+                    }
+
+                    amsData.push(amsEntry);
+                });
+            });
         }
-    });
+    }
 }
 
 // === UPDATE STATS ===

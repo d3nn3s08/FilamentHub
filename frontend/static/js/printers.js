@@ -43,8 +43,8 @@ function renderCard(printer) {
         ? `<img src="${printer.image_url}" alt="${printer.name || "Drucker"}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #2f3a4d;">`
         : renderPrinterIcon(printer.printer_type);
     // Live-Daten bevorzugen, Fallback auf statische Daten
-    const nozzle = printer.live?.nozzle_temper ?? printer.nozzle_temp ?? "-";
-    const bed = printer.live?.bed_temper ?? printer.bed_temp ?? "-";
+    const nozzle = printer.live?.nozzle_temper ?? printer.live?.nozzle_temp ?? printer.nozzle_temp ?? printer.nozzle_temper ?? printer.live?.nozzle ?? printer.live?.extruder_temp ?? printer.temperature?.nozzle ?? "-";
+    const bed = printer.live?.bed_temper ?? printer.live?.bed_temp ?? printer.bed_temp ?? printer.bed_temper ?? printer.live?.bed ?? printer.temperature?.bed ?? "-";
 
     // AMS-Daten extrahieren (Temperatur & Luftfeuchtigkeit)
     let amsTemp = null;
@@ -80,6 +80,36 @@ function renderCard(printer) {
     const progress = printer.live?.percent ?? printer.progress_percent ?? 0;
     const progressColor = pickProgressColor(progress);
 
+    // WiFi Signal: try several common locations in live payloads
+    const wifiRaw = printer.live?.wifi_signal || printer.wifi_signal || printer.live?.device?.wifi_signal || printer.live?.net?.wifi_signal || null;
+
+    function rssiToPercent(raw) {
+        if (raw == null) return null;
+        try {
+            let s = String(raw).trim();
+            if (s.toLowerCase().endsWith('dbm')) s = s.slice(0, -3);
+            const m = s.match(/-?\d+/);
+            if (!m) return null;
+            let rssi = parseInt(m[0], 10);
+            if (isNaN(rssi)) return null;
+            // Map -100..-30 dBm -> 0..100%
+            rssi = Math.max(-100, Math.min(-30, rssi));
+            const pct = Math.round((rssi + 100) / 70 * 100);
+            return `${pct}%`;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    const wifiPct = rssiToPercent(wifiRaw);
+    const wifiPctNum = wifiPct ? parseInt(wifiPct, 10) : null;
+    let wifiColor = '#999';
+    if (wifiPctNum !== null && !isNaN(wifiPctNum)) {
+        if (wifiPctNum >= 80) wifiColor = '#2ecc71';
+        else if (wifiPctNum >= 50) wifiColor = '#f39c12';
+        else wifiColor = '#e74c3c';
+    }
+
     return `
     <article class="card">
         <div class="card__head">
@@ -109,6 +139,10 @@ function renderCard(printer) {
                 <div class="temp"><span class="label">Düse:</span><span class="value">${nozzle}</span></div>
                 <div class="temp"><span class="label">Bett:</span><span class="value">${bed}</span></div>
                 ${amsTemp && amsHumidity ? `<div class="temp"><span class="label">AMS:</span><span class="value">🌡️ ${amsTemp}°C  💧 ${amsHumidity}%</span></div>` : ''}
+                ${wifiRaw ? `<div class="temp"><span class="label">WiFi:</span><span class="value"><span class="wifi-icon" title="${wifiRaw}" style="display:inline-flex;align-items:center;gap:8px;">` +
+                    `<svg width="16" height="16" viewBox="0 0 24 24" fill="${wifiColor}" xmlns="http://www.w3.org/2000/svg"><path d="M12 18c.6 0 1-.4 1-1s-.4-1-1-1-1 .4-1 1 .4 1 1 1zm0-4c2 0 3.8.8 5.2 2.1.2.2.5.2.7 0 .2-.2.2-.5 0-.7C16.8 13.3 14.6 12 12 12s-4.8 1.3-6.9 3.4c-.2.2-.2.5 0 .7.2.2.5.2.7 0C8.2 14.8 10 14 12 14zM12 6c3.9 0 7 1.6 9.4 4.1.2.2.5.2.7 0 .2-.2.2-.5 0-.7C19.1 7.2 15.7 5 12 5s-7.1 2.2-10.1 4.4c-.2.2-.2.5 0 .7.2.2.5.2.7 0C5 7.6 8.1 6 12 6z"/></svg>` +
+                    `${wifiPct ? `<span style="color:${wifiColor};font-weight:600;">${wifiPct}</span>` : `<span style="color:${wifiColor};font-weight:600;">${wifiRaw}</span>`}` +
+                `</span></span></div>` : ''}
             </div>
         </div>
 

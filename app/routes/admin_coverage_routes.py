@@ -7,6 +7,8 @@ import os
 import tempfile
 from uuid import uuid4
 import mimetypes
+import shutil
+
 
 from app.routes.admin_routes import admin_required, audit, client_ip
 from fastapi.templating import Jinja2Templates
@@ -21,8 +23,38 @@ _coverage_lock = threading.Lock()
 
 
 @router.post("/coverage/run")
+# DEV-FEATURE: Code-Coverage darf nur im Entwicklungsmodus ausgeführt werden
 def run_coverage(request: Request):
     admin_required(request)
+    # DEV-Mode Guard: nur erlauben, wenn FILAMENTHUB_DEV_FEATURES=="1"
+    if os.environ.get("FILAMENTHUB_DEV_FEATURES") != "1":
+        audit(
+            "admin_coverage_blocked_production",
+            {
+                "ip": client_ip(request),
+                "reason": "Prod block",
+            },
+        )
+        return JSONResponse(
+            {"success": False, "message": "Coverage ist ein Entwickler-Feature und im Produktivmodus deaktiviert"},
+            status_code=403,
+        )
+
+    # --- Backend-Guard: pytest vorhanden? ---
+    if not shutil.which("pytest"):
+        audit(
+            "admin_coverage_error",
+            {
+                "ip": client_ip(request),
+                "message": "pytest nicht installiert"
+            },
+        )
+        return JSONResponse(
+            {"success": False, "message": "pytest ist nicht installiert (Coverage nicht möglich)"},
+            status_code=500,
+        )
+    # --- Ende Guard ---
+
     if not _coverage_lock.acquire(blocking=False):
         return JSONResponse({"success": False, "message": "Coverage läuft bereits"}, status_code=200)
     temp_db = Path(tempfile.gettempdir()) / f"filamenthub_cov_{uuid4().hex}.db"

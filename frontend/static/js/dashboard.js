@@ -87,28 +87,31 @@ function updateActiveJobsFull(printerList) {
         container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 20px;">Keine aktiven Drucke</p>';
         return;
     }
-    container.innerHTML = activePrinters.map(printer => {
-        const rawGcode = printer.live.gcode_file || printer.live.file;
-        const gcodeBase = rawGcode && rawGcode.includes('/') ? rawGcode.split('/').pop() : rawGcode;
-        const jobName = printer.live.subtask_name
-            || printer.live.job_name
-            || gcodeBase
-            || 'Unbekannter Job';
-        const printerName = printer.name || printer.cloud_serial || 'Unbekannter Drucker';
-        const progress = printer.live.percent || 0;
-        return `
-            <div class="job-card">
-                <div>
-                    <div class="job-name">${jobName}</div>
-                    <div class="job-printer">${printerName}</div>
+    // Use centralized renderer from activePrintCard.js
+    if (typeof renderActiveJobs === 'function') {
+        renderActiveJobs(container, activePrinters);
+    } else {
+        // Fallback to simple list if renderer not available
+        container.innerHTML = activePrinters.map(printer => {
+            const rawGcode = printer.live.gcode_file || printer.live.file || '';
+            const gcodeBase = rawGcode && rawGcode.includes('/') ? rawGcode.split('/').pop() : rawGcode;
+            const jobName = printer.live.subtask_name || printer.live.job_name || gcodeBase || 'Unbekannter Job';
+            const printerName = printer.name || printer.cloud_serial || 'Unbekannter Drucker';
+            const progress = printer.live.percent || 0;
+            return `
+                <div class="job-card">
+                    <div>
+                        <div class="job-name">${jobName}</div>
+                        <div class="job-printer">${printerName}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 14px; font-weight: 600; color: var(--accent-2);">${progress.toFixed(0)}%</div>
+                        <div style="font-size: 11px; color: var(--text-dim);">fertig</div>
+                    </div>
                 </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 14px; font-weight: 600; color: var(--accent-2);">${progress.toFixed(0)}%</div>
-                    <div style="font-size: 11px; color: var(--text-dim);">verbleibend</div>
-                </div>
-            </div>
-        `;
-    }).join('');
+            `;
+        }).join('');
+    }
 }
 
 // === UPDATE ALERTS (LIVE-STATE) ===

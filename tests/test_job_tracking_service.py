@@ -9,6 +9,7 @@ Testet:
 
 import pytest
 from datetime import datetime
+from pathlib import Path
 from sqlmodel import Session, select
 from app.database import engine
 from app.models.job import Job
@@ -136,6 +137,7 @@ def test_job_update_verbrauch(service, test_printer, test_spool):
         "print": {
             "gcode_state": "PRINTING",
             "subtask_name": "verbrauch_test.3mf",
+            "layer_num": 0,
             "ams": {"tray_now": 0, "tray_tar": 0}
         }
     }
@@ -156,10 +158,12 @@ def test_job_update_verbrauch(service, test_printer, test_spool):
     )
     job_id = result["job_id"]
 
-    # Update: Verbrauch von 100% → 80% (20% verbraucht)
+    # Update: layer_num >= 1, Filament-Tracking startet
     update_payload = {
         "print": {
             "gcode_state": "PRINTING",
+            "layer_num": 1,
+            "filament_used_mm": 1000.0,  # Primärquelle
             "ams": {"tray_now": 0, "tray_tar": 0}
         }
     }
@@ -167,27 +171,43 @@ def test_job_update_verbrauch(service, test_printer, test_spool):
     ams_update = [{
         "trays": [{
             "tray_id": 0,
-            "remain": 80,
+            "remain": 100,
             "total_len": 100000
         }]
     }]
 
-    result = service.process_message(
+    service.process_message(
         cloud_serial="01S00TEST123",
         parsed_payload=update_payload,
         printer_id=test_printer.id,
         ams_data=ams_update
     )
 
-    assert result["status"] == "updated"
-    assert result["used_g"] > 0  # Verbrauch sollte berechnet sein
+    # Update 2: Verbrauch steigt
+    update_payload2 = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "layer_num": 5,
+            "filament_used_mm": 5000.0,  # Primärquelle
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
 
-    # Cleanup
+    result = service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=update_payload2,
+        printer_id=test_printer.id,
+        ams_data=ams_update
+    )
+
+    assert result["status"] == "updated"
+    # Verbrauch sollte Delta sein (5000 - 1000 = 4000mm)
     with Session(engine) as session:
         job = session.get(Job, job_id)
-        if job:
-            session.delete(job)
-            session.commit()
+        assert job.filament_used_mm > 0, "Verbrauch sollte berechnet sein"
+        # Cleanup
+        session.delete(job)
+        session.commit()
 
 
 def test_job_finish(service, test_printer, test_spool):
@@ -566,3 +586,477 @@ def test_verbrauch_berechnung(service, test_printer, test_material):
         finally:
             session.delete(spool)
             session.commit()
+
+
+def test_remain_increase_bug(service, test_printer, test_material):
+    """Test 8: Bambu Lab Bug - remain-Wert steigt (soll ignoriert werden)"""
+    with Session(engine) as session:
+        spool = Spool(
+            material_id=test_material.id,
+            printer_id=test_printer.id,
+            ams_slot=2,
+            weight_full=1000.0,
+            weight_empty=200.0,
+            remain_percent=100.0
+        )
+        session.add(spool)
+        session.commit()
+        session.refresh(spool)
+
+        try:
+            # Start bei 67%
+            start_payload = {
+                "print": {
+                    "gcode_state": "PRINTING",
+                    "subtask_name": "remain_bug_test.3mf",
+                    "layer_num": 0,  # Noch kein Layer
+                    "ams": {"tray_now": 2, "tray_tar": 2}
+                }
+            }
+
+            ams_start = [{
+                "trays": [{
+                    "tray_id": 2,
+                    "remain": 67,
+                    "total_len": 330000
+                }]
+            }]
+
+            result = service.process_message(
+                cloud_serial="01S00TEST123",
+                parsed_payload=start_payload,
+                printer_id=test_printer.id,
+                ams_data=ams_start
+            )
+            job_id = result["job_id"]
+
+            # Update: layer_num >= 1 erreicht, Filament-Tracking startet
+            update_payload = {
+                "print": {
+                    "gcode_state": "PRINTING",
+                    "layer_num": 1,  # Erster Layer
+                    "filament_used_mm": 1000.0,  # Primärquelle
+                    "ams": {"tray_now": 2, "tray_tar": 2}
+                }
+            }
+
+            ams_update = [{
+                "trays": [{
+                    "tray_id": 2,
+                    "remain": 67,
+                    "total_len": 330000
+                }]
+            }]
+
+            result = service.process_message(
+                cloud_serial="01S00TEST123",
+                parsed_payload=update_payload,
+                printer_id=test_printer.id,
+                ams_data=ams_update
+            )
+
+            # Prüfe: filament_start_mm sollte gesetzt sein
+            job_info = service.active_jobs.get("01S00TEST123")
+            assert job_info["filament_start_mm"] == 1000.0, "filament_start_mm sollte bei layer_num=1 gesetzt werden"
+            assert job_info["filament_started"] is True, "filament_started Flag sollte gesetzt sein"
+
+            # Update: remain STEIGT auf 72% (Bug in Bambu Lab Firmware)
+            update_payload2 = {
+                "print": {
+                    "gcode_state": "PRINTING",
+                    "layer_num": 5,
+                    "filament_used_mm": 2000.0,  # Primärquelle weiterhin verfügbar
+                    "ams": {"tray_now": 2, "tray_tar": 2}
+                }
+            }
+
+            ams_update2 = [{
+                "trays": [{
+                    "tray_id": 2,
+                    "remain": 72,  # GESTIEGEN! (67 -> 72)
+                    "total_len": 330000
+                }]
+            }]
+
+            result = service.process_message(
+                cloud_serial="01S00TEST123",
+                parsed_payload=update_payload2,
+                printer_id=test_printer.id,
+                ams_data=ams_update2
+            )
+
+            # Prüfe: Verbrauch sollte aus Primärquelle berechnet werden (2000 - 1000 = 1000mm)
+            # remain-Anstieg wird ignoriert, da Primärquelle verfügbar ist
+            job = session.get(Job, job_id)
+            assert job.filament_used_mm == pytest.approx(1000.0, abs=10), "Verbrauch sollte aus Primärquelle berechnet werden"
+
+            # Cleanup
+            session.delete(job)
+            session.commit()
+
+        finally:
+            session.delete(spool)
+            session.commit()
+
+
+def test_filament_start_at_layer_1(service, test_printer, test_spool):
+    """Test 9: Filament-Tracking startet erst bei layer_num >= 1"""
+    # Start Job (layer_num = 0)
+    start_payload = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "subtask_name": "layer_test.3mf",
+            "layer_num": 0,  # Noch kein Layer
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
+
+    ams_data = [{
+        "trays": [{
+            "tray_id": 0,
+            "remain": 100,
+            "total_len": 100000
+        }]
+    }]
+
+    result = service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=start_payload,
+        printer_id=test_printer.id,
+        ams_data=ams_data
+    )
+    job_id = result["job_id"]
+
+    # Prüfe: filament_start_mm sollte noch None sein
+    job_info = service.active_jobs.get("01S00TEST123")
+    assert job_info["filament_start_mm"] is None, "filament_start_mm sollte bei layer_num=0 noch None sein"
+    assert job_info["filament_started"] is False, "filament_started sollte noch False sein"
+
+    # Update: layer_num >= 1 erreicht
+    update_payload = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "layer_num": 1,  # Erster Layer
+            "filament_used_mm": 5000.0,  # Primärquelle
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
+
+    result = service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=update_payload,
+        printer_id=test_printer.id,
+        ams_data=ams_data
+    )
+
+    # Prüfe: filament_start_mm sollte jetzt gesetzt sein
+    job_info = service.active_jobs.get("01S00TEST123")
+    assert job_info["filament_start_mm"] == 5000.0, "filament_start_mm sollte bei layer_num=1 gesetzt werden"
+    assert job_info["filament_started"] is True, "filament_started sollte True sein"
+
+    # Prüfe DB
+    with Session(engine) as session:
+        job = session.get(Job, job_id)
+        assert job.filament_start_mm == 5000.0, "filament_start_mm sollte in DB gespeichert sein"
+        assert job.filament_used_mm == 0.0, "Verbrauch sollte noch 0 sein (kein Delta)"
+        # Cleanup
+        session.delete(job)
+        session.commit()
+
+
+def test_filament_delta_calculation(service, test_printer, test_spool):
+    """Test 10: Delta-Berechnung ab layer_num >= 1"""
+    # Start Job
+    start_payload = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "subtask_name": "delta_test.3mf",
+            "layer_num": 0,
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
+
+    ams_data = [{
+        "trays": [{
+            "tray_id": 0,
+            "remain": 100,
+            "total_len": 100000
+        }]
+    }]
+
+    result = service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=start_payload,
+        printer_id=test_printer.id,
+        ams_data=ams_data
+    )
+    job_id = result["job_id"]
+
+    # Layer 1: Filament-Tracking startet
+    update1_payload = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "layer_num": 1,
+            "filament_used_mm": 1000.0,  # Startwert
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
+
+    service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=update1_payload,
+        printer_id=test_printer.id,
+        ams_data=ams_data
+    )
+
+    # Layer 5: Verbrauch sollte Delta sein
+    update2_payload = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "layer_num": 5,
+            "filament_used_mm": 5000.0,  # Aktueller Wert
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
+
+    result = service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=update2_payload,
+        printer_id=test_printer.id,
+        ams_data=ams_data
+    )
+
+    # Prüfe: Verbrauch sollte Delta sein (5000 - 1000 = 4000mm)
+    with Session(engine) as session:
+        job = session.get(Job, job_id)
+        assert job.filament_used_mm == pytest.approx(4000.0, abs=10), "Verbrauch sollte Delta sein (5000 - 1000)"
+        # Cleanup
+        session.delete(job)
+        session.commit()
+
+
+def test_filament_fallback_calculation(service, test_printer, test_spool):
+    """Test 11: Fallback-Berechnung wenn print.filament_used_mm fehlt"""
+    # Start Job
+    start_payload = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "subtask_name": "fallback_test.3mf",
+            "layer_num": 0,
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
+
+    ams_data = [{
+        "trays": [{
+            "tray_id": 0,
+            "remain": 100,
+            "total_len": 100000  # 100m
+        }]
+    }]
+
+    result = service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=start_payload,
+        printer_id=test_printer.id,
+        ams_data=ams_data
+    )
+    job_id = result["job_id"]
+
+    # Layer 1: Kein filament_used_mm, aber total_len vorhanden → Fallback
+    update_payload = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "layer_num": 1,
+            # Kein filament_used_mm!
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
+
+    service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=update_payload,
+        printer_id=test_printer.id,
+        ams_data=ams_data
+    )
+
+    # Prüfe: Fallback sollte verwendet werden
+    job_info = service.active_jobs.get("01S00TEST123")
+    assert job_info["filament_start_mm"] is not None, "filament_start_mm sollte aus Fallback berechnet sein"
+    assert job_info["using_fallback"] is True, "using_fallback Flag sollte gesetzt sein"
+    # Fallback: total_len * (1 - remain/100) = 100000 * (1 - 100/100) = 0
+    assert job_info["filament_start_mm"] == pytest.approx(0.0, abs=1), "Fallback sollte 0 sein bei 100% remain"
+
+    # Cleanup
+    with Session(engine) as session:
+        job = session.get(Job, job_id)
+        if job:
+            session.delete(job)
+            session.commit()
+
+
+def test_filament_switch_to_primary(service, test_printer, test_spool):
+    """Test 12: Wechsel von Fallback zu Primärquelle"""
+    # Start Job
+    start_payload = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "subtask_name": "switch_test.3mf",
+            "layer_num": 0,
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
+
+    ams_data = [{
+        "trays": [{
+            "tray_id": 0,
+            "remain": 100,
+            "total_len": 100000
+        }]
+    }]
+
+    result = service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=start_payload,
+        printer_id=test_printer.id,
+        ams_data=ams_data
+    )
+    job_id = result["job_id"]
+
+    # Layer 1: Fallback (kein filament_used_mm)
+    update1_payload = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "layer_num": 1,
+            # Kein filament_used_mm
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
+
+    service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=update1_payload,
+        printer_id=test_printer.id,
+        ams_data=ams_data
+    )
+
+    job_info = service.active_jobs.get("01S00TEST123")
+    assert job_info["using_fallback"] is True, "Fallback sollte aktiv sein"
+
+    # Layer 5: Primärquelle wird verfügbar
+    update2_payload = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "layer_num": 5,
+            "filament_used_mm": 5000.0,  # Primärquelle jetzt verfügbar
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
+
+    service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=update2_payload,
+        printer_id=test_printer.id,
+        ams_data=ams_data
+    )
+
+    # Prüfe: Wechsel zur Primärquelle
+    job_info = service.active_jobs.get("01S00TEST123")
+    assert job_info["using_fallback"] is False, "Fallback sollte deaktiviert sein"
+    # Verbrauch sollte aus Primärquelle berechnet werden
+    with Session(engine) as session:
+        job = session.get(Job, job_id)
+        # Verbrauch = 5000 - filament_start_mm (aus Fallback)
+        assert job.filament_used_mm >= 0, "Verbrauch sollte berechnet sein"
+        # Cleanup
+        session.delete(job)
+        session.commit()
+
+
+def test_snapshot_restore_filament_state(test_printer, test_spool):
+    """Test 13: Snapshot-Restore übernimmt filament_start_mm und Flags"""
+    snapshot_path = Path("data/job_snapshots.json")
+    if snapshot_path.exists():
+        snapshot_path.unlink()
+
+    service = JobTrackingService()
+
+    # Start Job
+    start_payload = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "subtask_name": "restore_test.3mf",
+            "layer_num": 0,
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
+
+    ams_data = [{
+        "trays": [{
+            "tray_id": 0,
+            "remain": 100,
+            "total_len": 100000
+        }]
+    }]
+
+    result = service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=start_payload,
+        printer_id=test_printer.id,
+        ams_data=ams_data
+    )
+    job_id = result["job_id"]
+
+    # Update: layer_num >= 1, Primärquelle vorhanden
+    update_payload = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "layer_num": 1,
+            "mc_percent": 5,
+            "filament_used_mm": 1000.0,
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
+
+    service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=update_payload,
+        printer_id=test_printer.id,
+        ams_data=ams_data
+    )
+
+    assert snapshot_path.exists()
+
+    # Simuliere Neustart: neuer Service
+    restored_service = JobTrackingService()
+    restore_payload = {
+        "print": {
+            "gcode_state": "PRINTING",
+            "layer_num": 2,
+            "mc_percent": 6,
+            "ams": {"tray_now": 0, "tray_tar": 0}
+        }
+    }
+
+    result = restored_service.process_message(
+        cloud_serial="01S00TEST123",
+        parsed_payload=restore_payload,
+        printer_id=test_printer.id,
+        ams_data=ams_data
+    )
+
+    assert result["status"] == "restored"
+    job_info = restored_service.active_jobs.get("01S00TEST123")
+    assert job_info is not None
+    assert job_info["filament_started"] is True
+    assert job_info["filament_start_mm"] == 1000.0
+    assert job_info["using_fallback"] is False
+
+    # Cleanup
+    with Session(engine) as session:
+        job = session.get(Job, job_id)
+        if job:
+            session.delete(job)
+            session.commit()
+    if snapshot_path.exists():
+        snapshot_path.unlink()

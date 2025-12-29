@@ -1,20 +1,100 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, SQLModel, select
-from typing import List, Optional
+from typing import List, Optional, Any
 from datetime import datetime
 from app.database import get_session
 from app.models.job import Job, JobCreate, JobRead, JobSpoolUsage
 from app.models.spool import Spool
 from app.models.printer import Printer
 from app.models.settings import Setting
+import app.services.live_state as live_state_module
+from app.services.eta import calculate_eta
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+
+
+def _compute_eta_for_job(job: Job, session: Session) -> Optional[int]:
+    """Try to compute ETA for a Job using printer model and live-state payload.
+
+    Returns seconds (int) or None.
+    """
+    try:
+        printer = session.get(Printer, job.printer_id)
+        if not printer:
+            return None
+
+        # Try to get live payload by cloud_serial
+        cloud = printer.cloud_serial
+        live_entry = live_state_module.get_live_state(cloud) if cloud else None
+        payload = None
+        if isinstance(live_entry, dict):
+            payload = live_entry.get("payload") or {}
+
+        # Normalize print payload
+        print_data = None
+        if isinstance(payload, dict):
+            print_data = payload.get("print") or payload
+
+        # Extract fields
+        layer_num = None
+        total_layer_num = None
+        bambu_remaining_time = None
+
+        if isinstance(print_data, dict):
+            layer_num = print_data.get("layer_current") or print_data.get("layer_num") or print_data.get("layer") or print_data.get("layer_index")
+            total_layer_num = print_data.get("layer_total") or print_data.get("layer_count") or print_data.get("total_layers")
+            bambu_remaining_time = print_data.get("remain_time_s") or print_data.get("mc_remaining_time") or print_data.get("mc_remaining_seconds") or print_data.get("remaining_time") or print_data.get("remain")
+
+        # Coerce types
+        try:
+            layer_num = int(layer_num) if layer_num is not None else None
+        except Exception:
+            layer_num = None
+        try:
+            total_layer_num = int(total_layer_num) if total_layer_num is not None else None
+        except Exception:
+            total_layer_num = None
+        try:
+            if bambu_remaining_time is not None:
+                bambu_remaining_time = int(float(bambu_remaining_time))
+        except Exception:
+            bambu_remaining_time = None
+
+        eta = calculate_eta(
+            printer_model=printer.model if hasattr(printer, "model") else None,
+            started_at=job.started_at,
+            layer_num=layer_num,
+            total_layer_num=total_layer_num,
+            bambu_remaining_time=bambu_remaining_time,
+        )
+        if eta is not None and eta < 0:
+            eta = 0
+        return eta
+    except Exception:
+        return None
+
+
+def _coerce_dt(value: Any, now: datetime) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return now
+    return now
 
 
 @router.get("/", response_model=List[JobRead])
 def get_all_jobs(session: Session = Depends(get_session)):
     """Alle Druckaufträge abrufen"""
     jobs = session.exec(select(Job).order_by(Job.started_at.desc())).all() # type: ignore
+    # Attach ETA where possible (non-blocking)
+    for j in jobs:
+        try:
+            j.eta_seconds = _compute_eta_for_job(j, session)
+        except Exception:
+            j.eta_seconds = None
     return jobs
 
 @router.get("/with-usage")
@@ -27,6 +107,11 @@ def get_all_jobs_with_usage(session: Session = Depends(get_session)):
             select(JobSpoolUsage).where(JobSpoolUsage.job_id == job.id).order_by(JobSpoolUsage.order_index)
         ).all()
         item = job.model_dump()
+        # compute ETA and inject
+        try:
+            item["eta_seconds"] = _compute_eta_for_job(job, session)
+        except Exception:
+            item["eta_seconds"] = None
         item["usages"] = [u.model_dump() for u in usages]
         result.append(item)
     return result
@@ -38,8 +123,8 @@ def get_job_stats(session: Session = Depends(get_session)):
     jobs = session.exec(select(Job)).all()
     
     total_jobs = len(jobs)
-    total_filament_g = sum(job.filament_used_g for job in jobs)
-    total_filament_m = sum(job.filament_used_mm for job in jobs) / 1000  # mm to m
+    total_filament_g = sum((job.filament_used_g or 0.0) for job in jobs)
+    total_filament_m = sum((job.filament_used_mm or 0.0) for job in jobs) / 1000  # mm to m
 
     completed_jobs = [job for job in jobs if job.finished_at is not None]
     active_jobs = total_jobs - len(completed_jobs)
@@ -55,8 +140,8 @@ def get_job_stats(session: Session = Depends(get_session)):
     printers = {p.id: p for p in session.exec(select(Printer)).all()}
 
     for job in jobs:
-        start = job.started_at
-        end = job.finished_at or now
+        start = _coerce_dt(job.started_at, now)
+        end = _coerce_dt(job.finished_at, now)
         duration_h = max((end - start).total_seconds(), 0) / 3600.0
         total_duration_h += duration_h
 
@@ -95,6 +180,10 @@ def get_job(job_id: str, session: Session = Depends(get_session)):
     job = session.get(Job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Druckauftrag nicht gefunden")
+    try:
+        job.eta_seconds = _compute_eta_for_job(job, session)
+    except Exception:
+        job.eta_seconds = None
     return job
 
 
@@ -128,6 +217,10 @@ def create_job(job: JobCreate, session: Session = Depends(get_session)):
     session.add(db_job)
     session.commit()
     session.refresh(db_job)
+    try:
+        db_job.eta_seconds = _compute_eta_for_job(db_job, session)
+    except Exception:
+        db_job.eta_seconds = None
     return db_job
 
 
@@ -195,6 +288,10 @@ def update_job(job_id: str, job: JobCreate, session: Session = Depends(get_sessi
     session.add(db_job)
     session.commit()
     session.refresh(db_job)
+    try:
+        db_job.eta_seconds = _compute_eta_for_job(db_job, session)
+    except Exception:
+        db_job.eta_seconds = None
     return db_job
 
 
@@ -234,6 +331,10 @@ def override_job_spool(job_id: str, payload: JobSpoolUpdate, session: Session = 
     session.add(db_job)
     session.commit()
     session.refresh(db_job)
+    try:
+        db_job.eta_seconds = _compute_eta_for_job(db_job, session)
+    except Exception:
+        db_job.eta_seconds = None
     return db_job
 
 
@@ -286,6 +387,10 @@ def update_manual_usage(job_id: str, payload: JobManualUsageUpdate, session: Ses
     session.add(db_job)
     session.commit()
     session.refresh(db_job)
+    try:
+        db_job.eta_seconds = _compute_eta_for_job(db_job, session)
+    except Exception:
+        db_job.eta_seconds = None
     return db_job
 
 

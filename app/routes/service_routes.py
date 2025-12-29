@@ -5,6 +5,7 @@ Server Management, Docker, Dependencies, Tests
 import os
 import sys
 import subprocess
+import logging
 import psutil
 import zipfile
 from datetime import datetime
@@ -14,6 +15,8 @@ from pydantic import BaseModel
 from typing import Optional
 
 router = APIRouter(prefix="/api/services", tags=["Service Control"])
+
+logger = logging.getLogger("app.routes.services")
 
 
 # -----------------------------
@@ -191,7 +194,8 @@ def list_dependencies():
         try:
             packages = json.loads(result.output)
             return {"packages": packages, "count": len(packages)}
-        except:
+        except Exception as exc:
+            logger.debug("Failed to parse pip list output: %s", exc, exc_info=True)
             return {"packages": [], "count": 0}
     
     return {"packages": [], "count": 0}
@@ -214,7 +218,8 @@ def list_outdated_dependencies():
                 "count": len(packages),
                 "has_updates": len(packages) > 0
             }
-        except:
+        except Exception as exc:
+            logger.debug("Failed to parse pip outdated output: %s", exc, exc_info=True)
             return {"packages": [], "count": 0, "has_updates": False}
     
     return {"packages": [], "count": 0, "has_updates": False}
@@ -631,7 +636,8 @@ def get_server_stats():
     try:
         import socket
         hostname = socket.gethostname()
-    except:
+    except Exception as exc:
+        logger.debug("Failed to determine hostname: %s", exc, exc_info=True)
         hostname = "Unknown"
     
     return {

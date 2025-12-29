@@ -42,7 +42,7 @@
                     <div class="user-menu__dropdown" role="menu">
                         <div class="user-menu__section">
                             <div class="user-menu__section-title">Version</div>
-                            <div class="user-menu__section-item">Design Alpha-0.1</div>
+                            <div class="user-menu__section-item" id="userMenuVersion">Design Alpha-0.1</div>
                         </div>
                         <div class="user-menu__section">
                             <div class="user-menu__section-title">AMS Settings</div>
@@ -105,6 +105,19 @@
 
     <script src="{{ url_for('frontend_static', path='js/global_notifications.js') }}"></script>
     <script src="{{ url_for('frontend_static', path='js/navbar.js') }}"></script>
+    <script>
+    // Beim Laden der Seite Design-Version laden
+    (async () => {
+        try {
+            const res = await fetch('/api/admin/design-version');
+            const data = await res.json();
+            const versionEl = document.getElementById('userMenuVersion');
+            if (versionEl) versionEl.textContent = data.design_version || 'Design Alpha-0.1';
+        } catch (err) {
+            console.error('Fehler beim Laden der Design-Version:', err);
+        }
+    })();
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

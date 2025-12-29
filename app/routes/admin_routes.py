@@ -295,6 +295,45 @@ async def set_greeting_text(request: Request, session: Session = Depends(get_ses
     session.commit()
     return {"success": True}
 
+# Welcome-Status abfragen (globales Flag für Popup)
+@router.get("/api/admin/welcome-status")
+def get_welcome_status(session: Session = Depends(get_session)):
+    # Kein admin_required - jeder darf den Welcome-Status lesen
+    setting = session.exec(select(Setting).where(Setting.key == "welcome_shown")).first()
+    return {"welcome_shown": setting.value == "true" if setting else False}
+
+# Welcome-Status setzen (nach erstem Popup)
+@router.post("/api/admin/welcome-status")
+async def set_welcome_status(request: Request, session: Session = Depends(get_session)):
+    # Kein admin_required - jeder darf setzen (nur einmal beim ersten Besuch)
+    data = await request.json()
+    shown = data.get("shown", True)
+    setting = session.exec(select(Setting).where(Setting.key == "welcome_shown")).first()
+    if setting:
+        setting.value = "true" if shown else "false"
+    else:
+        setting = Setting(key="welcome_shown", value="true" if shown else "false")
+        session.add(setting)
+    session.commit()
+    audit("welcome_status_set", {"ip": client_ip(request), "shown": shown})
+    return {"success": True}
+
+# App-Version (Sidebar) laden - NUR ENV
+@router.get("/api/admin/app-version")
+def get_app_version():
+    env_version = os.environ.get("APP_VERSION")
+    if env_version:
+        return {"app_version": env_version}
+    return {"app_version": "Alpha v1 · FilamentHub"}
+
+# Design-Version (User-Menü) laden - NUR ENV
+@router.get("/api/admin/design-version")
+def get_design_version():
+    env_version = os.environ.get("DESIGN_VERSION")
+    if env_version:
+        return {"design_version": env_version}
+    return {"design_version": "Design Alpha-0.1"}
+
 # User-Flag abfragen (ob Popup schon gesehen)
 @router.get("/api/user/flag/{user_id}/{flag}")
 def get_user_flag(user_id: str, flag: str, session: Session = Depends(get_session)):

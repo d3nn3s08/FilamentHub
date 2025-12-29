@@ -126,6 +126,7 @@ class SpoolUpdateSchema(BaseModel):
     remain_percent: float | None = None
     last_seen: str | None = None
     color: str | None = None
+    spool_number: int | None = None
     first_seen: str | None = None
     used_count: int | None = None
     last_slot: int | None = None

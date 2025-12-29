@@ -21347,3 +21347,75 @@
 2025-12-27 00:24:10,295 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
 2025-12-27 00:24:10,296 | [AMS SYNC] printer_id=None ams_count=1
 2025-12-27 00:24:10,299 | [AMS SYNC] done printer_id=None
+2025-12-28 00:28:07,411 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 00:28:07,413 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 00:28:07,421 | [AMS SYNC] done printer_id=None
+2025-12-28 00:28:07,430 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 00:28:07,431 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 00:28:07,439 | [AMS SYNC] done printer_id=None
+2025-12-28 00:28:07,440 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 00:28:07,441 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 00:28:07,444 | [AMS SYNC] done printer_id=None
+2025-12-28 00:28:23,174 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 00:28:23,176 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 00:28:23,183 | [AMS SYNC] done printer_id=None
+2025-12-28 00:28:23,192 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 00:28:23,193 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 00:28:23,200 | [AMS SYNC] done printer_id=None
+2025-12-28 00:28:23,201 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 00:28:23,202 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 00:28:23,206 | [AMS SYNC] done printer_id=None
+2025-12-28 02:06:17,388 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 02:06:17,390 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 02:06:17,397 | [AMS SYNC] done printer_id=None
+2025-12-28 02:06:17,404 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 02:06:17,404 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 02:06:17,411 | [AMS SYNC] done printer_id=None
+2025-12-28 02:06:17,411 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 02:06:17,412 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 02:06:17,415 | [AMS SYNC] done printer_id=None
+2025-12-28 14:55:34,948 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 14:55:34,949 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 14:55:34,956 | [AMS SYNC] done printer_id=None
+2025-12-28 14:55:34,963 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 14:55:34,965 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 14:55:34,971 | [AMS SYNC] done printer_id=None
+2025-12-28 14:55:34,971 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 14:55:34,972 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 14:55:34,975 | [AMS SYNC] done printer_id=None
+2025-12-28 14:55:45,050 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 14:55:45,051 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 14:55:45,059 | [AMS SYNC] done printer_id=None
+2025-12-28 14:55:45,065 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 14:55:45,065 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 14:55:45,071 | [AMS SYNC] done printer_id=None
+2025-12-28 14:55:45,072 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 14:55:45,073 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 14:55:45,076 | [AMS SYNC] done printer_id=None
+2025-12-28 21:14:08,704 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 21:14:08,705 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 21:14:08,713 | [AMS SYNC] done printer_id=None
+2025-12-28 21:14:08,720 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 21:14:08,720 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 21:14:08,728 | [AMS SYNC] done printer_id=None
+2025-12-28 21:14:08,729 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 21:14:08,730 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 21:14:08,734 | [AMS SYNC] done printer_id=None
+2025-12-28 21:14:46,407 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 21:14:46,409 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 21:14:46,416 | [AMS SYNC] done printer_id=None
+2025-12-28 21:14:46,423 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 21:14:46,424 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 21:14:46,431 | [AMS SYNC] done printer_id=None
+2025-12-28 21:14:46,432 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-28 21:14:46,433 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-28 21:14:46,437 | [AMS SYNC] done printer_id=None
+2025-12-29 00:25:49,646 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-29 00:25:49,648 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-29 00:25:49,657 | [AMS SYNC] done printer_id=None
+2025-12-29 00:25:49,667 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-29 00:25:49,668 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-29 00:25:49,675 | [AMS SYNC] done printer_id=None
+2025-12-29 00:25:49,676 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-29 00:25:49,678 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-29 00:25:49,683 | [AMS SYNC] done printer_id=None
