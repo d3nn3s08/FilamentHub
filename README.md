@@ -78,6 +78,7 @@ Feedback, Bugreports und Verbesserungsvorschläge sind ausdrücklich erwünscht.
 👉 **Anleitung: Installation der Beta-Version**  
 [Installation-Beta.md](https://github.com/d3nn3s08/FilamentHub/blob/main/ANLEITUNG/Installation-Beta.md)
 
+[![Discussions](https://img.shields.io/badge/GitHub-Discussions-blue?logo=github)](https://github.com/d3nn3s08/FilamentHub/discussions)
 
 
 ⏳ **Hinweis:**  
