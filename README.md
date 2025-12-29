@@ -53,7 +53,7 @@ Open-Source Dashboard für Filament-, Drucker- und Systemverwaltung – lokal, u
   <a href="https://ko-fi.com/BOB51PV6CH">
     <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" />
   </a>
-</p>
+</p>  
 
 > 🇺🇸 **English version:** [README.en.md](README.en.md)
 
@@ -73,6 +73,14 @@ Open-Source Dashboard für Filament-, Drucker- und Systemverwaltung – lokal, u
 
 Diese Beta richtet sich an technisch versierte Nutzer und Early Adopter.  
 Feedback, Bugreports und Verbesserungsvorschläge sind ausdrücklich erwünscht.
+
+
+Link to the sample section: [Link Text](#main/ANLEITUNG/Installation-Beta.md).
+
+👉 **Anleitung: Installation der Beta-Version**  
+[Installation-Beta.md](https://github.com/d3nn3s08/FilamentHub/blob/main/ANLEITUNG/Installation-Beta.md)
+
+
 
 ⏳ **Hinweis:**  
 Ein Build von **15–25 Minuten** ist auf dem Raspberry Pi normal, besonders beim ersten Start.  
