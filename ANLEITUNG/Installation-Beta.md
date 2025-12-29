@@ -216,14 +216,13 @@ http://<HOST-IP>:8085
 
 Beispiel:
 ```
-http://192.168.178.20:8085
+http://192.168.119.20:8085
 ```
 
 ---
 
 ## 🧪 Empfohlene Tests
 
-- Admin-Login testen
 - Container neu starten → Login erneut testen
 - DB-Persistenz prüfen
 - Healthcheck:
