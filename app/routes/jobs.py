@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, SQLModel, select
+from sqlmodel import Session, SQLModel, select, col
 from typing import List, Optional, Any
 from datetime import datetime
 from app.database import get_session
@@ -9,8 +9,10 @@ from app.models.printer import Printer
 from app.models.settings import Setting
 import app.services.live_state as live_state_module
 from app.services.eta import calculate_eta
+import logging
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+logger = logging.getLogger("app")
 
 
 def _compute_eta_for_job(job: Job, session: Session) -> Optional[int]:
@@ -49,15 +51,18 @@ def _compute_eta_for_job(job: Job, session: Session) -> Optional[int]:
         try:
             layer_num = int(layer_num) if layer_num is not None else None
         except Exception:
+            logger.exception("Failed to coerce layer_num for job_id=%s", job.id)
             layer_num = None
         try:
             total_layer_num = int(total_layer_num) if total_layer_num is not None else None
         except Exception:
+            logger.exception("Failed to coerce total_layer_num for job_id=%s", job.id)
             total_layer_num = None
         try:
             if bambu_remaining_time is not None:
                 bambu_remaining_time = int(float(bambu_remaining_time))
         except Exception:
+            logger.exception("Failed to coerce remaining time for job_id=%s", job.id)
             bambu_remaining_time = None
 
         eta = calculate_eta(
@@ -71,6 +76,7 @@ def _compute_eta_for_job(job: Job, session: Session) -> Optional[int]:
             eta = 0
         return eta
     except Exception:
+        logger.exception("Failed to compute ETA for job_id=%s", job.id)
         return None
 
 
@@ -81,6 +87,7 @@ def _coerce_dt(value: Any, now: datetime) -> datetime:
         try:
             return datetime.fromisoformat(value)
         except ValueError:
+            logger.exception("Failed to parse datetime string value=%s", value)
             return now
     return now
 
@@ -88,29 +95,67 @@ def _coerce_dt(value: Any, now: datetime) -> datetime:
 @router.get("/", response_model=List[JobRead])
 def get_all_jobs(session: Session = Depends(get_session)):
     """Alle Druckaufträge abrufen"""
-    jobs = session.exec(select(Job).order_by(Job.started_at.desc())).all() # type: ignore
+    jobs = session.exec(select(Job).order_by(col(Job.started_at).desc())).all() # type: ignore
     # Attach ETA where possible (non-blocking)
     for j in jobs:
         try:
             j.eta_seconds = _compute_eta_for_job(j, session)
         except Exception:
+            logger.exception("Failed to compute ETA for job_id=%s", j.id)
             j.eta_seconds = None
+    return jobs
+
+
+@router.get("/active", response_model=List[JobRead])
+def get_active_jobs(session: Session = Depends(get_session)):
+    """
+    Liefert alle aktuell laufenden Druckjobs.
+    """
+    jobs = session.exec(
+        select(Job)
+        .where(col(Job.started_at).is_not(None))
+        .where(col(Job.finished_at).is_(None))
+        .order_by(col(Job.started_at).desc())
+    ).all()
+
+    for job in jobs:
+        try:
+            job.eta_seconds = _compute_eta_for_job(job, session)
+
+            # progress NICHT raten oder auf 0 setzen
+            # unbekannter Fortschritt = None
+            try:
+                object.__setattr__(job, 'progress', None)
+            except Exception:
+                # Fallback: ignore if attribute cannot be set on model
+                pass
+
+        except Exception:
+            job.eta_seconds = None
+            try:
+                object.__setattr__(job, 'progress', None)
+            except Exception:
+                pass
+
     return jobs
 
 @router.get("/with-usage")
 def get_all_jobs_with_usage(session: Session = Depends(get_session)):
     """Alle Jobs inkl. Spulenverbrauch (job_spool_usage) liefern"""
-    jobs = session.exec(select(Job).order_by(Job.started_at.desc())).all()
+    jobs = session.exec(select(Job).order_by(col(Job.started_at).desc())).all()
     result = []
     for job in jobs:
         usages = session.exec(
-            select(JobSpoolUsage).where(JobSpoolUsage.job_id == job.id).order_by(JobSpoolUsage.order_index)
+            select(JobSpoolUsage)
+            .where(JobSpoolUsage.job_id == job.id)
+            .order_by(col(JobSpoolUsage.order_index))
         ).all()
         item = job.model_dump()
         # compute ETA and inject
         try:
             item["eta_seconds"] = _compute_eta_for_job(job, session)
         except Exception:
+            logger.exception("Failed to compute ETA for job_id=%s", job.id)
             item["eta_seconds"] = None
         item["usages"] = [u.model_dump() for u in usages]
         result.append(item)
@@ -183,6 +228,7 @@ def get_job(job_id: str, session: Session = Depends(get_session)):
     try:
         job.eta_seconds = _compute_eta_for_job(job, session)
     except Exception:
+        logger.exception("Failed to compute ETA for job_id=%s", job.id)
         job.eta_seconds = None
     return job
 
@@ -220,6 +266,7 @@ def create_job(job: JobCreate, session: Session = Depends(get_session)):
     try:
         db_job.eta_seconds = _compute_eta_for_job(db_job, session)
     except Exception:
+        logger.exception("Failed to compute ETA for job_id=%s", db_job.id)
         db_job.eta_seconds = None
     return db_job
 
@@ -291,6 +338,7 @@ def update_job(job_id: str, job: JobCreate, session: Session = Depends(get_sessi
     try:
         db_job.eta_seconds = _compute_eta_for_job(db_job, session)
     except Exception:
+        logger.exception("Failed to compute ETA for job_id=%s", db_job.id)
         db_job.eta_seconds = None
     return db_job
 
@@ -334,6 +382,7 @@ def override_job_spool(job_id: str, payload: JobSpoolUpdate, session: Session = 
     try:
         db_job.eta_seconds = _compute_eta_for_job(db_job, session)
     except Exception:
+        logger.exception("Failed to compute ETA for job_id=%s", db_job.id)
         db_job.eta_seconds = None
     return db_job
 
@@ -390,6 +439,7 @@ def update_manual_usage(job_id: str, payload: JobManualUsageUpdate, session: Ses
     try:
         db_job.eta_seconds = _compute_eta_for_job(db_job, session)
     except Exception:
+        logger.exception("Failed to compute ETA for job_id=%s", db_job.id)
         db_job.eta_seconds = None
     return db_job
 

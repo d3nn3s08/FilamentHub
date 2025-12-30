@@ -1,4 +1,4 @@
-// === INIT ===
+﻿// === INIT ===
 document.addEventListener('DOMContentLoaded', () => {
     console.log('[Dashboard] Initializing Live Operations Dashboard (FULL MATCH)');
     loadDashboardDataFull();
@@ -18,24 +18,23 @@ async function loadDashboardDataFull() {
         const liveRes = await fetch('/api/live-state/');
         const liveData = await liveRes.json();
         // Mappe Live-State nach cloud_serial, nutze payload.print falls vorhanden, sonst payload
-        const liveMap = Object.fromEntries(
-            Object.entries(liveData).map(([k, v]) => [k, v.payload && v.payload.print ? v.payload.print : v.payload])
-        );
+        const liveMap = Object.fromEntries(Object.entries(liveData));
         // Kombiniere Druckerliste mit Live-State anhand cloud_serial
         const printerList = printers.map(printer => {
-            const live = liveMap[printer.cloud_serial] || {};
-            return { ...printer, live };
+            const liveEntry = liveMap[printer.cloud_serial] || null;
+            const livePayload = liveEntry?.payload && liveEntry.payload.print ? liveEntry.payload.print : liveEntry?.payload;
+            return { ...printer, live: livePayload || {}, live_state: liveEntry };
         });
         console.log('[DEBUG] printerList:', printerList);
         updateLiveStatusFull(printerList);
-        updateActiveJobsFull(printerList);
+        await updateActiveJobsFull(printerList);
         updateRefreshTime();
 
-        // === NEU: Statistik-API für Tageswerte ===
+        // === NEU: Statistik-API fÃ¼r Tageswerte ===
         try {
             const statsRes = await fetch('/api/statistics/heatmap?days=1');
             const statsData = await statsRes.json();
-            // statsData.data ist ein Array mit einem Eintrag für heute
+            // statsData.data ist ein Array mit einem Eintrag fÃ¼r heute
             const today = (statsData.data && statsData.data.length > 0) ? statsData.data[0] : null;
             if (today) {
                 // Druckzeit (duration_h) in Minuten
@@ -60,13 +59,14 @@ async function loadDashboardDataFull() {
 // === UPDATE LIVE STATUS (ALLE DRUCKER + LIVE-STATE) ===
 function updateLiveStatusFull(printerList) {
     const totalCount = printerList.length;
-    // Online: Wenn ein Live-State-Objekt für den Drucker existiert (unabhängig von Feldern)
-    const onlineCount = printerList.filter(p => p.live && Object.keys(p.live).length > 0).length;
+    // Online: Wenn ein Live-State-Objekt fÃ¼r den Drucker existiert (unabhÃ¤ngig von Feldern)
+    const onlineCount = printerList.filter(p => p.live_state?.printer_online === true).length;
     document.getElementById('onlinePrinters').textContent = onlineCount;
     document.getElementById('printerStats').textContent = `${onlineCount}/${totalCount} Online`;
 
     // Aktive Drucke (robuste Logik wie in updateActiveJobsFull)
         const activePrinters = printerList.filter(p => {
+            if (p.live_state?.printer_online !== true) return false;
             const state = typeof p.live?.gcode_state === 'string' ? p.live.gcode_state.toUpperCase() : '';
             return ACTIVE_JOB_STATES.has(state);
         });
@@ -77,12 +77,18 @@ function updateLiveStatusFull(printerList) {
 }
 
 // === UPDATE ACTIVE JOBS (ALLE DRUCKER + LIVE-STATE) ===
-function updateActiveJobsFull(printerList) {
-        const activePrinters = printerList.filter(p => {
-            const state = typeof p.live?.gcode_state === 'string' ? p.live.gcode_state.toUpperCase() : '';
-            return ACTIVE_JOB_STATES.has(state);
-        });
+async function updateActiveJobsFull(printerList) {
     const container = document.getElementById('activeJobsList');
+    // Der Server-Fetch zu /api/jobs/active wurde entfernt, damit nur
+    // `activePrintCard.js` einmalig beim Laden den Endpoint abfragt.
+    // Fallback auf Live-State-Rendering folgt weiter unten.
+
+    // Fallback: build from live-state (existing logic)
+    const activePrinters = printerList.filter(p => {
+        if (p.live_state?.printer_online !== true) return false;
+        const state = typeof p.live?.gcode_state === 'string' ? p.live.gcode_state.toUpperCase() : '';
+        return ACTIVE_JOB_STATES.has(state);
+    });
     if (activePrinters.length === 0) {
         container.innerHTML = '<p style="color: var(--text-dim); text-align: center; padding: 20px;">Keine aktiven Drucke</p>';
         return;
@@ -97,7 +103,7 @@ function updateActiveJobsFull(printerList) {
             const gcodeBase = rawGcode && rawGcode.includes('/') ? rawGcode.split('/').pop() : rawGcode;
             const jobName = printer.live.subtask_name || printer.live.job_name || gcodeBase || 'Unbekannter Job';
             const printerName = printer.name || printer.cloud_serial || 'Unbekannter Drucker';
-            const progress = printer.live.percent || 0;
+            const progress = (printer.live && printer.live.percent != null) ? printer.live.percent : null;
             return `
                 <div class="job-card">
                     <div>
@@ -105,7 +111,7 @@ function updateActiveJobsFull(printerList) {
                         <div class="job-printer">${printerName}</div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 14px; font-weight: 600; color: var(--accent-2);">${progress.toFixed(0)}%</div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--accent-2);">${progress != null ? progress.toFixed(0) + '%' : '—'}</div>
                         <div style="font-size: 11px; color: var(--text-dim);">fertig</div>
                     </div>
                 </div>
@@ -119,7 +125,7 @@ function updateAlertsLive(totalCount, onlineCount) {
     const alerts = [];
     const offlineCount = totalCount - onlineCount;
     if (offlineCount > 0) {
-        alerts.push(`⚠️ ${offlineCount} Drucker offline`);
+        alerts.push(`âš ï¸ ${offlineCount} Drucker offline`);
     }
     const container = document.getElementById('alertsList');
     if (alerts.length === 0) {
@@ -144,3 +150,5 @@ function formatDuration(minutes) {
     const mins = Math.round(minutes % 60);
     return `${hours}h ${mins}m`;
 }
+
+

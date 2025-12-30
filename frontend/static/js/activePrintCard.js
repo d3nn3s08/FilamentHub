@@ -126,3 +126,37 @@
     };
 
 })();
+
+// Einmaliger Fetch beim Laden der Seite: /api/jobs/active nutzen (kein Polling)
+document.addEventListener('DOMContentLoaded', async function () {
+    try {
+        const container = document.getElementById('activeJobsList');
+        if (!container) return;
+
+        const res = await fetch('/api/jobs/active');
+        if (!res.ok) return; // still rely on other fallbacks
+        const jobs = await res.json();
+        if (!Array.isArray(jobs) || jobs.length === 0) return;
+
+        // Map Jobs -> Printer-like shape expected by renderer
+        const mapped = jobs.map(job => {
+            const printerName = job.printer_name || job.printer || job.printer_id || 'Unbekannter Drucker';
+            const live = {};
+            if (job.progress != null) live.percent = job.progress;
+            else if (job.progress_percent != null) live.percent = job.progress_percent;
+            if (job.eta_seconds != null) live.mc_remaining_time = job.eta_seconds;
+            // Provide some job name fields the renderer expects
+            live.job_name = job.name || job.print_name || '';
+            live.gcode_file = job.name || job.print_name || '';
+            return { name: printerName, cloud_serial: job.printer_cloud_serial || null, live };
+        });
+
+        // Use global renderer
+        if (typeof window.renderActiveJobs === 'function') {
+            window.renderActiveJobs(container, mapped);
+        }
+    } catch (e) {
+        // silent fallback to existing live-state rendering
+        console.warn('[activePrintCard] Failed to fetch /api/jobs/active', e);
+    }
+});

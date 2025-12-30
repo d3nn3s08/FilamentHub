@@ -42,6 +42,8 @@ class JobCreate(JobBase):
 
 class JobRead(JobBase):
     id: str
+    # Optional client-side field for display only (not persisted)
+    progress: Optional[float] = None
 
 
 class JobSpoolUsageBase(SQLModel):
