@@ -26,3 +26,27 @@ class JobCreate(JobBase):
 
 class JobRead(JobBase):
     id: str
+    # Optional client-side field for display only (not persisted)
+    progress: Optional[float] = None
+
+
+class JobSpoolUsageBase(SQLModel):
+    job_id: str = Field(foreign_key="job.id")
+    spool_id: Optional[str] = Field(default=None, foreign_key="spool.id")
+    slot: Optional[int] = None
+    used_mm: float = 0
+    used_g: float = 0
+    order_index: Optional[int] = None
+
+
+class JobSpoolUsage(JobSpoolUsageBase, table=True):
+    __tablename__ = "job_spool_usage"  # type: ignore[reportAssignmentType]
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+
+
+class JobSpoolUsageCreate(JobSpoolUsageBase):
+    pass
+
+
+class JobSpoolUsageRead(JobSpoolUsageBase):
+    id: str
