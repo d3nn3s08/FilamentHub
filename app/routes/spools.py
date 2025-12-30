@@ -8,6 +8,7 @@ import app.services.live_state as live_state_module
 from app.models.printer import Printer
 from app.models.spool import Spool, SpoolCreateSchema, SpoolUpdateSchema, SpoolReadSchema
 from app.services.spool_number_service import assign_spool_number
+from app.services.ams_normalizer import device_has_real_ams_from_live_state
 
 router = APIRouter(prefix="/api/spools", tags=["Spools"])
 
@@ -152,8 +153,9 @@ def assign_spool_to_slot(
     # Wenn kein cloud_serial (AMS Identifikator) vorhanden, keine manuelle AMS-Zuweisung erlauben
     if not printer.cloud_serial:
         raise HTTPException(status_code=400, detail="Manuelle Zuweisung erfordert einen konfigurierten AMS (cloud_serial fehlt)")
-    if not live_state_module.get_live_state(printer.cloud_serial):
-        raise HTTPException(status_code=400, detail="AMS für diesen Drucker ist nicht verfügbar oder offline")
+    # Prüfe über den Normalizer, ob das Gerät laut Live-Payload ein echtes AMS hat
+    if not device_has_real_ams_from_live_state(printer.cloud_serial):
+        raise HTTPException(status_code=400, detail="Manuelle Zuweisung erfordert ein echtes AMS (kein AMS erkannt)")
 
     # Prüfe ob Spule bereits zugewiesen
     if spool.printer_id is not None:

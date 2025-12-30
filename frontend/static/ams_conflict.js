@@ -4,7 +4,9 @@
 
     async function fetchConflicts(){
         try{
-            const res = await fetch('/api/ams/conflict/open');
+                // Guard: do nothing if frontend state indicates no AMS
+                if (document.body && document.body.classList.contains('no-ams')) return;
+                const res = await fetch('/api/ams/conflict/open');
             if(!res.ok) return;
             const data = await res.json();
             if(data && data.length>0){
@@ -19,6 +21,7 @@
     }
 
     function showModal(conflict){
+            if (document.body && document.body.classList.contains('no-ams')) return;
         const modal = document.getElementById('amsConflictModal');
         if(!modal) return;
         document.getElementById('ams-conflict-title').textContent = `AMS Slot ${conflict.slot} – Spule ersetzen?`;
@@ -34,6 +37,7 @@
 
     window.onAmsConflictConfirm = async function(){
         if(!current) return;
+            if (document.body && document.body.classList.contains('no-ams')) return;
         try{
             await fetch('/api/ams/conflict/confirm', {
                 method: 'POST',
@@ -52,6 +56,7 @@
 
     window.onAmsConflictCancel = async function(){
         if(!current) return;
+            if (document.body && document.body.classList.contains('no-ams')) return;
         try{
             await fetch('/api/ams/conflict/cancel', {
                 method: 'POST',

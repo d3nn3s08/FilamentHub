@@ -1,15 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+﻿from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlmodel import Session, select
 from typing import List, Dict, Any
 import logging
+import os
 import socket
 import httpx
-import os
 from app.database import get_session
 from app.models.printer import Printer, PrinterCreate, PrinterRead
 from app.services import mqtt_runtime
+from app.services.ams_normalizer import device_has_real_ams_from_live_state, global_has_real_ams
 
-# Hinweis: kleine Kommentar-Änderung, um Dateisystem-Änderung und Reload zu triggern
+# Hinweis: kleine Kommentar-Ã„nderung, um Dateisystem-Ã„nderung und Reload zu triggern
 
 router = APIRouter(prefix="/api/printers", tags=["printers"])
 logger = logging.getLogger("app.routes.printers")
@@ -37,35 +38,17 @@ def get_all_printers(live: bool = False, session: Session = Depends(get_session)
     result = []
     for printer in printers:
         online: bool = False
-        
-        # Kurze Timeout-Checks immer aktivieren (default 0.3s für schnelle Response)
-        timeout_val = 0.8 if live else 0.3
-        
-        try:
-            if printer.printer_type in ["bambu", "bambu_lab"]:
-                targets = [printer.port] if printer.port else []
-                targets.extend([6000, 8883])
-                for port in targets:
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.settimeout(timeout_val)
-                    res = sock.connect_ex((printer.ip_address, port))
-                    sock.close()
-                    if res == 0:
-                        online = True
-                        break
-            elif printer.printer_type == "klipper":
-                port = printer.port or 7125
-                url = f"http://{printer.ip_address}:{port}/server/info"
-                r = httpx.get(url, timeout=timeout_val)
-                online = r.status_code == 200
-            else:
-                online = False
-        except Exception:
-            online = False
 
         p_dict = printer.dict()
         p_dict["online"] = online
         p_dict["image_url"] = get_image_url(printer.id)
+        # has_real_ams determined from live_state payloads
+        p_dict["has_real_ams"] = False
+        if printer.cloud_serial:
+            try:
+                p_dict["has_real_ams"] = device_has_real_ams_from_live_state(printer.cloud_serial)
+            except Exception:
+                p_dict["has_real_ams"] = False
         result.append(p_dict)
     return result
 
@@ -78,14 +61,30 @@ def get_printer(printer_id: str, session: Session = Depends(get_session)):
         raise HTTPException(status_code=404, detail="Drucker nicht gefunden")
     p_dict = printer.dict()
     p_dict["image_url"] = get_image_url(printer.id)
+    p_dict["has_real_ams"] = False
+    if printer.cloud_serial:
+        try:
+            p_dict["has_real_ams"] = device_has_real_ams_from_live_state(printer.cloud_serial)
+        except Exception:
+            p_dict["has_real_ams"] = False
     return p_dict
+
+
+
+@router.get("/has_real_ams", response_model=dict)
+def get_global_has_real_ams():
+    """Globaler Indikator, ob mindestens ein GerÃ¤t ein echtes AMS hat."""
+    try:
+        return {"has_real_ams": bool(global_has_real_ams())}
+    except Exception:
+        return {"has_real_ams": False}
 
 
 @router.get("/{printer_id}/credentials", response_model=Dict[str, Any], summary="Get Printer Credentials")
 def get_printer_credentials(printer_id: str, session: Session = Depends(get_session)):
     """
     Lade Drucker Credentials (MQTT-relevant) aus der Datenbank.
-    Liefert nur die Felder, die für MQTT-Connections benötigt werden.
+    Liefert nur die Felder, die fÃ¼r MQTT-Connections benÃ¶tigt werden.
     """
     printer = session.get(Printer, printer_id)
     if not printer:
@@ -121,12 +120,12 @@ def create_printer(printer: PrinterCreate, session: Session = Depends(get_sessio
             existing["status"] = "exists"
             existing["image_url"] = get_image_url(exists.id)
             return existing
-    # Für Bambu muss eine Seriennummer und Access Code vorhanden sein
+    # FÃ¼r Bambu muss eine Seriennummer und Access Code vorhanden sein
     if printer.printer_type in ["bambu", "bambu_lab"]:
         if not printer.cloud_serial or not printer.api_key:
             raise HTTPException(status_code=400, detail="Seriennummer und Access Code sind erforderlich")
 
-    # Setze Standard-MQTT-Port für Bambu auf 8883, falls nicht angegeben
+    # Setze Standard-MQTT-Port fÃ¼r Bambu auf 8883, falls nicht angegeben
     if printer.printer_type in ["bambu", "bambu_lab"] and not printer.port:
         printer.port = 8883
 
@@ -147,7 +146,7 @@ def update_printer(printer_id: str, printer: PrinterCreate, session: Session = D
     if not db_printer:
         raise HTTPException(status_code=404, detail="Drucker nicht gefunden")
     old_auto_connect = bool(getattr(db_printer, "auto_connect", False))
-    # Duplicate-Check bei IP/Typ-Änderung
+    # Duplicate-Check bei IP/Typ-Ã„nderung
     if printer.ip_address and printer.printer_type:
         exists = session.exec(
             select(Printer).where(
@@ -175,7 +174,7 @@ def update_printer(printer_id: str, printer: PrinterCreate, session: Session = D
     new_auto_connect = bool(getattr(db_printer, "auto_connect", False))
     if old_auto_connect != new_auto_connect:
         logger.info(
-            "Auto-connect flag changed (%s→%s) for printer %s",
+            "Auto-connect flag changed (%sâ†’%s) for printer %s",
             old_auto_connect,
             new_auto_connect,
             printer_id,
@@ -195,20 +194,20 @@ async def upload_printer_image(
     file: UploadFile = File(...),
     session: Session = Depends(get_session)
 ):
-    """Bild für einen Drucker hochladen und Pfad setzen."""
+    """Bild fÃ¼r einen Drucker hochladen und Pfad setzen."""
     printer = session.get(Printer, printer_id)
     if not printer:
         raise HTTPException(status_code=404, detail="Drucker nicht gefunden")
 
-    # Dateityp prüfen
+    # Dateityp prÃ¼fen
     content_type = (file.content_type or "").lower()
     if content_type not in ["image/jpeg", "image/png", "image/webp"]:
         raise HTTPException(status_code=400, detail="Nur JPG, PNG oder WEBP erlaubt")
 
-    # Größe prüfen (max 1 MB)
+    # GrÃ¶ÃŸe prÃ¼fen (max 1 MB)
     data = await file.read()
     if len(data) > 1_000_000:
-        raise HTTPException(status_code=400, detail="Bild zu groß (max 1 MB)")
+        raise HTTPException(status_code=400, detail="Bild zu groÃŸ (max 1 MB)")
 
     # Endung bestimmen
     ext = ".jpg"
@@ -236,14 +235,14 @@ async def upload_printer_image(
 
 @router.delete("/{printer_id}")
 def delete_printer(printer_id: str, session: Session = Depends(get_session)):
-    """Drucker löschen"""
+    """Drucker lÃ¶schen"""
     printer = session.get(Printer, printer_id)
     if not printer:
         raise HTTPException(status_code=404, detail="Drucker nicht gefunden")
     
     session.delete(printer)
     session.commit()
-    return {"success": True, "message": "Drucker gelöscht"}
+    return {"success": True, "message": "Drucker gelÃ¶scht"}
 
 
 @router.post("/{printer_id}/test")
@@ -323,3 +322,6 @@ async def test_printer_connection(printer_id: str, session: Session = Depends(ge
             "message": f"Verbindungsfehler: {str(e)}",
             "online": False
         }
+
+
+

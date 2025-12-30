@@ -162,3 +162,49 @@ def normalize_live_state(live_state: Optional[Dict[str, Dict[str, Any]]]) -> Dic
                 "ams_units": [],
             })
     return {"devices": devices}
+
+
+def has_real_ams_from_payload(payload: Any) -> bool:
+    """Bestimme, ob ein Gerät ein echtes AMS hat, nur anhand des Payloads.
+
+    Regeln (vereinfachte Form):
+    - Wenn das geparste Ergebnis aus `parse_ams` mindestens eine Einheit enthält -> True
+    - Wenn payload.get("ams_exist_bits_raw") == "1" -> True
+    - Wenn payload.get("ams") ein dict ist und humidity_raw vorhanden ist -> True
+    """
+    if not isinstance(payload, dict):
+        return False
+    try:
+        parsed = parse_ams(payload) or []
+        if isinstance(parsed, (list, tuple)) and len(parsed) > 0:
+            return True
+    except Exception:
+        # Falls Parser versagt, weiter mit rohchecks
+        logger.debug("parse_ams failed in has_real_ams_from_payload, falling back to raw checks")
+
+    if payload.get("ams_exist_bits_raw") == "1":
+        return True
+    ams_obj = payload.get("ams")
+    if isinstance(ams_obj, dict) and ams_obj.get("humidity_raw") is not None:
+        return True
+    return False
+
+
+def device_has_real_ams_from_live_state(device_id: str) -> bool:
+    from app.services import live_state as live_state_module
+
+    state = live_state_module.get_live_state(device_id)
+    if not state:
+        return False
+    payload = state.get("payload") or {}
+    return has_real_ams_from_payload(payload)
+
+
+def global_has_real_ams() -> bool:
+    from app.services import live_state as live_state_module
+
+    all_state = live_state_module.get_all_live_state()
+    for _, entry in (all_state or {}).items():
+        if has_real_ams_from_payload(entry.get("payload") or {}):
+            return True
+    return False

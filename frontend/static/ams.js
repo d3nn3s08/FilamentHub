@@ -353,14 +353,14 @@ function renderAMSUnits() {
                         <div class="slot-progress">
                             ${percentage != null ? `<div class="slot-progress-bar ${progressClass}" style="width: ${percentage}%;"></div>` : ''}
                         </div>
-                        <div class="slot-actions">
+                        <div class="slot-actions requires-ams">
                             <button class="slot-action-btn" onclick="event.stopPropagation(); goToSpool('${spool.id}')" title="Spule öffnen">
                                 <span>📋</span>
                             </button>
-                            <button class="slot-action-btn" onclick="event.stopPropagation(); unassignSpool('${spool.id}')" title="Spule entfernen">
+                            <button class="slot-action-btn requires-ams" onclick="event.stopPropagation(); unassignSpool('${spool.id}')" title="Spule entfernen">
                                 <span>✖️</span>
                             </button>
-                            <button class="slot-action-btn" onclick="event.stopPropagation(); refreshRFID(${amsId}, ${slotNumber})" title="RFID neu einlesen">
+                            <button class="slot-action-btn requires-ams" onclick="event.stopPropagation(); refreshRFID(${amsId}, ${slotNumber})" title="RFID neu einlesen">
                                 <span>🔄</span>
                             </button>
                         </div>
@@ -371,7 +371,7 @@ function renderAMSUnits() {
                     <div class="slot-empty">
                         <div class="slot-number">Slot ${slotNumber}</div>
                         <div class="slot-label">Leer</div>
-                        <button class="btn btn-sm btn-primary" onclick="openAssignModal('${ams.id}', ${slotNumber})" style="margin-top: 8px;">
+                        <button class="btn btn-sm btn-primary requires-ams" onclick="openAssignModal('${ams.id}', ${slotNumber})" style="margin-top: 8px;">
                             + Zuweisen
                         </button>
                     </div>
@@ -502,6 +502,7 @@ function showNotification(message, type = 'info') {
 
 // === SLOT ACTIONS ===
 function refreshRFID(amsId, slotNumber) {
+    if (document.body && document.body.classList.contains('no-ams')) return;
     showNotification(`RFID-Scan für AMS #${amsId} Slot ${slotNumber} wird ausgeführt...`, 'info');
     // TODO: Backend-Call für RFID-Refresh
     setTimeout(() => {
@@ -511,6 +512,7 @@ function refreshRFID(amsId, slotNumber) {
 }
 
 function changeSpoolDialog(amsId, slotNumber) {
+    if (document.body && document.body.classList.contains('no-ams')) return;
     const confirmed = confirm(`Spule in AMS #${amsId} Slot ${slotNumber} wechseln?\n\nDies öffnet die Spulenverwaltung.`);
     if (confirmed) {
         window.location.href = '/spools';
@@ -523,6 +525,7 @@ let currentAssignSlot = null;
 let searchTimeout = null;
 
 function openAssignModal(printerId, slotNumber) {
+    if (document.body && document.body.classList.contains('no-ams')) return;
     currentAssignPrinter = printerId;
     currentAssignSlot = slotNumber;
 
@@ -696,6 +699,7 @@ function renderSpoolSearchResults(spools) {
 }
 
 async function assignSpool(spoolId) {
+    if (document.body && document.body.classList.contains('no-ams')) return;
     try {
         const response = await fetch(
             `/api/spools/${spoolId}/assign?printer_id=${currentAssignPrinter}&slot_number=${currentAssignSlot}`,
@@ -726,6 +730,7 @@ async function assignSpool(spoolId) {
 let pendingUnassignSpoolId = null;
 
 function unassignSpool(spoolId) {
+    if (document.body && document.body.classList.contains('no-ams')) return;
     // Finde Spule für Anzeige im Modal
     const spool = spools.find(s => s.id === spoolId);
     const spoolName = spool ? (spool.spool_number ? `#${spool.spool_number}` : spool.name || 'diese Spule') : 'diese Spule';
@@ -741,6 +746,7 @@ function closeConfirmUnassignModal() {
 }
 
 async function confirmUnassignSpool() {
+    if (document.body && document.body.classList.contains('no-ams')) return;
     if (!pendingUnassignSpoolId) return;
 
     const spoolId = pendingUnassignSpoolId;
