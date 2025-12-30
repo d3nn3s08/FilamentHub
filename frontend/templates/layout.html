@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="de" style="background-color: #0e1116;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title or "FilamentHub" }}</title>
     <style>
-        /* Critical CSS - verhindert weißen Flash SOFORT */
+        /* Critical CSS - verhindert weiÃŸen Flash SOFORT */
         html { background-color: #0e1116; }
         body { background-color: #0e1116; margin: 0; }
     </style>
@@ -25,7 +25,7 @@
         <header class="content__header">
             <div>
                 <p class="eyebrow">FilamentHub</p>
-                <h1 class="title">{{ page_title or title or "Übersicht" }}</h1>
+                <h1 class="title">{{ page_title or title or "Ãœbersicht" }}</h1>
                 <p class="subtitle">{{ page_subtitle or "Modernes Dark-Layout basierend auf der printers-modern Vorschau." }}</p>
             </div>
             <div class="header__right">
@@ -37,12 +37,12 @@
                             <div class="user-menu__name">Local User</div>
                             <div class="user-menu__meta">FilamentHub Instance</div>
                         </div>
-                        <span class="user-menu__chevron">▾</span>
+                        <span class="user-menu__chevron">â–¾</span>
                     </button>
                     <div class="user-menu__dropdown" role="menu">
                         <div class="user-menu__section">
                             <div class="user-menu__section-title">Version</div>
-                            <div class="user-menu__section-item" id="userMenuVersion">Design Alpha-0.1</div>
+                            <div class="user-menu__section-item" id="userMenuVersion">{{ design_version }}</div>
                         </div>
                         <div class="user-menu__section">
                             <div class="user-menu__section-title">AMS Settings</div>
@@ -62,7 +62,7 @@
                                     <span>WS JSON Logging aktivieren</span>
                                     <span class="tooltip-container">
                                         <span class="tooltip-icon" tabindex="0">i</span>
-                                        <span class="tooltip-box">Loggt alle eingehenden WebSocket-Events als JSON zur Fehlersuche. Empfohlen nur für Debug-Zwecke.</span>
+                                        <span class="tooltip-box">Loggt alle eingehenden WebSocket-Events als JSON zur Fehlersuche. Empfohlen nur fÃ¼r Debug-Zwecke.</span>
                                     </span>
                                 </label>
                                 <a href="/debug" role="menuitem" class="user-menu__link">Debug Center</a>
@@ -92,7 +92,7 @@
             </div>
             <div class="modal__body">
                 <label class="field">
-                    <span>Strompreis (€/kWh)</span>
+                    <span>Strompreis (â‚¬/kWh)</span>
                     <input type="number" step="0.001" min="0" id="settingsElectricityPrice" placeholder="z.B. 0.32">
                 </label>
                 <div class="modal__actions" style="margin-top:12px;">
@@ -112,7 +112,7 @@
             const res = await fetch('/api/admin/design-version');
             const data = await res.json();
             const versionEl = document.getElementById('userMenuVersion');
-            if (versionEl) versionEl.textContent = data.design_version || 'Design Alpha-0.1';
+            if (versionEl) versionEl.textContent = data.design_version || '{{ design_version }}';
         } catch (err) {
             console.error('Fehler beim Laden der Design-Version:', err);
         }
@@ -121,3 +121,4 @@
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>
+

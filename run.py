@@ -128,6 +128,20 @@ mqtt_logger = create_mqtt_logger()
 app_logger.info("FilamentHub Logging-System initialisiert.")
 app_logger.info(f"Aktive Log-Module: {module_config}")
 
+# Register a minimal health endpoint so external systems can verify readiness
+try:
+    from app.routes.health import router as health_router
+    # Importing app.main may trigger app creation, but registering the router
+    # here ensures the health endpoint is available when uvicorn loads the app.
+    import app.main as app_module
+    try:
+        app_module.app.include_router(health_router)
+    except Exception:
+        # If app is not yet ready to include routers (rare), skip silently.
+        app_logger.debug("Health router konnte nicht registriert werden beim Import. Registrierung später möglich.")
+except Exception:
+    app_logger.debug("Health route nicht verfügbar (Import fehlgeschlagen).")
+
 
 # Development reload is CLI-only to keep Windows start stable:
 # uvicorn app.main:app --reload --port 8085

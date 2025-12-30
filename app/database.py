@@ -135,6 +135,8 @@ def run_migrations() -> None:
         else:
             logging.info("Führe Alembic upgrade head aus...")
             command.upgrade(cfg, "head")
+            # Menschlich lesbare Abschlussmeldung nach erfolgreichem Upgrade auf single head
+            logging.info("[DB] Alembic upgrade head erfolgreich abgeschlossen – alle Migrationen sind fertig.")
         logging.info("Alembic-Migrationen erfolgreich abgeschlossen.")
     except Exception as exc:
         logging.error("Alembic-Migration fehlgeschlagen: %s", exc)
@@ -182,9 +184,30 @@ def init_db() -> None:
         logging.error("Server wird beendet.")
         sys.exit(1)
 
+    # Menschlich lesbare Meldung nach erfolgreicher Schema-Prüfung
+    logging.info("[DB] Schema-Prüfung erfolgreich – alle benötigten Tabellen und Spalten sind vorhanden.")
+
     logging.info("Datenbank-Initialisierung abgeschlossen.")
     # Sichtbare Abschlussmeldung für Betreiber (Migrationen + Schema-Validierung sind durchlaufen)
     logger.info("[DB] Migrationen abgeschlossen, Schema validiert – Datenbank bereit")
+
+    # Kompaktes, eindeutiges Startup-Summary
+    logging.info("[STARTUP] Datenbank bereit | Migrationen OK | Schema OK | FilamentHub kann starten")
+
+    # Unmittelbar sichtbare, stdout-basierte Abschlussmeldungen (erscheinen nur bei Erfolg)
+    print("")
+    print("[DB] ✅ Migrationen abgeschlossen")
+    print("[DB] ✅ Schema validiert")
+    print("[STARTUP] 🚀 FilamentHub ist bereit – Server läuft")
+    print("")
+
+    # Optionales, visuelles Startup-Banner (zusätzliche Klarheit für Betreiber)
+    print("==============================================")
+    print("   FILAMENTHUB STARTUP ERFOLGREICH")
+    print("   Datenbank: OK")
+    print("   Migrationen: OK")
+    print("   Status: RUNNING")
+    print("==============================================")
 
 
 def get_session():

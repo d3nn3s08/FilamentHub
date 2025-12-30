@@ -72,6 +72,10 @@ class SpoolCreateSchema(BaseModel):
     tray_type: str | None = None
     rfid_chip_id: str | None = None
     remain_percent: float | None = None
+    # Neuer Canonical-Ausgabewerte (Backend-berechnet)
+    remaining_weight_g: float | None = None
+    total_weight_g: float | None = None
+    remaining_percent: float | None = None
     last_seen: str | None = None
     color: str | None = None  # JETZT persistiert (Teil des Nummern-Systems)
     name: str | None = None  # NEU: Kopie von material.name

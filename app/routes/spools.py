@@ -4,6 +4,8 @@ from sqlmodel import select, Session, col
 from typing import List
 
 from app.database import get_session
+import app.services.live_state as live_state_module
+from app.models.printer import Printer
 from app.models.spool import Spool, SpoolCreateSchema, SpoolUpdateSchema, SpoolReadSchema
 from app.services.spool_number_service import assign_spool_number
 
@@ -31,9 +33,6 @@ def _normalize_spool_payload(data: SpoolCreateSchema | SpoolUpdateSchema, *, is_
         # Falls kein aktuelles Gewicht explizit gesetzt wurde, auf weight_full setzen
         if payload.get("weight_current") is None:
             payload["weight_current"] = payload.get("weight_full")
-        # Neue Spulen: remain_percent auf 100% setzen (nicht leer)
-        if payload.get("remain_percent") is None:
-            payload["remain_percent"] = 100.0
         # Neue Spulen: is_open auf True setzen (geöffnet)
         if "is_open" not in payload:
             payload["is_open"] = True
@@ -43,7 +42,7 @@ def _normalize_spool_payload(data: SpoolCreateSchema | SpoolUpdateSchema, *, is_
 @router.get("/", response_model=List[SpoolReadSchema])
 def list_spools(session: Session = Depends(get_session)):
     result = session.exec(select(Spool)).all()
-    return [SpoolReadSchema.model_validate(s) for s in result]
+    return [_serialize_spool(s) for s in result]
 
 
 @router.get("/unnumbered", response_model=List[SpoolReadSchema])
@@ -63,7 +62,7 @@ def get_spool(spool_id: str, session: Session = Depends(get_session)):
     spool = session.get(Spool, spool_id)
     if not spool:
         raise HTTPException(status_code=404, detail="Spule nicht gefunden")
-    return SpoolReadSchema.model_validate(spool)
+    return _serialize_spool(spool)
 
 
 @router.post("/", response_model=SpoolReadSchema, status_code=status.HTTP_201_CREATED)
@@ -83,7 +82,7 @@ def create_spool(data: SpoolCreateSchema, session: Session = Depends(get_session
         session.add(spool)
         session.commit()
         session.refresh(spool)
-        return SpoolReadSchema.model_validate(spool)
+        return _serialize_spool(spool)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Fehler bei Validierung: {e}")
 
@@ -110,7 +109,7 @@ def update_spool(spool_id: str, data: SpoolUpdateSchema, session: Session = Depe
         session.add(spool)
         session.commit()
         session.refresh(spool)
-        return SpoolReadSchema.model_validate(spool)
+        return _serialize_spool(spool)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Fehler bei Validierung: {e}")
 
@@ -146,6 +145,16 @@ def assign_spool_to_slot(
     if not spool:
         raise HTTPException(status_code=404, detail="Spule nicht gefunden")
 
+    # Prüfe: Drucker/AMS existiert und ist im Live-State vorhanden
+    printer = session.get(Printer, printer_id)
+    if not printer:
+        raise HTTPException(status_code=404, detail=f"Drucker {printer_id} nicht gefunden")
+    # Wenn kein cloud_serial (AMS Identifikator) vorhanden, keine manuelle AMS-Zuweisung erlauben
+    if not printer.cloud_serial:
+        raise HTTPException(status_code=400, detail="Manuelle Zuweisung erfordert einen konfigurierten AMS (cloud_serial fehlt)")
+    if not live_state_module.get_live_state(printer.cloud_serial):
+        raise HTTPException(status_code=400, detail="AMS für diesen Drucker ist nicht verfügbar oder offline")
+
     # Prüfe ob Spule bereits zugewiesen
     if spool.printer_id is not None:
         raise HTTPException(
@@ -174,7 +183,7 @@ def assign_spool_to_slot(
     session.commit()
     session.refresh(spool)
 
-    return SpoolReadSchema.model_validate(spool)
+    return _serialize_spool(spool)
 
 
 @router.post("/{spool_id}/unassign", response_model=SpoolReadSchema)
@@ -206,4 +215,43 @@ def unassign_spool(spool_id: str, session: Session = Depends(get_session)):
     session.commit()
     session.refresh(spool)
 
-    return SpoolReadSchema.model_validate(spool)
+    return _serialize_spool(spool)
+
+
+def _serialize_spool(spool: Spool) -> dict:
+    """
+    Erzeuge die API-Repräsentation einer Spule und berechne
+    canonical Felder: remaining_weight_g, total_weight_g, remaining_percent.
+    """
+    # Basis-Serialization
+    base = SpoolReadSchema.model_validate(spool).model_dump()
+
+    # Berechne total und remaining (in Gramm) falls möglich
+    try:
+        wf = float(spool.weight_full) if spool.weight_full is not None else None
+        we = float(spool.weight_empty) if spool.weight_empty is not None else None
+        wc = float(spool.weight_current) if spool.weight_current is not None else None
+    except Exception:
+        wf = we = wc = None
+
+    total = None
+    remaining = None
+    if wf is not None and we is not None:
+        total = wf - we
+        if wc is not None:
+            remaining = wc - we
+
+    remaining_percent = None
+    if remaining is not None and total and total > 0:
+        remaining_percent = round(max(0.0, min(100.0, (remaining / total) * 100.0)), 1)
+
+    # Set canonical fields
+    base["remaining_weight_g"] = remaining
+    base["total_weight_g"] = total
+    base["remaining_percent"] = remaining_percent
+
+    # Für Abwärtskompatibilität auch das alte Feld setzen, aber nur wenn berechnet
+    if remaining_percent is not None:
+        base["remain_percent"] = remaining_percent
+
+    return base

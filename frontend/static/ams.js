@@ -334,7 +334,7 @@ function renderAMSUnits() {
                 const percentage = getPercentage(spool);
                 const color = spool.tray_color ? `#${spool.tray_color.substring(0, 6)}` : '#999';
                 
-                const isLow = percentage <= 20 || remaining < 200;
+                const isLow = (percentage != null ? (percentage <= 20) : (remaining < 200));
                 const progressClass = isLow ? 'low' : '';
                 
                 const spoolNumberDisplay = spool.spool_number ? `#${spool.spool_number} ` : '';
@@ -349,9 +349,9 @@ function renderAMSUnits() {
                         ${spoolNumberDisplay ? `<div class="slot-spool-number" style="font-weight: 600; color: var(--primary); margin: 4px 0;">${spoolNumberDisplay}</div>` : ''}
                         <div class="slot-material">${material.name}</div>
                         ${material.brand ? `<div class="slot-brand">${material.brand}</div>` : ''}
-                        <div class="slot-weight">${Math.round(remaining)}g (${Math.round(percentage)}%)</div>
+                        <div class="slot-weight">${(percentage != null) ? `${Math.round(percentage)}% (${Math.round(remaining)}g)` : (remaining ? `${Math.round(remaining)}g` : 'N/A')}</div>
                         <div class="slot-progress">
-                            <div class="slot-progress-bar ${progressClass}" style="width: ${percentage}%;"></div>
+                            ${percentage != null ? `<div class="slot-progress-bar ${progressClass}" style="width: ${percentage}%;"></div>` : ''}
                         </div>
                         <div class="slot-actions">
                             <button class="slot-action-btn" onclick="event.stopPropagation(); goToSpool('${spool.id}')" title="Spule öffnen">
@@ -438,13 +438,14 @@ function createAlertsDropdown(warningCount) {
             if (slot && slot.spool) {
                 const remaining = getRemaining(slot.spool);
                 const percentage = getPercentage(slot.spool);
-                if (percentage <= 20 || remaining < 200) {
+                const isLow = (percentage != null ? (percentage <= 20) : (remaining < 200));
+                if (isLow) {
                     items.push({
                         ams: i + 1,
                         slot: idx + 1,
                         material: slot.material?.name || 'Unbekannt',
                         remaining: Math.round(remaining),
-                        percent: Math.round(percentage),
+                        percent: percentage != null ? Math.round(percentage) : null,
                         spoolId: slot.spool.id,
                     });
                 }
@@ -459,7 +460,7 @@ function createAlertsDropdown(warningCount) {
                 <div class="alert-item" onclick="goToSpool('${it.spoolId}')">
                     <div class="alert-dot"></div>
                     <div class="alert-text">AMS #${it.ams} · Slot ${it.slot} · ${it.material}</div>
-                    <div class="alert-meta">${it.remaining}g (${it.percent}%)</div>
+                    <div class="alert-meta">${it.percent != null ? `${it.percent}% (${it.remaining}g)` : `${it.remaining}g`}</div>
                 </div>
             `).join('')}
         </div>
@@ -472,28 +473,17 @@ function renderAlerts() {
 }
 
 function getRemaining(spool) {
-    const wf = parseFloat(spool.weight_full) || 0;
-    const rp = parseFloat(spool.remain_percent);
-    
-    // Priorität: weight > weight_current > weight_remaining > berechnet aus remain_percent
-    const remaining = parseFloat(spool.weight) ?? 
-                     parseFloat(spool.weight_current) ?? 
-                     parseFloat(spool.weight_remaining) ?? 
-                     (rp != null && wf ? (rp / 100) * wf : wf);
-    
-    return remaining || 0;
+    // Verwende ausschließlich das vom Backend bereitgestellte canonical Feld
+    const rem = parseFloat(spool.remaining_weight_g);
+    return isNaN(rem) ? 0 : rem;
 }
 
 function getPercentage(spool) {
-    const wf = parseFloat(spool.weight_full) || 0;
-    const rp = parseFloat(spool.remain_percent);
-    
-    if (rp != null) {
-        return Math.max(0, Math.min(100, rp));
-    }
-    
-    const remaining = getRemaining(spool);
-    return wf ? Math.max(0, Math.min(100, (remaining / wf) * 100)) : 0;
+    // Verwende ausschließlich das vom Backend bereitgestellte canonical Feld
+    const rp = spool.remaining_percent;
+    if (rp == null) return null;
+    const v = parseFloat(rp);
+    return isNaN(v) ? null : Math.max(0, Math.min(100, v));
 }
 
 function goToSpool(spoolId) {
@@ -637,8 +627,8 @@ function renderSpoolSearchResults(spools) {
         const nameDisplay = s.name || 'Unbekannt';
         const vendorDisplay = s.vendor || '';
         const colorDisplay = s.color && s.color !== 'unknown' ? s.color : '';
-        const weightDisplay = s.weight_current ? `${Math.round(s.weight_current)}g` : 'N/A';
-        const percentDisplay = s.remain_percent != null ? Math.round(s.remain_percent) + '%' : '';
+        const weightDisplay = s.remaining_weight_g ? `${Math.round(s.remaining_weight_g)}g` : (s.weight_current ? `${Math.round(s.weight_current)}g` : 'N/A');
+        const percentDisplay = s.remaining_percent != null ? Math.round(s.remaining_percent) + '%' : (s.remain_percent != null ? Math.round(s.remain_percent) + '%' : '');
 
         // Farb-Badge falls Farbe bekannt
         const colorBadge = colorDisplay ? `<span style="
@@ -686,7 +676,7 @@ function renderSpoolSearchResults(spools) {
                     </div>
                     <div style="text-align: right; min-width: 90px;">
                         <div style="font-weight: 700; font-size: 1.25rem; color: var(--text);">
-                            ${weightDisplay}
+                            ${percentDisplay || weightDisplay}
                         </div>
                         ${percentDisplay ? `
                             <div style="

@@ -102,9 +102,7 @@ function updateStats() {
     const empty = spools.filter(s => s.is_empty).length;
     const totalWeight = spools.reduce((sum, s) => {
         if (s.is_empty) return sum;
-        const wf = toNumber(s.weight_full) || 0;
-        const rp = toNumber(s.remain_percent);
-        const remaining = (toNumber(s.weight) ?? toNumber(s.weight_current) ?? toNumber(s.weight_remaining) ?? (rp != null && wf ? (rp / 100) * wf : wf)) ?? 0;
+        const remaining = toNumber(s.remaining_weight_g) ?? toNumber(s.weight) ?? toNumber(s.weight_current) ?? toNumber(s.weight_remaining) ?? 0;
         return sum + (remaining || 0);
     }, 0);
     
@@ -134,9 +132,9 @@ function updateWarnings() {
     // Zähle Spulen mit niedrigem Bestand (auch im AMS)
     const lowSpools = spools.filter(s => {
         if (s.is_empty) return false;
-        const remaining = toNumber(s.weight) ?? toNumber(s.weight_current) ?? toNumber(s.weight_remaining) ?? 0;
-        const percentage = toNumber(s.remain_percent) ?? 0;
-        return percentage <= 20 || remaining < 200;
+        const remaining = toNumber(s.remaining_weight_g) ?? toNumber(s.weight) ?? toNumber(s.weight_current) ?? toNumber(s.weight_remaining) ?? 0;
+        const percentage = toNumber(s.remaining_percent) ?? toNumber(s.remain_percent);
+        return (percentage != null ? (percentage <= 20) : (remaining < 200));
     });
     
     const warningCount = lowSpools.length;
@@ -155,8 +153,8 @@ function updateWarnings() {
     } else {
         warningList.innerHTML = lowSpools.map(s => {
             const material = materials.find(m => m.id === s.material_id);
-            const remaining = Math.round(toNumber(s.weight) ?? toNumber(s.weight_current) ?? toNumber(s.weight_remaining) ?? 0);
-            const percentage = Math.round(toNumber(s.remain_percent) ?? 0);
+            const remaining = Math.round(toNumber(s.remaining_weight_g) ?? toNumber(s.weight) ?? toNumber(s.weight_current) ?? toNumber(s.weight_remaining) ?? 0);
+            const percentage = Math.round(toNumber(s.remaining_percent) ?? toNumber(s.remain_percent) ?? 0);
             const displayName = s.label || `Spule #${s.id.substring(0, 8)}`;
             const location = s.ams_slot != null ? `AMS Slot ${s.ams_slot}` : 'Lager';
             
@@ -211,8 +209,8 @@ function renderSpools(spoolsToRender) {
                     ${spoolsToRender.map(s => {
                         const material = materials.find(m => m.id === s.material_id);
                         const weightFull = toNumber(s.weight_full) ?? 0;
-                        const remainPercent = toNumber(s.remain_percent);
-                        const remaining = toNumber(s.weight) ?? toNumber(s.weight_current) ?? toNumber(s.weight_remaining) ?? ((remainPercent != null && weightFull) ? (remainPercent / 100) * weightFull : (weightFull || 0));
+                        const remainPercent = toNumber(s.remaining_percent) ?? toNumber(s.remain_percent);
+                        const remaining = toNumber(s.remaining_weight_g) ?? toNumber(s.weight) ?? toNumber(s.weight_current) ?? toNumber(s.weight_remaining) ?? 0;
                         const trayColor = s.tray_color ? `#${s.tray_color.substring(0, 6)}` : null;
 
                         // NEU: Spulen-Nummern-System
@@ -233,7 +231,7 @@ function renderSpools(spoolsToRender) {
                         let locationBadge = '';
 
                         // 1. Haupt-Status (Leer oder nicht)
-                        if (remainPercent === 0 || (remaining || 0) <= 0 || s.is_empty) {
+                        if ((remainPercent === 0) || (remaining || 0) <= 0 || s.is_empty) {
                             statusBadge = '<span class="status-badge status-offline">Leer</span>';
                         } else if (remainPercent != null && remainPercent <= 20) {
                             statusBadge = '<span class="status-badge" style="background: rgba(255, 167, 38, 0.2); color: var(--warning);">Fast leer</span>';
@@ -326,9 +324,8 @@ function filterSpools() {
         filtered = filtered.filter(s => s.is_empty);
     } else if (statusFilter === 'low') {
         filtered = filtered.filter(s => {
-            const wf = toNumber(s.weight_full) || 0;
-            const rp = toNumber(s.remain_percent);
-            const remaining = toNumber(s.weight) ?? toNumber(s.weight_current) ?? toNumber(s.weight_remaining) ?? (rp != null && wf ? (rp / 100) * wf : wf);
+            const remaining = toNumber(s.remaining_weight_g) ?? toNumber(s.weight) ?? toNumber(s.weight_current) ?? toNumber(s.weight_remaining) ?? 0;
+            const rp = toNumber(s.remaining_percent) ?? toNumber(s.remain_percent);
             return (rp === 0) || (!s.is_empty && (remaining || 0) < 200);
         });
     } else if (statusFilter === 'ams') {

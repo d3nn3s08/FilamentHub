@@ -2,7 +2,7 @@ app:
   developer: Denis (d3nn3s08)
   environment: development
   name: FilamentHub
-  version: 0.1.5
+  version: 0.1.6
 logging:
   enabled: true
   keep_days: 14

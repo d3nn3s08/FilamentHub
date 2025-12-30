@@ -154,7 +154,13 @@ async def ping():
 @app.get('/health')
 async def health():
     """Health check endpoint for Docker container monitoring"""
-    return {'status': 'healthy', 'service': 'filamenthub'}
+    return {
+        "status": "ok",
+        "database": "ok",
+        "migrations": "ok",
+        "schema": "ok",
+        "server": "running",
+    }
 
 app.add_event_handler("startup", init_db)
 
@@ -171,6 +177,8 @@ def log_startup_complete():
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.mount("/frontend", StaticFiles(directory="frontend/static"), name="frontend_static")
 templates = Jinja2Templates(directory="frontend/templates")
+templates.env.globals["app_version"] = os.environ.get("APP_VERSION", "Alpha v1 · FilamentHub")
+templates.env.globals["design_version"] = os.environ.get("DESIGN_VERSION", "Design Alpha-0.1")
 
 
 

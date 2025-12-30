@@ -21440,3 +21440,15 @@
 2025-12-30 01:16:35,023 | [AMS SYNC] printer_id=None ams_count=1
 2025-12-30 01:16:35,023 | [AMS SYNC] payload=[{'ams_id': 0, 'active_tray': None, 'trays': [{'tray_id': 1, 'name': None, 'material': 'PLA', 'color': 'FF0000', 'remain': 75.0, 'humidity': None, 'temp': None, 'status': None, 'tag_uid': 'TAG-001', 'tray_uuid': None, 'total_len': None}], 'humidity': None, 'temp': None, 'status': None}]
 2025-12-30 01:16:35,026 | [AMS SYNC] done printer_id=None
+2025-12-30 13:51:47,322 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-30 13:51:47,323 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-30 13:51:47,323 | [AMS SYNC] payload=[{'ams_id': 0, 'active_tray': None, 'trays': [{'tray_id': 1, 'name': None, 'material': 'PLA', 'color': 'FF0000', 'remain': 75.0, 'humidity': None, 'temp': None, 'status': None, 'tag_uid': 'TAG-001', 'tray_uuid': None, 'total_len': None}], 'humidity': None, 'temp': None, 'status': None}]
+2025-12-30 13:51:47,331 | [AMS SYNC] done printer_id=None
+2025-12-30 13:51:47,339 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-30 13:51:47,340 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-30 13:51:47,340 | [AMS SYNC] payload=[{'ams_id': 0, 'active_tray': None, 'trays': [{'tray_id': 1, 'name': None, 'material': 'PLA', 'color': 'FF0000', 'remain': 75.0, 'humidity': None, 'temp': None, 'status': None, 'tag_uid': 'TAG-001', 'tray_uuid': None, 'total_len': None}], 'humidity': None, 'temp': None, 'status': None}]
+2025-12-30 13:51:47,348 | [AMS SYNC] done printer_id=None
+2025-12-30 13:51:47,349 | Topic=device/TESTSERIAL/report | Payload={"print": {"ams": {"ams": [{"tray": [{"tray_id": 1, "tray_type": "PLA", "tray_color": "FF0000", "remain_percent": 75, "tag_uid": "TAG-001"}]}]}}}
+2025-12-30 13:51:47,350 | [AMS SYNC] printer_id=None ams_count=1
+2025-12-30 13:51:47,350 | [AMS SYNC] payload=[{'ams_id': 0, 'active_tray': None, 'trays': [{'tray_id': 1, 'name': None, 'material': 'PLA', 'color': 'FF0000', 'remain': 75.0, 'humidity': None, 'temp': None, 'status': None, 'tag_uid': 'TAG-001', 'tray_uuid': None, 'total_len': None}], 'humidity': None, 'temp': None, 'status': None}]
+2025-12-30 13:51:47,353 | [AMS SYNC] done printer_id=None
