@@ -112,6 +112,7 @@ from app.routes import debug_log_routes
 from app.routes import mqtt_runtime_routes
 from app.routes.live_state_routes import router as live_state_router
 from app.routes.ams_routes import router as ams_router
+from app.routes.ams_conflicts import router as ams_conflicts_router
 
 from app.websocket.log_stream import stream_log
 from sqlmodel import Session, select
@@ -211,6 +212,7 @@ app.include_router(mqtt_runtime_routes.router, prefix="/api/mqtt/runtime", tags=
 # Live state endpoints for real-time device data
 app.include_router(live_state_router)
 app.include_router(ams_router)
+app.include_router(ams_conflicts_router)
 
 
 @app.on_event("startup")

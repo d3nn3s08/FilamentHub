@@ -12,3 +12,13 @@
 {"ts": "2025-12-29T13:10:33Z", "event": "admin_access_denied", "details": {"path": "/admin", "ip": "127.0.0.1"}}
 {"ts": "2025-12-29T13:10:35Z", "event": "admin_login_success", "details": {"ip": "127.0.0.1"}}
 {"ts": "2025-12-29T13:10:35Z", "event": "admin_access", "details": {"path": "/admin", "ip": "127.0.0.1"}}
+{"ts": "2025-12-30T00:08:54Z", "event": "welcome_status_set", "details": {"ip": "127.0.0.1", "shown": true}}
+{"ts": "2025-12-30T00:16:33Z", "event": "admin_login_success", "details": {"ip": "testclient"}}
+{"ts": "2025-12-30T00:16:33Z", "event": "admin_delete_success", "details": {"ip": "testclient", "table": "material", "id": "9b9c2391-b445-4a9c-b4d0-f75846eacc9f"}}
+{"ts": "2025-12-30T00:16:33Z", "event": "admin_auth_required_failed", "details": {"ip": "testclient"}}
+{"ts": "2025-12-30T00:16:33Z", "event": "admin_login_success", "details": {"ip": "testclient"}}
+{"ts": "2025-12-30T00:16:33Z", "event": "admin_delete_unknown_table", "details": {"ip": "testclient", "table": "unknown"}}
+{"ts": "2025-12-30T00:16:33Z", "event": "admin_login_success", "details": {"ip": "testclient"}}
+{"ts": "2025-12-30T00:16:33Z", "event": "admin_delete_invalid", "details": {"ip": "testclient", "table": "", "id": ""}}
+{"ts": "2025-12-30T00:16:34Z", "event": "admin_login_success", "details": {"ip": "testclient"}}
+{"ts": "2025-12-30T00:16:34Z", "event": "admin_login_failed", "details": {"ip": "testclient", "reason": "no_password"}}

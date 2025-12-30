@@ -4,6 +4,7 @@ import paho.mqtt.client as mqtt
 import json
 from typing import Optional, Callable
 from sqlmodel import Session, select
+from sqlalchemy import or_
 from app.models.spool import Spool
 from app.models.material import Material
 from app.database import get_session
@@ -117,11 +118,13 @@ class BambuService:
                     
                     # Spule in DB anlegen/updaten
                     self._sync_spool(
+                        ams_id=ams_id,
                         ams_slot=ams_slot,
                         rfid=rfid,
                         material_type=tray_type,
                         color=tray_color,
-                        remaining_weight=remain_weight
+                        remaining_weight=remain_weight,
+                        tray_payload=tray
                     )
                     
         except Exception as e:
@@ -144,18 +147,56 @@ class BambuService:
         except Exception as e:
             error_logger.exception(f"Fehler beim Verarbeiten der Print Daten: {e}")
 
-    def _sync_spool(self, ams_slot: int, rfid: Optional[str], material_type: Optional[str], 
-                    color: Optional[str], remaining_weight: float):
+    def _sync_spool(self, ams_id: int, ams_slot: int, rfid: Optional[str], material_type: Optional[str], 
+                    color: Optional[str], remaining_weight: float, tray_payload: Optional[dict] = None):
         """Spule in Datenbank anlegen oder updaten basierend auf AMS Daten."""
         try:
             # DB Session holen
             session = next(get_session())
-            
+
+            # --- Konfliktprüfung: gibt es eine aktive Spule im Slot mit Quelle 'manual'? ---
+            # Robust matching for ams_id: accept numeric, string or prefixed forms (e.g. 'AMS1')
+            try:
+                ams_id_str = str(ams_id)
+                ams_id_prefixed = f"AMS{ams_id}"
+                existing_in_slot = session.exec(
+                    select(Spool).where(
+                        Spool.ams_slot == ams_slot,
+                        Spool.is_active == True,
+                        or_(Spool.ams_id == ams_id_str, Spool.ams_id == ams_id_prefixed, Spool.ams_id == ams_id)
+                    )
+                ).first()
+            except Exception:
+                existing_in_slot = session.exec(
+                    select(Spool).where(Spool.ams_slot == ams_slot, Spool.is_active == True)
+                ).first()
+
+            if existing_in_slot and existing_in_slot.ams_source == "manual":
+                # Erzeuge einen Konflikt und breche die automatische RFID-Zuweisung ab
+                try:
+                    from app.models.ams_conflict import AmsConflict
+                    conflict = AmsConflict(
+                        printer_id=self.printer_id,
+                        ams_id=str(ams_id),
+                        slot=ams_slot,
+                        manual_spool_id=existing_in_slot.id,
+                        rfid_payload=json.dumps(tray_payload) if tray_payload is not None else None,
+                    )
+                    session.add(conflict)
+                    session.commit()
+                    bambu_logger.info(f"AMS-Konflikt erstellt: AMS {ams_id} Slot {ams_slot} (manuell belegt)")
+                except Exception:
+                    error_logger.exception("Fehler beim Anlegen des AMS-Konflikts")
+                finally:
+                    session.close()
+                # Abbrechen: keine weitere automatische Zuweisung
+                return
+
             # Suche Spule mit diesem RFID oder AMS Slot
             spool = None
             if rfid:
                 spool = session.exec(select(Spool).where(Spool.rfid_chip_id == rfid)).first()
-            
+
             if not spool:
                 # Suche nach AMS Slot
                 spool = session.exec(select(Spool).where(Spool.ams_slot == ams_slot)).first()

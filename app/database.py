@@ -116,16 +116,25 @@ def run_migrations() -> None:
                 ).fetchone()
                 if current:
                     logging.info(f"Aktuelle DB-Revision: {current[0]}")
-                    # Prüfe ob bereits auf head
+                    # Prüfe ob bereits auf head(s)
                     from alembic.script import ScriptDirectory
                     script = ScriptDirectory.from_config(cfg)
-                    head_rev = script.get_current_head()
-                    if current[0] == head_rev:
+                    heads = script.get_heads()
+                    # if single head, compare directly
+                    if len(heads) == 1 and current[0] == heads[0]:
                         logging.info("Datenbank ist bereits auf der neuesten Version (head). Keine Migrationen nötig.")
                         return
 
-        logging.info("Führe Alembic upgrade head aus...")
-        command.upgrade(cfg, "head")
+        # Wenn mehrere Heads existieren, führe upgrade für alle Heads aus
+        from alembic.script import ScriptDirectory
+        script = ScriptDirectory.from_config(cfg)
+        heads = script.get_heads()
+        if len(heads) > 1:
+            logging.info(f"Mehrere Alembic-Heads entdeckt ({len(heads)}). Führe 'alembic upgrade heads' aus...")
+            command.upgrade(cfg, "heads")
+        else:
+            logging.info("Führe Alembic upgrade head aus...")
+            command.upgrade(cfg, "head")
         logging.info("Alembic-Migrationen erfolgreich abgeschlossen.")
     except Exception as exc:
         logging.error("Alembic-Migration fehlgeschlagen: %s", exc)

@@ -25,7 +25,12 @@ class SpoolBase(SQLModel):
     printer_id: Optional[str] = SQLField(default=None, foreign_key="printer.id")
     printer_slot: Optional[int] = None
     ams_slot: Optional[int] = None
+    ams_id: Optional[str] = None
+    ams_source: Optional[str] = None
+    assigned: bool = False
+    is_active: bool = True
     tag_uid: Optional[str] = None
+    rfid_chip_id: Optional[str] = None
     tray_uuid: Optional[str] = None
     tray_color: Optional[str] = None
     tray_type: Optional[str] = None
@@ -65,6 +70,7 @@ class SpoolCreateSchema(BaseModel):
     tray_uuid: str | None = None
     tray_color: str | None = None
     tray_type: str | None = None
+    rfid_chip_id: str | None = None
     remain_percent: float | None = None
     last_seen: str | None = None
     color: str | None = None  # JETZT persistiert (Teil des Nummern-Systems)
@@ -124,6 +130,7 @@ class SpoolUpdateSchema(BaseModel):
     tray_color: str | None = None
     tray_type: str | None = None
     remain_percent: float | None = None
+    rfid_chip_id: str | None = None
     last_seen: str | None = None
     color: str | None = None
     spool_number: int | None = None

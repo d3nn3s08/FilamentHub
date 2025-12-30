@@ -281,8 +281,26 @@
     </div>
 </div>
 
+<!-- AMS Conflict Modal -->
+<div id="amsConflictModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width:520px;">
+        <div class="modal-header">
+            <h2 id="ams-conflict-title">AMS Konflikt</h2>
+            <button class="modal-close" onclick="closeAmsConflictModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="ams-conflict-text">Im AMS wurde eine neue Spule mit RFID erkannt. Der Slot ist aktuell manuell belegt.</p>
+        </div>
+        <div style="padding: 0 24px 24px 24px; display: flex; gap: 12px; justify-content: flex-end;">
+            <button id="ams-conflict-cancel-btn" class="btn" onclick="onAmsConflictCancel()">Abbrechen</button>
+            <button id="ams-conflict-confirm-btn" class="btn" style="background:var(--accent); color:white;" onclick="onAmsConflictConfirm()">RFID-Spule übernehmen</button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_scripts %}
 <script src="{{ url_for('frontend_static', path='ams.js') }}"></script>
+<script src="{{ url_for('frontend_static', path='ams_conflict.js') }}"></script>
 {% endblock %}

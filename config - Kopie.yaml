@@ -1,0 +1,51 @@
+app:
+  developer: Denis (d3nn3s08)
+  environment: development
+  name: FilamentHub
+  version: 0.1.5
+logging:
+  enabled: true
+  keep_days: 14
+  level: DEBUG
+  max_size_mb: 5  # Maximale Logdateigröße in MB
+  backup_count: 3  # Anzahl Backup-Dateien
+  modules:
+    app:
+      enabled: true
+    bambu:
+      enabled: true
+    errors:
+      enabled: true
+    klipper:
+      enabled: false
+    mqtt:
+      enabled: true  
+paths:
+  logs: ./logs
+integrations:
+  mode: bambu  # bambu | klipper | dual | standalone
+server:
+  host: 0.0.0.0
+  port: 8085
+  reload: true
+json_inspector:
+  max_size_mb: 5  # Maximale JSON-Dateigröße beim Upload in MB
+  max_depth: 50   # Maximale Verschachtelungstiefe
+  allow_override: false  # Erlaube Nutzer-Override der Limits
+mqtt_logging:
+  enabled: true
+  smart_logging:
+    enabled: false  # Smart-Logging standardmäßig deaktiviert
+    trigger_type: "command"  # "command" oder "temperature"
+    trigger_value: "printing"  # Suchbegriff (String) oder Temperatur (Zahl)
+    max_duration_hours: 4  # Maximale Log-Dauer nach Start-Trigger
+    buffer_minutes: 5  # Buffer-Zeit nach Finish/Error
+  limits:
+    max_size_mb: 100  # Maximale Dateigröße pro Log-Datei
+    max_payload_chars: 1000  # Maximale Payload-Länge im Standard-Log
+    full_payload_enabled: false  # Vollständige Payloads in separate Datei
+    full_payload_file: "logs/mqtt/full_payloads.jsonl"  # Pfad für vollständige Payloads
+  ams_climate:
+    enabled: true  # AMS-Klimadaten IMMER loggen (Whitelist)
+    log_file: "logs/mqtt/ams_climate.jsonl"  # Separate Datei für AMS-Daten
+    max_size_mb: 50  # Maximale Dateigröße für AMS-Log

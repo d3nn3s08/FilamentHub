@@ -1,0 +1,328 @@
+[1mdiff --git a/alembic/versions/20251229_add_ams_metadata_and_conflict.py b/alembic/versions/20251229_add_ams_metadata_and_conflict.py[m
+[1mnew file mode 100644[m
+[1mindex 0000000..aae7b1a[m
+[1m--- /dev/null[m
+[1m+++ b/alembic/versions/20251229_add_ams_metadata_and_conflict.py[m
+[36m@@ -0,0 +1,46 @@[m
+[32m+[m[32m"""add ams metadata to spool and create ams_conflict table[m
+[32m+[m
+[32m+[m[32mRevision ID: 20251229_add_ams_metadata_and_conflict[m
+[32m+[m[32mRevises: 20251228_add_filament_start_mm[m
+[32m+[m[32mCreate Date: 2025-12-29[m
+[32m+[m[32m"""[m
+[32m+[m[32mfrom alembic import op[m
+[32m+[m[32mimport sqlalchemy as sa[m
+[32m+[m
+[32m+[m[32m# revision identifiers, used by Alembic.[m
+[32m+[m[32mrevision = "20251229_add_ams_metadata_and_conflict"[m
+[32m+[m[32mdown_revision = "20251228_add_filament_start_mm"[m
+[32m+[m[32mbranch_labels = None[m
+[32m+[m[32mdepends_on = None[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef upgrade():[m
+[32m+[m[32m    # Add columns to spool table[m
+[32m+[m[32m    with op.batch_alter_table("spool") as batch_op:[m
+[32m+[m[32m        batch_op.add_column(sa.Column("ams_id", sa.String(), nullable=True))[m
+[32m+[m[32m        batch_op.add_column(sa.Column("ams_source", sa.String(), nullable=True))[m
+[32m+[m[32m        batch_op.add_column(sa.Column("assigned", sa.Boolean(), nullable=False, server_default=sa.text('0')))[m
+[32m+[m[32m        batch_op.add_column(sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text('1')))[m
+[32m+[m
+[32m+[m[32m    # Create ams_conflict table[m
+[32m+[m[32m    op.create_table([m
+[32m+[m[32m        "ams_conflict",[m
+[32m+[m[32m        sa.Column("id", sa.String(), primary_key=True),[m
+[32m+[m[32m        sa.Column("printer_id", sa.String(), nullable=True),[m
+[32m+[m[32m        sa.Column("ams_id", sa.String(), nullable=True),[m
+[32m+[m[32m        sa.Column("slot", sa.Integer(), nullable=True),[m
+[32m+[m[32m        sa.Column("manual_spool_id", sa.String(), nullable=True),[m
+[32m+[m[32m        sa.Column("rfid_payload", sa.Text(), nullable=True),[m
+[32m+[m[32m        sa.Column("status", sa.String(), nullable=False, server_default="open"),[m
+[32m+[m[32m        sa.Column("created_at", sa.String(), nullable=True),[m
+[32m+[m[32m        sa.ForeignKeyConstraint(["manual_spool_id"], ["spool.id"], name="fk_ams_conflict_manual_spool_id_spool"),[m
+[32m+[m[32m    )[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef downgrade():[m
+[32m+[m[32m    op.drop_table("ams_conflict")[m
+[32m+[m[32m    with op.batch_alter_table("spool") as batch_op:[m
+[32m+[m[32m        batch_op.drop_column("is_active")[m
+[32m+[m[32m        batch_op.drop_column("assigned")[m
+[32m+[m[32m        batch_op.drop_column("ams_source")[m
+[32m+[m[32m        batch_op.drop_column("ams_id")[m
+[1mdiff --git a/app/__pycache__/main.cpython-313.pyc b/app/__pycache__/main.cpython-313.pyc[m
+[1mindex 8fbca24..19330b3 100644[m
+Binary files a/app/__pycache__/main.cpython-313.pyc and b/app/__pycache__/main.cpython-313.pyc differ
+[1mdiff --git a/app/main.py b/app/main.py[m
+[1mindex ba6808d..3dbd25d 100644[m
+[1m--- a/app/main.py[m
+[1m+++ b/app/main.py[m
+[36m@@ -112,6 +112,7 @@[m [mfrom app.routes import debug_log_routes[m
+ from app.routes import mqtt_runtime_routes[m
+ from app.routes.live_state_routes import router as live_state_router[m
+ from app.routes.ams_routes import router as ams_router[m
+[32m+[m[32mfrom app.routes.ams_conflicts import router as ams_conflicts_router[m
+ [m
+ from app.websocket.log_stream import stream_log[m
+ from sqlmodel import Session, select[m
+[36m@@ -211,6 +212,7 @@[m [mapp.include_router(mqtt_runtime_routes.router, prefix="/api/mqtt/runtime", tags=[m
+ # Live state endpoints for real-time device data[m
+ app.include_router(live_state_router)[m
+ app.include_router(ams_router)[m
+[32m+[m[32mapp.include_router(ams_conflicts_router)[m
+ [m
+ [m
+ @app.on_event("startup")[m
+[1mdiff --git a/app/models/__pycache__/spool.cpython-313.pyc b/app/models/__pycache__/spool.cpython-313.pyc[m
+[1mindex ccbfd11..0240344 100644[m
+Binary files a/app/models/__pycache__/spool.cpython-313.pyc and b/app/models/__pycache__/spool.cpython-313.pyc differ
+[1mdiff --git a/app/models/ams_conflict.py b/app/models/ams_conflict.py[m
+[1mnew file mode 100644[m
+[1mindex 0000000..4dc503f[m
+[1m--- /dev/null[m
+[1m+++ b/app/models/ams_conflict.py[m
+[36m@@ -0,0 +1,13 @@[m
+[32m+[m[32mfrom typing import Optional[m
+[32m+[m[32mfrom uuid import uuid4[m
+[32m+[m[32mfrom sqlmodel import SQLModel, Field as SQLField[m
+[32m+[m
+[32m+[m[32mclass AmsConflict(SQLModel, table=True):[m
+[32m+[m[32m    id: str = SQLField(default_factory=lambda: str(uuid4()), primary_key=True)[m
+[32m+[m[32m    printer_id: Optional[str] = None[m
+[32m+[m[32m    ams_id: Optional[str] = None[m
+[32m+[m[32m    slot: Optional[int] = None[m
+[32m+[m[32m    manual_spool_id: Optional[str] = None[m
+[32m+[m[32m    rfid_payload: Optional[str] = None[m
+[32m+[m[32m    status: str = "open"  # open | accepted | rejected[m
+[32m+[m[32m    created_at: Optional[str] = None[m
+[1mdiff --git a/app/models/spool.py b/app/models/spool.py[m
+[1mindex 887ea7c..09dce47 100644[m
+[1m--- a/app/models/spool.py[m
+[1m+++ b/app/models/spool.py[m
+[36m@@ -25,6 +25,10 @@[m [mclass SpoolBase(SQLModel):[m
+     printer_id: Optional[str] = SQLField(default=None, foreign_key="printer.id")[m
+     printer_slot: Optional[int] = None[m
+     ams_slot: Optional[int] = None[m
+[32m+[m[32m    ams_id: Optional[str] = None[m
+[32m+[m[32m    ams_source: Optional[str] = None  # "manual" | "rfid"[m
+[32m+[m[32m    assigned: bool = False[m
+[32m+[m[32m    is_active: bool = True[m
+     tag_uid: Optional[str] = None[m
+     tray_uuid: Optional[str] = None[m
+     tray_color: Optional[str] = None[m
+[36m@@ -71,6 +75,10 @@[m [mclass SpoolCreateSchema(BaseModel):[m
+     name: str | None = None  # NEU: Kopie von material.name[m
+     vendor: str | None = None  # NEU: Kopie von material.brand[m
+     spool_number: int | None = None  # NEU: User-friendly Nummer[m
+[32m+[m[32m    ams_id: str | None = None[m
+[32m+[m[32m    ams_source: str | None = None[m
+[32m+[m[32m    assigned: bool | None = None[m
+[32m+[m[32m    is_active: bool | None = None[m
+     first_seen: str | None = None[m
+     used_count: int = 0[m
+     last_slot: int | None = None[m
+[36m@@ -126,6 +134,10 @@[m [mclass SpoolUpdateSchema(BaseModel):[m
+     remain_percent: float | None = None[m
+     last_seen: str | None = None[m
+     color: str | None = None[m
+[32m+[m[32m    ams_id: str | None = None[m
+[32m+[m[32m    ams_source: str | None = None[m
+[32m+[m[32m    assigned: bool | None = None[m
+[32m+[m[32m    is_active: bool | None = None[m
+     spool_number: int | None = None[m
+     first_seen: str | None = None[m
+     used_count: int | None = None[m
+[36m@@ -198,3 +210,7 @@[m [mclass SpoolReadSchema(BaseModel):[m
+     manufacturer_spool_id: str | None = None[m
+     created_at: str | None = None[m
+     updated_at: str | None = None[m
+[32m+[m[32m    ams_id: str | None = None[m
+[32m+[m[32m    ams_source: str | None = None[m
+[32m+[m[32m    assigned: bool = False[m
+[32m+[m[32m    is_active: bool = True[m
+[1mdiff --git a/app/routes/ams_conflicts.py b/app/routes/ams_conflicts.py[m
+[1mnew file mode 100644[m
+[1mindex 0000000..24920b5[m
+[1m--- /dev/null[m
+[1m+++ b/app/routes/ams_conflicts.py[m
+[36m@@ -0,0 +1,112 @@[m
+[32m+[m[32mfrom fastapi import APIRouter, Depends, HTTPException[m
+[32m+[m[32mfrom sqlmodel import Session, select[m
+[32m+[m[32mfrom typing import Dict[m
+[32m+[m[32mfrom app.database import get_session[m
+[32m+[m[32mfrom app.models.ams_conflict import AmsConflict[m
+[32m+[m[32mfrom app.models.spool import Spool[m
+[32m+[m[32mfrom app.services.ams_sync import _now_iso[m
+[32m+[m
+[32m+[m[32mrouter = APIRouter(prefix="/api/ams/conflicts", tags=["AMS Conflicts"])[m
+[32m+[m
+[32m+[m[32m@router.get("/")[m
+[32m+[m[32mdef list_conflicts(session: Session = Depends(get_session)):[m
+[32m+[m[32m    conflicts = session.exec(select(AmsConflict).where(AmsConflict.status == "open")).all()[m
+[32m+[m[32m    return [c for c in conflicts][m
+[32m+[m
+[32m+[m[32m@router.post("/{conflict_id}/resolve")[m
+[32m+[m[32mdef resolve_conflict(conflict_id: str, payload: Dict[str, str], session: Session = Depends(get_session)):[m
+[32m+[m[32m    action = payload.get("action")[m
+[32m+[m[32m    if action not in ("accept", "reject"):[m
+[32m+[m[32m        raise HTTPException(status_code=400, detail="Invalid action")[m
+[32m+[m
+[32m+[m[32m    conflict = session.get(AmsConflict, conflict_id)[m
+[32m+[m[32m    if not conflict:[m
+[32m+[m[32m        raise HTTPException(status_code=404, detail="Conflict not found")[m
+[32m+[m
+[32m+[m[32m    if conflict.status != "open":[m
+[32m+[m[32m        raise HTTPException(status_code=400, detail="Conflict already resolved")[m
+[32m+[m
+[32m+[m[32m    # Reject -> mark rejected, do nothing else[m
+[32m+[m[32m    if action == "reject":[m
+[32m+[m[32m        conflict.status = "rejected"[m
+[32m+[m[32m        session.add(conflict)[m
+[32m+[m[32m        session.commit()[m
+[32m+[m[32m        session.refresh(conflict)[m
+[32m+[m[32m        return {"success": True, "status": "rejected"}[m
+[32m+[m
+[32m+[m[32m    # Accept -> remove manual spool from slot, and assign/create RFID spool[m
+[32m+[m[32m    manual_spool_id = conflict.manual_spool_id[m
+[32m+[m[32m    # Dereference manual spool[m
+[32m+[m[32m    if manual_spool_id:[m
+[32m+[m[32m        manual = session.get(Spool, manual_spool_id)[m
+[32m+[m[32m        if manual:[m
+[32m+[m[32m            manual.ams_id = None[m
+[32m+[m[32m            manual.ams_slot = None[m
+[32m+[m[32m            manual.assigned = False[m
+[32m+[m[32m            manual.is_active = False[m
+[32m+[m[32m            if not getattr(manual, "is_empty", False) and getattr(manual, "status", None) == "Aktiv":[m
+[32m+[m[32m                manual.status = "Lager"[m
+[32m+[m[32m            session.add(manual)[m
+[32m+[m
+[32m+[m[32m    # Try to extract tag_uuid or tag_uid from rfid_payload string[m
+[32m+[m[32m    rfid_payload = conflict.rfid_payload or ""[m
+[32m+[m[32m    tag_uid = None[m
+[32m+[m[32m    tray_uuid = None[m
+[32m+[m[32m    try:[m
+[32m+[m[32m        # payload stored as str(tray) earlier; attempt simple parsing[m
+[32m+[m[32m        if "'tag_uid':" in rfid_payload:[m
+[32m+[m[32m            # crude extraction[m
+[32m+[m[32m            part = rfid_payload.split("'tag_uid':")[-1][m
+[32m+[m[32m            tag_uid = part.split(",")[0].strip().strip("'\" ")[m
+[32m+[m[32m        if "'tray_uuid':" in rfid_payload:[m
+[32m+[m[32m            part = rfid_payload.split("'tray_uuid':")[-1][m
+[32m+[m[32m            tray_uuid = part.split(",")[0].strip().strip("'\" ")[m
+[32m+[m[32m    except Exception:[m
+[32m+[m[32m        pass[m
+[32m+[m
+[32m+[m[32m    # Find existing spool by tag_uid or tray_uuid[m
+[32m+[m[32m    spool = None[m
+[32m+[m[32m    if tag_uid:[m
+[32m+[m[32m        spool = session.exec(select(Spool).where(Spool.tag_uid == tag_uid)).first()[m
+[32m+[m[32m    if not spool and tray_uuid:[m
+[32m+[m[32m        spool = session.exec(select(Spool).where(Spool.tray_uuid == tray_uuid)).first()[m
+[32m+[m
+[32m+[m[32m    # If none found, create minimal Spool (material unknown)[m
+[32m+[m[32m    if not spool:[m
+[32m+[m[32m        from app.models.material import Material[m
+[32m+[m[32m        mat = session.exec(select(Material)).first()[m
+[32m+[m[32m        mat_id = mat.id if mat else None[m
+[32m+[m[32m        spool = Spool([m
+[32m+[m[32m            material_id=mat_id or "",[m
+[32m+[m[32m            printer_id=conflict.printer_id,[m
+[32m+[m[32m            ams_id=conflict.ams_id,[m
+[32m+[m[32m            ams_slot=conflict.slot,[m
+[32m+[m[32m            tag_uid=tag_uid,[m
+[32m+[m[32m            tray_uuid=tray_uuid,[m
+[32m+[m[32m            remain_percent=0.0,[m
+[32m+[m[32m            last_seen=_now_iso(),[m
+[32m+[m[32m            first_seen=_now_iso(),[m
+[32m+[m[32m            assigned=True,[m
+[32m+[m[32m            ams_source="rfid",[m
+[32m+[m[32m            is_active=True,[m
+[32m+[m[32m            status="Aktiv",[m
+[32m+[m[32m        )[m
+[32m+[m[32m        session.add(spool)[m
+[32m+[m[32m    else:[m
+[32m+[m[32m        # Assign existing spool[m
+[32m+[m[32m        spool.printer_id = conflict.printer_id[m
+[32m+[m[32m        spool.ams_id = conflict.ams_id[m
+[32m+[m[32m        spool.ams_slot = conflict.slot[m
+[32m+[m[32m        spool.ams_source = "rfid"[m
+[32m+[m[32m        spool.assigned = True[m
+[32m+[m[32m        spool.is_active = True[m
+[32m+[m[32m        spool.status = "Aktiv"[m
+[32m+[m[32m        session.add(spool)[m
+[32m+[m
+[32m+[m[32m    # Mark conflict accepted[m
+[32m+[m[32m    conflict.status = "accepted"[m
+[32m+[m[32m    session.add(conflict)[m
+[32m+[m[32m    session.commit()[m
+[32m+[m[32m    session.refresh(conflict)[m
+[32m+[m
+[32m+[m[32m    return {"success": True, "status": "accepted", "spool_id": spool.id}[m
+[1mdiff --git a/app/routes/notification_routes.py b/app/routes/notification_routes.py[m
+[1mindex a84e32f..41aa4d9 100644[m
+[1m--- a/app/routes/notification_routes.py[m
+[1m+++ b/app/routes/notification_routes.py[m
+[36m@@ -75,6 +75,14 @@[m [mDEFAULT_NOTIFICATIONS: List[Dict[str, Any]] = [[m
+         "persistent": True,[m
+         "enabled": False,[m
+     },[m
+[32m+[m[32m    {[m
+[32m+[m[32m        "id": "ams_conflict",[m
+[32m+[m[32m        "label": "AMS Konflikt",[m
+[32m+[m[32m        "message": "AMS Konflikt auf Drucker '{printer_name}' Slot {slot}: manuelle Spule vorhanden. Übernehmen?",[m
+[32m+[m[32m        "type": "warn",[m
+[32m+[m[32m        "persistent": True,[m
+[32m+[m[32m        "enabled": True,[m
+[32m+[m[32m    },[m
+     {[m
+         "id": "job_no_spool",[m
+         "label": "Job ohne Spule gestartet",[m
+[1mdiff --git a/app/routes/spool_numbers.py b/app/routes/spool_numbers.py[m
+[1mindex 1111065..b130989 100644[m
+[1m--- a/app/routes/spool_numbers.py[m
+[1m+++ b/app/routes/spool_numbers.py[m
+[36m@@ -130,6 +130,7 @@[m [mdef search_spools([m
+ class AssignRequest(BaseModel):[m
+     printer_id: str[m
+     slot_number: int[m
+[32m+[m[32m    ams_id: str | None = None[m
+ [m
+ [m
+ @router.post("/{spool_number}/assign")[m
+[36m@@ -188,7 +189,7 @@[m [mdef assign_to_slot([m
+             )[m
+         )[m
+ [m
+[31m-    # Prüfe ob Slot frei[m
+[32m+[m[32m    # Prüfe ob Slot frei — falls belegt: dereferenziere alte Spule[m
+     existing = session.exec([m
+         select(Spool).where([m
+             Spool.printer_id == data.printer_id,[m
+[36m@@ -197,10 +198,13 @@[m [mdef assign_to_slot([m
+     ).first()[m
+ [m
+     if existing:[m
+[31m-        raise HTTPException([m
+[31m-            status_code=409,[m
+[31m-            detail=f"Slot {data.slot_number} ist bereits mit Spule #{existing.spool_number} belegt"[m
+[31m-        )[m
+[32m+[m[32m        existing.ams_id = None[m
+[32m+[m[32m        existing.ams_slot = None[m
+[32m+[m[32m        existing.assigned = False[m
+[32m+[m[32m        existing.is_active = False[m
+[32m+[m[32m        if not getattr(existing, "is_empty", False) and getattr(existing, "status", None) == "Aktiv":[m
+[32m+[m[32m            existing.status = "Lager"[m
+[32m+[m[32m        session.add(existing)[m
+ [m
+     # Prüfe ob Drucker existiert[m
+     printer = session.get(Printer, data.printer_id)[m
+[36m@@ -210,9 +214,14 @@[m [mdef assign_to_slot([m
+             detail=f"Drucker {data.printer_id} nicht gefunden"[m
+         )[m
+ [m
+[31m-    # Zuweisen[m
+[32m+[m[32m    # Zuweisen (manuell)[m
+     spool.printer_id = data.printer_id[m
+     spool.ams_slot = data.slot_number[m
+[32m+[m[32m    if data.ams_id:[m
+[32m+[m[32m        spool.ams_id = data.ams_
