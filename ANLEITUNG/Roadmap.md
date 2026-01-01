@@ -67,10 +67,6 @@ Pi Guide
 
 ---
 
-## Zeitplanung
-- bis 22.12 → 4-Schicht, wenig Zeit
-- 22.12–01.01 → Urlaub, Hauptentwicklungszeit
-- ab Januar → 3-Schicht, Wochenenden frei
 
 ---
 
