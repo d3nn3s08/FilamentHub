@@ -1,21 +1,83 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import select, Session
+﻿from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
+from sqlmodel import select, Session, col
 from typing import List
 
 from app.database import get_session
 import app.services.live_state as live_state_module
 from app.models.printer import Printer
 from app.models.spool import Spool, SpoolCreateSchema, SpoolUpdateSchema, SpoolReadSchema
+from app.models.material import Material
 from app.services.spool_number_service import assign_spool_number
 from app.services.ams_normalizer import device_has_real_ams_from_live_state
+from app.services.filament_weights import compute_spool_remaining
 
 router = APIRouter(prefix="/api/spools", tags=["Spools"])
 
 
+def _is_bambu_material(material: Material | None) -> bool:
+    return bool(material and material.is_bambu is True)
+
+
+def _get_material(session: Session, material_id: str | None, cache: dict[str, Material]) -> Material | None:
+    if not material_id:
+        return None
+    if material_id in cache:
+        return cache[material_id]
+    material = session.get(Material, material_id)
+    if material:
+        cache[material_id] = material
+    return material
+
+def _normalize_spool_payload(
+    data: SpoolCreateSchema | SpoolUpdateSchema,
+    session: Session,
+    *,
+    is_update: bool = False,
+    spool: Spool | None = None,
+) -> dict:
+    payload = data.model_dump(exclude_unset=True)
+    # Color wird jetzt persistiert (Teil des Nummern-Systems)
+    # payload.pop("color", None) - ENTFERNT
+    # alias weight -> weight_current
+    if "weight" in payload:
+        payload["weight_current"] = payload.pop("weight")
+    # normalize printer_slot strings like "AMS-2"
+    slot = payload.get("printer_slot")
+    if isinstance(slot, str):
+        digits = "".join(filter(str.isdigit, slot))
+        payload["printer_slot"] = int(digits) if digits else None
+    ams_slot = payload.get("ams_slot")
+    if isinstance(ams_slot, str):
+        digits = "".join(filter(str.isdigit, ams_slot))
+        payload["ams_slot"] = int(digits) if digits else None
+    material_cache: dict[str, Material] = {}
+    material_id = payload.get("material_id") or (spool.material_id if spool else None)
+    material = _get_material(session, material_id, material_cache)
+    is_bambu = _is_bambu_material(material)
+
+    if is_bambu and material:
+        if material.spool_weight_full is not None:
+            payload["weight_full"] = material.spool_weight_full
+        if material.spool_weight_empty is not None:
+            payload["weight_empty"] = material.spool_weight_empty
+
+    if not is_update and not is_bambu:
+        payload.setdefault("weight_full", 750)
+        payload.setdefault("weight_empty", 20)
+        # Falls kein aktuelles Gewicht explizit gesetzt wurde, auf weight_full setzen
+        if payload.get("weight_current") is None:
+            payload["weight_current"] = payload.get("weight_full")
+        # Neue Spulen: is_open auf True setzen (geoeffnet)
+        if "is_open" not in payload:
+            payload["is_open"] = True
+    return payload
+
 @router.get("/", response_model=List[SpoolRead])
 def list_spools(session: Session = Depends(get_session)):
     result = session.exec(select(Spool)).all()
-    return result
+    material_cache: dict[str, Material] = {}
+    return [_serialize_spool(s, session, material_cache) for s in result]
 
 
 @router.get("/{spool_id}", response_model=SpoolRead)
@@ -23,16 +85,31 @@ def get_spool(spool_id: str, session: Session = Depends(get_session)):
     spool = session.get(Spool, spool_id)
     if not spool:
         raise HTTPException(status_code=404, detail="Spule nicht gefunden")
-    return spool
+    material_cache: dict[str, Material] = {}
+    return _serialize_spool(spool, session, material_cache)
 
 
-@router.post("/", response_model=SpoolRead)
-def create_spool(data: SpoolCreate, session: Session = Depends(get_session)):
-    spool = Spool.from_orm(data)
-    session.add(spool)
-    session.commit()
-    session.refresh(spool)
-    return spool
+@router.post("/", response_model=SpoolReadSchema, status_code=status.HTTP_201_CREATED)
+def create_spool(data: SpoolCreateSchema, session: Session = Depends(get_session)):
+    # Prüfe auf Duplikate nur wenn label gesetzt ist
+    if data.label:
+        exists = session.exec(select(Spool).where(Spool.label == data.label, Spool.material_id == data.material_id)).first()
+        if exists:
+            raise HTTPException(status_code=409, detail="Spule mit dieser Bezeichnung existiert bereits")
+    try:
+        payload = _normalize_spool_payload(data, session)
+        spool = Spool(**payload)
+
+        # NEU: Automatisch Spulen-Nummer zuweisen
+        assign_spool_number(spool, session)
+
+        session.add(spool)
+        session.commit()
+        session.refresh(spool)
+        material_cache: dict[str, Material] = {}
+        return _serialize_spool(spool, session, material_cache)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Fehler bei Validierung: {e}")
 
 
 @router.put("/{spool_id}", response_model=SpoolRead)
@@ -40,15 +117,27 @@ def update_spool(spool_id: str, data: SpoolCreate, session: Session = Depends(ge
     spool = session.get(Spool, spool_id)
     if not spool:
         raise HTTPException(status_code=404, detail="Spule nicht gefunden")
-
-    update_data = data.dict(exclude_unset=True)
+    update_data = _normalize_spool_payload(data, session, is_update=True, spool=spool)
+    # Schutz: Nummer darf nur freigegeben werden, wenn Spule leer ist
+    if "spool_number" in update_data and update_data.get("spool_number") is None:
+        next_is_empty = update_data.get("is_empty", spool.is_empty)
+        if not next_is_empty:
+            update_data.pop("spool_number", None)
     for key, value in update_data.items():
         setattr(spool, key, value)
 
-    session.add(spool)
-    session.commit()
-    session.refresh(spool)
-    return spool
+    # AUTOMATISCHE NUMMERN-FREIGABE: Wenn Spule leer wird, Nummer entfernen
+    if spool.is_empty and spool.spool_number is not None:
+        spool.spool_number = None
+
+    try:
+        session.add(spool)
+        session.commit()
+        session.refresh(spool)
+        material_cache: dict[str, Material] = {}
+        return _serialize_spool(spool, session, material_cache)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Fehler bei Validierung: {e}")
 
 
 @router.delete("/{spool_id}")
@@ -121,13 +210,17 @@ def assign_spool_to_slot(
     session.commit()
     session.refresh(spool)
 
-    return _serialize_spool(spool)
+    material_cache: dict[str, Material] = {}
+    return _serialize_spool(spool, session, material_cache)
 
 
 @router.post("/{spool_id}/unassign", response_model=SpoolReadSchema)
 def unassign_spool(spool_id: str, session: Session = Depends(get_session)):
     """
     Entfernt eine Spule aus einem AMS-Slot
+    
+    WICHTIG: weight_current bleibt IMMER erhalten.
+    AMS ist eine Live-Datenquelle, kein Eigentümer der Spule.
 
     POST /api/spools/{spool_id}/unassign
     """
@@ -139,9 +232,11 @@ def unassign_spool(spool_id: str, session: Session = Depends(get_session)):
     if spool.ams_slot is not None:
         spool.last_slot = spool.ams_slot
 
-    # Entferne Zuweisung
+    # Entferne AMS-Zuweisung
     spool.printer_id = None
     spool.ams_slot = None
+    spool.ams_source = None
+    spool.assigned = False
 
     # Status-Logik: Spule zurück ins Lager
     # Wenn Spule nicht leer ist und Status "Aktiv" war, zurück auf "Lager" setzen
@@ -149,47 +244,36 @@ def unassign_spool(spool_id: str, session: Session = Depends(get_session)):
         spool.status = "Lager"
         # is_open bleibt True, da Spule bereits geöffnet wurde
 
+    # weight_current NICHT ändern - bleibt erhalten!
+    # Das garantiert, dass das Lager den letzten bekannten Filamentwert zeigt
+
     session.add(spool)
     session.commit()
     session.refresh(spool)
 
-    return _serialize_spool(spool)
+    material_cache: dict[str, Material] = {}
+    return _serialize_spool(spool, session, material_cache)
 
 
-def _serialize_spool(spool: Spool) -> dict:
+def _serialize_spool(spool: Spool, session: Session, material_cache: dict[str, Material]) -> dict:
     """
-    Erzeuge die API-Repräsentation einer Spule und berechne
+    Erzeuge die API-Repruemstentation einer Spule und berechne
     canonical Felder: remaining_weight_g, total_weight_g, remaining_percent.
     """
     # Basis-Serialization
     base = SpoolReadSchema.model_validate(spool).model_dump()
 
-    # Berechne total und remaining (in Gramm) falls möglich
-    try:
-        wf = float(spool.weight_full) if spool.weight_full is not None else None
-        we = float(spool.weight_empty) if spool.weight_empty is not None else None
-        wc = float(spool.weight_current) if spool.weight_current is not None else None
-    except Exception:
-        wf = we = wc = None
-
-    total = None
-    remaining = None
-    if wf is not None and we is not None:
-        total = wf - we
-        if wc is not None:
-            remaining = wc - we
-
-    remaining_percent = None
-    if remaining is not None and total and total > 0:
-        remaining_percent = round(max(0.0, min(100.0, (remaining / total) * 100.0)), 1)
+    material = _get_material(session, spool.material_id, material_cache)
+    remaining, total, remaining_percent = compute_spool_remaining(spool, material)
 
     # Set canonical fields
-    base["remaining_weight_g"] = remaining
+    base["remaining_weight_g"] = spool.weight_current
     base["total_weight_g"] = total
     base["remaining_percent"] = remaining_percent
 
-    # Für Abwärtskompatibilität auch das alte Feld setzen, aber nur wenn berechnet
+    # For backward compatibility keep old field if computed
     if remaining_percent is not None:
         base["remain_percent"] = remaining_percent
 
     return base
+
