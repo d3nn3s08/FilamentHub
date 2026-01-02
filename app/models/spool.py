@@ -15,8 +15,8 @@ class SpoolBase(SQLModel):
     vendor: Optional[str] = None        # Denormalized from material.brand
     color: Optional[str] = None         # Spulen-spezifische Farbe
 
-    weight_full: float = 1000
-    weight_empty: float = 250
+    weight_full: float = 750
+    weight_empty: float = 20
     weight_current: Optional[float] = None
     status: Optional[str] = None
     location: Optional[str] = None
@@ -56,8 +56,8 @@ class SpoolCreateSchema(BaseModel):
     material_id: str
     vendor_id: str | None = Field(None, alias="manufacturer")
     weight: float | None = Field(None, gt=0)
-    weight_full: float = Field(1000, gt=0)
-    weight_empty: float = Field(250, gt=0)
+    weight_full: float = Field(750, gt=0)
+    weight_empty: float = Field(20, gt=0)
     weight_current: float | None = Field(None, gt=0)
     status: str | None = None
     location: str | None = None
@@ -200,6 +200,9 @@ class SpoolReadSchema(BaseModel):
     tray_color: str | None = None
     tray_type: str | None = None
     remain_percent: float | None = None
+    remaining_weight_g: float | None = None
+    total_weight_g: float | None = None
+    remaining_percent: float | None = None
     last_seen: str | None = None
     first_seen: str | None = None
     used_count: int = 0
