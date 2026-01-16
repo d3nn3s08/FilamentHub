@@ -632,65 +632,31 @@ container.innerHTML = `
 
 
                         return `
-
                             <tr>
-
-                                <td>${numberDisplay}</td>
-
-                                <thead>
-                                    <tr>
-                                        <th>Nummer</th>
-                                        <th>Slot</th>
-                                        <th>Material</th>
-                                        <th>Restgewicht</th>
-                                        <th>Status</th>
-                                        <th>Aktionen</th>
-                                    </tr>
-                                </thead>
-
-                                                <strong>${material.name}</strong>
-
-                                                ${material.brand ? `<br><small style="color: var(--text-dim);">${material.brand}</small>` : ''}
-
-                                            </div>
-
-                                        </div>
-
-                                    ` : '<span style="color: var(--error);">Unbekannt</span>'}
-
-                                </td>
-
-                                <tr>
-                                    <td style="white-space:nowrap;">${numberDisplay}</td>
-                                    <td style="text-align:center;">${s.ams_slot != null ? s.ams_slot : '-'}</td>
-                                    <strong>${remaining != null ? `${remaining.toFixed(2)}g` : 'N/A'}</strong>
-
-                                </td>
-
-                                <td>${statusBadge}</td>
-
+                                <td style="white-space:nowrap;">${numberDisplay}</td>
+                                <td style="text-align:center;">${s.ams_slot != null ? s.ams_slot : '-'}</td>
                                 <td>
-
-                                    <div class="table-actions">
-
-                                        <button class="btn-icon" onclick="openEditModal('${s.id}')" title="Bearbeiten">
-
-                                            ✏️
-
-                                        </button>
-
-                                        <button class="btn-icon btn-delete" onclick="openDeleteModal('${s.id}')" title="Löschen">
-
-                                            🗑️
-
-                                        </button>
-
-                                    </div>
-
+                                    ${material ? `
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            ${trayColor ? `<span class="color-preview" style="background: ${trayColor}; width: 24px; height: 24px;"></span>` : ''}
+                                            <div>
+                                                <strong>${material.name}</strong>
+                                                ${material.brand ? `<br><small style="color: var(--text-dim);">${material.brand}</small>` : ''}
+                                            </div>
+                                        </div>
+                                    ` : '<span style="color: var(--error);">Unbekannt</span>'}
                                 </td>
-
+                                <td>
+                                    <strong>${remaining != null ? `${remaining.toFixed(2)}g` : 'N/A'}</strong>
+                                </td>
+                                <td>${statusBadge}</td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button class="btn-icon" onclick="openEditModal('${s.id}')" title="Bearbeiten">✏️</button>
+                                        <button class="btn-icon btn-delete" onclick="openDeleteModal('${s.id}')" title="Löschen">🗑️</button>
+                                    </div>
+                                </td>
                             </tr>
-
                         `;
 
                     }).join('')}
