@@ -3,6 +3,7 @@ import asyncio
 import os
 
 import time
+import threading
 
 from collections import deque
 
@@ -11,22 +12,22 @@ import json
 import ssl
 import logging
 import yaml
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, Sequence, Set, List, cast
 import paho.mqtt.client as mqtt
-from sqlmodel import select
+from sqlmodel import select, Session
 from app.database import get_session
 from services.printer_service import PrinterService
 
 import sqlalchemy as sa
 
 from app.services import mqtt_runtime
-from logging.handlers import RotatingFileHandler
+ 
 from pydantic import BaseModel
 from fastapi import Request
 
 from app.services.mqtt_payload_processor import process_mqtt_payload
-from app.services.ams_parser import parse_ams
+from app.services.ams_parser import parse_ams, _to_int
 from app.services.job_parser import parse_job
 from app.services.universal_mapper import UniversalMapper
 from app.services.printer_auto_detector import PrinterAutoDetector
@@ -42,11 +43,165 @@ from services.mqtt_protocol_detector import MQTTProtocolDetector
 
 router = APIRouter(prefix="/api/mqtt", tags=["MQTT"])
 
+# === AUTO-CONNECT STARTUP HELPER (Multi-Printer Support) ===
+def startup_connect_printer(printer) -> bool:
+    """
+    Synchrone Funktion zum Verbinden eines Druckers beim Server-Start.
+    Verwendet für auto_connect Drucker. Multi-Printer-fähig!
+    Returns: True bei Erfolg, False bei Fehler
+    """
+    global printer_service_ref
+    logger = logging.getLogger("mqtt")
+    
+    # Ensure printer_service_ref is available
+    if printer_service_ref is None:
+        from services.printer_service import get_printer_service
+        printer_service_ref = get_printer_service()
+        if printer_service_ref:
+            logger.info("[MQTT] printer_service_ref initialized from get_printer_service()")
+    
+    try:
+        from app.services.printer_auto_detector import PrinterAutoDetector
+        
+        # Verbindungs-Parameter
+        connection_id = f"{printer.ip_address}:8883_{printer.id}"
+        
+        # Protokoll-Erkennung basierend auf Modell
+        mqtt_protocol = mqtt.MQTTv311  # Default
+        if printer.cloud_serial:
+            model = PrinterAutoDetector.detect_model_from_serial(printer.cloud_serial)
+            if model and model.upper() in PrinterAutoDetector.MODEL_MQTT_PROTOCOL:
+                protocol_str = PrinterAutoDetector.MODEL_MQTT_PROTOCOL[model.upper()]
+                if protocol_str == "5":
+                    mqtt_protocol = mqtt.MQTTv5
+                    logger.info(f"[MQTT] Drucker {printer.name} → MQTT v5")
+                elif protocol_str == "311":
+                    mqtt_protocol = mqtt.MQTTv311
+                    logger.info(f"[MQTT] Drucker {printer.name} → MQTT v3.1.1")
+        
+        # Neuen Client erstellen
+        client = mqtt.Client(
+            client_id=f"filamenthub_{printer.name}_{str(printer.id)[:6]}",
+            protocol=mqtt_protocol
+        )
+        
+        # Callbacks setzen - MQTTv5 hat andere Signatur!
+        def on_connect_startup(client, userdata, flags, rc_or_reason, properties=None):
+            # rc_or_reason: bei v3.1.1 ist es int, bei v5 ist es ReasonCode object
+            rc_value = rc_or_reason if isinstance(rc_or_reason, int) else rc_or_reason.value
+            if rc_value == 0:
+                logger.info(f"✓ Auto-connect: {printer.name} verbunden (protocol={'v5' if mqtt_protocol == mqtt.MQTTv5 else 'v3.1.1'})")
+                # Subscribe zum device topic
+                topic = f"device/{printer.cloud_serial}/report"
+                result = client.subscribe(topic, qos=1)
+                logger.info(f"[MQTT] Subscribe to {topic} → result={result}")
+                
+                # ✅ CRITICAL: Send pushall to get all data (AMS, job status, temps, etc.)
+                try:
+                    request_topic = f"device/{printer.cloud_serial}/request"
+                    pushall_cmd = json.dumps({"pushing": {"sequence_id": "1", "command": "pushall"}})
+                    client.publish(request_topic, pushall_cmd)
+                    logger.info(f"[MQTT] Sent pushall to {request_topic} for {printer.name}")
+                except Exception as e:
+                    logger.exception(f"[MQTT] Failed to send pushall for {printer.name}: {e}")
+            else:
+                logger.error(f"✗ Auto-connect: {printer.name} fehlgeschlagen (rc={rc_value})")
+        
+        client.on_connect = on_connect_startup
+        client.on_message = lambda c, u, msg: on_message(c, u, msg)  # Forward to global handler
+        client.on_disconnect = lambda c, u, rc, props=None: on_disconnect(c, u, rc, props)
+        
+        # User data setzen
+        client.user_data_set({
+            "connection_id": connection_id,
+            "client_id": client._client_id.decode() if isinstance(client._client_id, bytes) else client._client_id,
+            "cloud_serial": printer.cloud_serial,
+        })
+        
+        # TLS konfigurieren
+        client.tls_set(cert_reqs=ssl.CERT_NONE)
+        client.tls_insecure_set(True)
+        
+        # Credentials
+        client.username_pw_set("bblp", printer.api_key)
+        
+        # Register printer in service (needed for set_connected to work)
+        # Note: printer_service_ref is initialized during app startup
+        # At this point it should be available, so we can use it directly
+        print(f"[DEBUG] printer_service_ref = {printer_service_ref}, cloud_serial = {printer.cloud_serial}")
+        if printer_service_ref and printer.cloud_serial:
+            try:
+                printer_service_ref.register_printer(
+                    key=printer.cloud_serial,
+                    name=printer.name,
+                    model=printer.model or "X1C",
+                    printer_id=str(printer.id),
+                    source="startup_auto_connect"
+                )
+                print(f"[DEBUG] ✓ Registered {printer.name} in service")
+                logger.info(f"[MQTT] Drucker {printer.name} im Service registriert (cloud_serial={printer.cloud_serial})")
+            except Exception as e:
+                print(f"[DEBUG] ✗ Failed to register: {e}")
+                logger.warning(f"Could not register printer {printer.name} in service: {e}")
+        else:
+            print(f"[DEBUG] ✗ Cannot register: printer_service_ref={printer_service_ref is not None}, has cloud_serial={printer.cloud_serial is not None}")
+        
+        # Verbinden
+        logger.info(f"[MQTT] Connecting {printer.name} ({printer.ip_address}:8883)...")
+        client.connect(printer.ip_address, 8883, 60)
+        
+        # Loop starten
+        client.loop_start()
+        
+        # Client speichern - WICHTIG: Dadurch Multi-Printer-fähig!
+        mqtt_clients[connection_id] = client
+        
+        # Update mqtt_runtime state for Debug UI
+        try:
+            from app.services import mqtt_runtime
+            now = datetime.now(timezone.utc)
+            ts = now.isoformat()
+            mqtt_runtime._runtime_state.update({
+                "connected": True,
+                "connected_since": ts,
+                "last_seen": ts,
+                "broker": printer.ip_address,
+                "port": 8883,
+                "client_id": client._client_id.decode() if isinstance(client._client_id, bytes) else str(client._client_id),
+                "cloud_serial": printer.cloud_serial,
+                "protocol": "311" if mqtt_protocol == mqtt.MQTTv311 else "5",
+                "qos": 1,
+            })
+            mqtt_runtime._client_instance = client
+            mqtt_runtime._transport_connected_since = now
+            logger.info(f"[MQTT] Runtime state updated for {printer.name}")
+        except Exception as e:
+            logger.warning(f"[MQTT] Could not update runtime state: {e}")
+        
+        logger.info(f"✓ {printer.name} MQTT-Client gestartet (ID: {connection_id})")
+        return True
+        
+    except Exception as e:
+        logger.exception(f"Auto-connect fehlgeschlagen für {printer.name}: {e}")
+        return False
+
 # ...existing code...
 
 mqtt_ws_clients = set()
 
+# ============================================================
+# SHUTDOWN SIGNAL - für graceful shutdown aller Background-Tasks
+# ============================================================
+_shutdown_event: Optional[asyncio.Event] = None
+_shutdown_lock = threading.Lock()  # Thread-safe Flag-Zugriff
+_is_shutting_down: bool = False  # Flag um on_message() zu stoppen
 
+def set_shutdown_event(event: asyncio.Event):
+    """Called by main.py lifespan to signal shutdown."""
+    global _shutdown_event, _is_shutting_down
+    with _shutdown_lock:
+        _shutdown_event = event
+        _is_shutting_down = True  # SOFORT: Stoppe MQTT Verarbeitung!
 
 # ...alle bisherigen Routen und Funktionen...
 
@@ -74,6 +229,7 @@ async def websocket_logs(websocket: WebSocket, module: str):
         try:
             tail = int(tail_param)
         except Exception:
+            logging.getLogger("mqtt").exception("Invalid tail parameter for log websocket: %s", tail_param)
             tail = 0
 
         last_size = 0
@@ -86,11 +242,12 @@ async def websocket_logs(websocket: WebSocket, module: str):
                     for line in dq:
                         await websocket.send_text(line.strip())
                 except Exception:
-                    pass
+                    logging.getLogger("mqtt").exception("Failed to send initial log tail for module=%s", module)
             # setze Startposition auf Dateiende, damit keine Historie erneut gesendet wird
             try:
                 last_size = os.path.getsize(log_file)
             except Exception:
+                logging.getLogger("mqtt").exception("Failed to get log file size for module=%s", module)
                 last_size = 0
 
         while True:
@@ -113,11 +270,17 @@ async def websocket_logs(websocket: WebSocket, module: str):
 
                 except FileNotFoundError:
 
-                    pass
+                    logging.getLogger("mqtt").exception("Log file not found for module=%s during websocket stream", module)
 
+            # ✅ Shutdown-Signal prüfen (beende Schleife bei Shutdown)
+            if _shutdown_event and _shutdown_event.is_set():
+                logging.getLogger("mqtt").info("Websocket logs shutdown signal received for module=%s", module)
+                break
+            
             await asyncio.sleep(1)
 
-    except WebSocketDisconnect:
+    except WebSocketDisconnect as exc:
+        logging.getLogger("mqtt").info("Log websocket disconnected for module=%s: %s", module, exc)
         return
 from app.models.job import Job, JobSpoolUsage
 
@@ -138,86 +301,28 @@ from services.printer_service import PrinterService
 # === MQTT LOGGER SETUP ===
 
 def get_mqtt_logger():
-
-    """Erstellt/holt MQTT Logger mit Rotation"""
-
-    logger = logging.getLogger("MQTT_Messages")
-
-    
-
-    # Nur einmal initialisieren
-
-    if logger.handlers:
-
-        return logger
-
-    
-
-    # Lese Config
-
-    try:
-
-        with open("config.yaml", "r", encoding="utf-8") as f:
-
-            config = yaml.safe_load(f)
-
-        max_size_mb = config.get("logging", {}).get("max_size_mb", 10)
-
-        backup_count = config.get("logging", {}).get("backup_count", 3)
-
-    except Exception as exc:
-
-        logging.getLogger("app.routes.mqtt").warning("Failed to read config.yaml for MQTT logger: %s", exc)
-
-        max_size_mb = 10
-
-        backup_count = 3
-
-    
-
-    # Erstelle Handler
-
-    os.makedirs("logs/mqtt", exist_ok=True)
-
-    handler = RotatingFileHandler(
-
-        "logs/mqtt/mqtt_messages.log",
-
-        maxBytes=max_size_mb * 1024 * 1024,
-
-        backupCount=backup_count,
-
-        encoding="utf-8"
-
-    )
-
-    
-
-    # Setze Flush sofort (kein Buffering)
-
-    handler.flush = lambda: handler.stream.flush() if handler.stream else None
-
-    
-
-    formatter = logging.Formatter("%(asctime)s | %(message)s")
-
-    handler.setFormatter(formatter)
-
-    
-
-    logger.setLevel(logging.INFO)
-
-    logger.addHandler(handler)
-
-    logger.propagate = False  # Verhindere doppelte Logs
-
-    
-
-    return logger
+    """Gibt den zentralen MQTT-Logger zurück (Handler wird zentral konfiguriert)."""
+    return logging.getLogger("mqtt")
 
 
 
 mqtt_message_logger = get_mqtt_logger()
+
+
+def _truncate_payload(payload: str, limit: int) -> str:
+    if payload is None:
+        return ""
+    if len(payload) <= limit:
+        return payload
+    return payload[:limit] + "...[truncated]"
+
+
+def _payload_preview(payload: str, limit: int = 300) -> str:
+    return _truncate_payload(payload, limit)
+
+
+def _preview_obj(value, limit: int = 300) -> str:
+    return _truncate_payload(str(value), limit)
 
 
 
@@ -309,35 +414,35 @@ def on_connect(client, userdata, flags, rc, properties=None):
         # Default-Topic: bei Bambu ausschließlich cloud_serial verwenden.
         # Kein Fallback auf client_id, um falsche Topics zu vermeiden.
 
-        if not subscribed_topics:
+        default_topic = None
+        cserial = None  # Initialisiere außerhalb try-Block
 
+        try:
+
+            cserial = userdata.get('cloud_serial') if userdata else None
+
+            if cserial:
+
+                default_topic = f"device/{cserial}/report"
+
+        except Exception:
+
+            logging.getLogger("mqtt").exception("Failed to resolve default MQTT topic from userdata")
             default_topic = None
 
+        if not subscribed_topics and default_topic:
+
+            print(f"Abonniere Default-Topic: {default_topic}")
+
+            client.subscribe(default_topic)
+
+            subscribed_topics.add(default_topic)
             try:
-
-                cserial = userdata.get('cloud_serial') if userdata else None
-
-                if cserial:
-
-                    default_topic = f"device/{cserial}/report"
-
+                mqtt_runtime.register_subscription(default_topic)
             except Exception:
+                logging.getLogger("mqtt").exception("Failed to register default subscription %s", default_topic)
 
-                default_topic = None
-
-            if default_topic:
-
-                print(f"Abonniere Default-Topic: {default_topic}")
-
-                client.subscribe(default_topic)
-
-                subscribed_topics.add(default_topic)
-                try:
-                    mqtt_runtime.register_subscription(default_topic)
-                except Exception:
-                    pass
-
-        else:
+        elif subscribed_topics:
 
             for topic in subscribed_topics:
 
@@ -347,7 +452,20 @@ def on_connect(client, userdata, flags, rc, properties=None):
                 try:
                     mqtt_runtime.register_subscription(topic)
                 except Exception:
-                    pass
+                    logging.getLogger("mqtt").exception("Failed to register subscription %s", topic)
+
+        # ✅ CRITICAL: Send pushall on EVERY connect/reconnect to refresh all data
+        # This is essential for job tracking - if disconnected during a print,
+        # we need all current state (progress, temps, layers, etc.) to resume tracking
+        if default_topic and cserial:
+            try:
+                request_topic = f"device/{cserial}/request"
+                pushall_cmd = json.dumps({"pushing": {"sequence_id": "1", "command": "pushall"}})
+                client.publish(request_topic, pushall_cmd)
+                print(f"[MQTT] Sent pushall command to {request_topic} (connect/reconnect)")
+                mqtt_message_logger.info(f"[MQTT] pushall sent for reconnect: serial={cserial}")
+            except Exception:
+                logging.getLogger("mqtt").exception("Failed to send pushall command for serial=%s", cserial)
 
     else:
 
@@ -361,7 +479,7 @@ def on_connect(client, userdata, flags, rc, properties=None):
         try:
             mqtt_runtime.clear_subscriptions()
         except Exception:
-            pass
+            logging.getLogger("mqtt").exception("Failed to clear MQTT runtime subscriptions after connect failure")
 
         try:
 
@@ -371,7 +489,7 @@ def on_connect(client, userdata, flags, rc, properties=None):
 
         except Exception:
 
-            pass
+            logging.getLogger("mqtt").exception("Failed to disconnect MQTT client after connect failure")
 
         try:
 
@@ -383,7 +501,7 @@ def on_connect(client, userdata, flags, rc, properties=None):
 
         except Exception:
 
-            pass
+            logging.getLogger("mqtt").exception("Failed to remove MQTT client after connect failure")
 
 
 
@@ -392,6 +510,33 @@ def on_connect(client, userdata, flags, rc, properties=None):
 def on_message(client, userdata, msg):
 
     """Callback when message received"""
+    
+    # ⚠️ KRITISCH: Während Shutdown KEINE Nachrichten verarbeiten
+    global _is_shutting_down
+    with _shutdown_lock:
+        if _is_shutting_down:
+            return  # Abbrechen ohne zu verarbeiten
+
+    # Update mqtt_runtime statistics for Debug UI
+    try:
+        from app.services import mqtt_runtime
+        ts = datetime.now(timezone.utc).isoformat()
+        
+        # Increment message count
+        current_count = mqtt_runtime._runtime_state.get("message_count", 0)
+        mqtt_runtime._runtime_state["message_count"] = current_count + 1
+        mqtt_runtime._runtime_state["last_message_time"] = ts
+        mqtt_runtime._runtime_state["last_seen"] = ts
+        mqtt_runtime._runtime_state["connected"] = True
+        
+        # Track subscriptions (unique topics)
+        topic = msg.topic
+        if "subscribed_topics" not in mqtt_runtime._runtime_state:
+            mqtt_runtime._runtime_state["subscribed_topics"] = set()
+        mqtt_runtime._runtime_state["subscribed_topics"].add(topic)
+        mqtt_runtime._runtime_state["subscriptions_count"] = len(mqtt_runtime._runtime_state["subscribed_topics"])
+    except Exception:
+        pass  # Don't let stats tracking break message processing
 
     try:
         # Ensure variables are always defined for static analysis
@@ -412,6 +557,7 @@ def on_message(client, userdata, msg):
             if proc.get("serial"):
                 cloud_serial_from_topic = proc.get("serial")
         except Exception:
+            logging.getLogger("mqtt").exception("Failed to process MQTT payload for topic=%s", msg.topic)
             parsed_json = None
             ams_data = []
             job_data = {}
@@ -424,7 +570,7 @@ def on_message(client, userdata, msg):
             if len(parts) >= 2 and parts[0] == "device":
                 cloud_serial_from_topic = parts[1]
         except Exception:
-            pass
+            logging.getLogger("mqtt").exception("Failed to parse MQTT topic for serial: %s", msg.topic)
 
         try:
 
@@ -442,13 +588,11 @@ def on_message(client, userdata, msg):
                         set_live_state(cloud_serial_from_topic, parsed_json)
                     else:
                         print(f"[MQTT] WARNING: No cloud_serial_from_topic for {msg.topic}")
-                except Exception as e:
-                    print(f"[MQTT] ERROR in set_live_state: {e}")
-                    import traceback
-                    traceback.print_exc()
+                except Exception:
+                    logging.getLogger("mqtt").exception("set_live_state failed for topic=%s", msg.topic)
 
         except Exception:
-
+            logging.getLogger("mqtt").exception("Failed to parse MQTT JSON payload for topic=%s", msg.topic)
             parsed_json = None
 
 
@@ -456,12 +600,17 @@ def on_message(client, userdata, msg):
                 # Schreibe die Nachricht in MQTT-Log (RotatingFileHandler ?bernimmt Rotation)
 
         try:
-
-            mqtt_message_logger.info(f"Topic={msg.topic} | Payload={payload}")
+            payload_len = len(payload) if payload is not None else 0
+            preview = _payload_preview(payload, limit=300)
+            mqtt_message_logger.info(
+                "Topic=%s | PayloadLen=%s | Preview=%s",
+                msg.topic,
+                payload_len,
+                preview,
+            )
 
         except Exception as logerr:
-
-            print(f"? Fehler beim Schreiben in MQTT-Logdatei: {logerr}")
+            logging.getLogger("mqtt").exception("Failed to write MQTT message log for topic=%s", msg.topic)
 
 
 
@@ -470,9 +619,16 @@ def on_message(client, userdata, msg):
         if event_loop:
             for ws in list(mqtt_ws_clients):
                 try:
-                    _safe_schedule(ws.send_text(f"{datetime.now().isoformat()} | Topic={msg.topic} | Payload={payload}"), event_loop)
+                    payload_len = len(payload) if payload is not None else 0
+                    preview = _truncate_payload(payload, limit=1000)
+                    _safe_schedule(
+                        ws.send_text(
+                            f"{datetime.now().isoformat()} | Topic={msg.topic} | PayloadLen={payload_len} | Payload={preview}"
+                        ),
+                        event_loop,
+                    )
                 except Exception:
-                    pass
+                    logging.getLogger("mqtt").exception("Failed to forward MQTT message to websocket client")
 
 
 
@@ -511,22 +667,65 @@ def on_message(client, userdata, msg):
                         printer_name_for_service = p.name
 
                         printer_model_for_mapper = p.model or "X1C"
+                        if printer_service_ref and cloud_serial_from_topic not in printer_service_ref.printers:
+                            try:
+                                printer_service_ref.register_printer(
+                                    key=cloud_serial_from_topic,
+                                    name=p.name,
+                                    model=p.model or "X1C",
+                                    printer_id=p.id,
+                                    source="mqtt_message",
+                                )
+                            except Exception:
+                                logging.getLogger("mqtt").exception(
+                                    "Failed to register printer in service for serial=%s",
+                                    cloud_serial_from_topic,
+                                )
 
             except Exception:
 
+                logging.getLogger("mqtt").exception("Failed to load printer by cloud_serial=%s", cloud_serial_from_topic)
                 printer_id_for_ams = None
+
+        if cloud_serial_from_topic and printer_service_ref:
+            try:
+                ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                # Mark printer as connected when receiving MQTT messages
+                print(f"[DEBUG] Calling set_connected for {cloud_serial_from_topic}")
+                printer_service_ref.set_connected(cloud_serial_from_topic, True, ts)
+                printer_service_ref.mark_seen(cloud_serial_from_topic, ts)
+                print(f"[DEBUG] ✓ set_connected successful for {cloud_serial_from_topic}")
+            except Exception as e:
+                print(f"[DEBUG] ✗ set_connected failed: {e}")
+                logging.getLogger("mqtt").exception(
+                    "Failed to mark printer as seen/connected for serial=%s",
+                    cloud_serial_from_topic,
+                )
+        else:
+            if not cloud_serial_from_topic:
+                print(f"[DEBUG] ✗ No cloud_serial_from_topic in message")
+            if not printer_service_ref:
+                print(f"[DEBUG] ✗ printer_service_ref is None in on_message")
 
         if parsed_json:
 
             try:
 
-                # Modell-Autoerkennung
+                # Modell-Determination (PRIORITÄT):
+                # 1. Aus DB wenn Drucker bereits bekannt (Single Source of Truth!)
+                # 2. Autoerkennung nur als Fallback
+                if printer_obj and printer_obj.model:
+                    final_model = printer_obj.model.upper()
+                    print(f"[MQTT] Using model from DB: {final_model}")
+                else:
+                    # Fallback: Autoerkennung
+                    detected_model = PrinterAutoDetector.detect_model_from_payload(parsed_json) or PrinterAutoDetector.detect_model_from_serial(getattr(printer_obj, "cloud_serial", None))
+                    final_model = detected_model or printer_model_for_mapper or "UNKNOWN"
+                    print(f"[MQTT] Auto-detected model: {final_model}")
 
-                detected_model = PrinterAutoDetector.detect_model_from_payload(parsed_json) or PrinterAutoDetector.detect_model_from_serial(getattr(printer_obj, "cloud_serial", None))
+                # Update nur wenn sich Modell changed und Drucker noch registriert ist
+                if printer_obj and final_model != (printer_obj.model or "").upper():
 
-                final_model = detected_model or printer_model_for_mapper or "UNKNOWN"
-
-                if printer_obj and final_model != printer_obj.model:
 
                     printer_obj.model = final_model
 
@@ -539,8 +738,10 @@ def on_message(client, userdata, msg):
                             session.commit()
 
                     except Exception:
-
-                        pass
+                        logging.getLogger("mqtt").exception(
+                            "Failed to persist printer model update for serial=%s",
+                            cloud_serial_from_topic,
+                        )
 
                 printer_model_for_mapper = final_model
 
@@ -570,7 +771,7 @@ def on_message(client, userdata, msg):
                     mapped_dict["capabilities"] = caps
 
             except Exception:
-
+                logging.getLogger("mqtt").exception("Failed to map MQTT payload for serial=%s", cloud_serial_from_topic)
                 mapped_dict = None
 
         # AMS Sync vor Job-Tracking, damit Tag/Slot-Daten in DB stehen
@@ -587,9 +788,9 @@ def on_message(client, userdata, msg):
 
                 # Debug: log raw ams_data for test visibility
                 try:
-                    mqtt_message_logger.info(f"[AMS SYNC] payload={ams_data}")
+                    mqtt_message_logger.info(f"[AMS SYNC] payload_preview={_preview_obj(ams_data, limit=300)}")
                 except Exception:
-                    pass
+                    logging.getLogger("mqtt").exception("Failed to log AMS payload for printer_id=%s", printer_id_for_ams)
 
                 sync_ams_slots(
                     [dict(unit) for unit in ams_data] if isinstance(ams_data, list) else [],
@@ -601,9 +802,7 @@ def on_message(client, userdata, msg):
 
             except Exception as sync_err:
 
-                mqtt_message_logger.error(f"AMS Sync failed: {sync_err}")
-
-                print(f"AMS Sync failed: {sync_err}")
+                logging.getLogger("mqtt").exception("AMS sync failed for printer_id=%s", printer_id_for_ams)
 
             # Fallback for tests/environments where sync_ams_slots didn't create records:
             # If we still have no Material rows, create a minimal Material + Spool
@@ -625,7 +824,6 @@ def on_message(client, userdata, msg):
                             mat = _Material(
                                 name=tray_type or "Unknown",
                                 brand="Bambu Lab",
-                                color=f"#{tray_color[:6]}" if tray_color else None,
                                 density=1.24,
                                 diameter=1.75,
                             )
@@ -635,8 +833,9 @@ def on_message(client, userdata, msg):
                             # create spool
                             ams_slot = None
                             try:
-                                ams_slot = int(t.get("tray_id")) if t.get("tray_id") is not None else None
+                                ams_slot = _to_int(t.get("tray_id"))
                             except Exception:
+                                logging.getLogger("mqtt").exception("Failed to parse AMS tray_id into slot")
                                 ams_slot = None
                             now = datetime.now().isoformat()
                             sp = _Spool(
@@ -667,7 +866,7 @@ def on_message(client, userdata, msg):
                 if created:
                     mqtt_message_logger.info("[AMS SYNC] fallback created material+spool")
             except Exception:
-                pass
+                logging.getLogger("mqtt").exception("Failed to run AMS fallback material/spool creation")
 
 
 
@@ -686,7 +885,7 @@ def on_message(client, userdata, msg):
                 if result:
                     mqtt_message_logger.info(f"[JOB TRACKING] {result}")
             except Exception as job_err:
-                print(f"Job tracking error: {job_err}")
+                logging.getLogger("mqtt").exception("Job tracking failed for serial=%s", cloud_serial_from_topic)
         # Add to buffer
 
         message_buffer.append(message)
@@ -708,7 +907,7 @@ def on_message(client, userdata, msg):
 
     except Exception as e:
 
-        print(f"Error processing MQTT message: {e}")
+        logging.getLogger("mqtt").exception("Error processing MQTT message for topic=%s", getattr(msg, "topic", None))
 
 
 
@@ -760,7 +959,7 @@ async def broadcast_message(message: MQTTMessage, ams_data=None, job_data=None, 
 
         except Exception as e:
 
-            print(f"❌ WebSocket send error: {e}")
+            logging.getLogger("mqtt").exception("Failed to send MQTT update to websocket client")
 
             disconnected.add(websocket)
 
@@ -781,12 +980,43 @@ def _safe_schedule(coro, loop: Optional[asyncio.AbstractEventLoop]):
             return None
         return asyncio.run_coroutine_threadsafe(coro, loop)
     except Exception:
+        logging.getLogger("mqtt").exception("Failed to schedule MQTT websocket coroutine")
         return None
 
 
 
 # === ENDPOINTS ===
 
+
+@router.post("/pushall/{printer_id}")
+async def send_pushall(printer_id: str, session: Session = Depends(get_session)):
+    """Send pushall command to a printer to request full status update.
+    
+    This is useful to force a printer to send all AMS data, job status, etc.
+    """
+    printer = session.get(Printer, printer_id)
+    if not printer:
+        raise HTTPException(status_code=404, detail="Printer not found")
+    
+    if not printer.cloud_serial:
+        raise HTTPException(status_code=400, detail="Printer has no cloud_serial")
+    
+    # Find the client for this printer
+    connection_id = f"{printer.ip_address}:8883_{printer.id}"
+    client = mqtt_clients.get(connection_id)
+    
+    if not client or not client.is_connected():
+        raise HTTPException(status_code=400, detail="Printer not connected via MQTT")
+    
+    try:
+        request_topic = f"device/{printer.cloud_serial}/request"
+        pushall_cmd = json.dumps({"pushing": {"sequence_id": "1", "command": "pushall"}})
+        client.publish(request_topic, pushall_cmd)
+        logging.getLogger("mqtt").info(f"[MQTT] Manual pushall sent to {printer.name} ({request_topic})")
+        return {"success": True, "message": f"pushall sent to {printer.name}"}
+    except Exception as e:
+        logging.getLogger("mqtt").exception(f"Failed to send pushall to {printer.name}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/connect")
@@ -840,7 +1070,7 @@ async def connect_mqtt(connection: MQTTConnection, request: Request):
                         mqtt_protocol = mqtt.MQTTv5
                     print(f"[MQTT] Auto-Detection → Protokoll {detected_protocol}")
             except Exception as e:
-                print(f"[MQTT] Auto-Detection fehlgeschlagen: {e}")
+                logging.getLogger("mqtt").exception("MQTT protocol auto-detection failed for broker=%s", connection.broker)
                 detected_protocol = None
 
 
@@ -886,6 +1116,12 @@ async def connect_mqtt(connection: MQTTConnection, request: Request):
         client.on_message = on_message
 
         client.on_disconnect = on_disconnect
+
+        
+
+        # Auto-Reconnect mit exponential backoff (1-32s)
+
+        client.reconnect_delay_set(min_delay=1, max_delay=32)
 
 
 
@@ -955,6 +1191,7 @@ async def connect_mqtt(connection: MQTTConnection, request: Request):
 
     except Exception as e:
 
+        logging.getLogger("mqtt").exception("Failed to establish MQTT connection for broker=%s", connection.broker)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -965,9 +1202,9 @@ async def disconnect_mqtt(broker: str, port: int = 1883):
 
     """Disconnect from MQTT broker"""
 
-    try:
+    connection_id = f"{broker}:{port}"
 
-        connection_id = f"{broker}:{port}"
+    try:
 
         
 
@@ -998,7 +1235,7 @@ async def disconnect_mqtt(broker: str, port: int = 1883):
             try:
                 mqtt_runtime.clear_subscriptions()
             except Exception:
-                pass
+                logging.getLogger("mqtt").exception("Failed to clear runtime subscriptions on disconnect")
 
         
 
@@ -1018,6 +1255,7 @@ async def disconnect_mqtt(broker: str, port: int = 1883):
 
     except Exception as e:
 
+        logging.getLogger("mqtt").exception("Failed to disconnect MQTT client %s", connection_id)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1056,7 +1294,7 @@ async def subscribe_topic(subscription: MQTTSubscription):
         try:
             mqtt_runtime.register_subscription(topic)
         except Exception:
-            pass
+            logging.getLogger("mqtt").exception("Failed to register subscription %s in runtime", topic)
 
         
 
@@ -1078,6 +1316,7 @@ async def subscribe_topic(subscription: MQTTSubscription):
 
     except Exception as e:
 
+        logging.getLogger("mqtt").exception("Failed to subscribe to topic %s", subscription.topic)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1112,7 +1351,7 @@ async def unsubscribe_topic(subscription: MQTTSubscription):
         try:
             mqtt_runtime.unregister_subscription(topic)
         except Exception:
-            pass
+            logging.getLogger("mqtt").exception("Failed to unregister subscription %s in runtime", topic)
 
         
 
@@ -1134,6 +1373,7 @@ async def unsubscribe_topic(subscription: MQTTSubscription):
 
     except Exception as e:
 
+        logging.getLogger("mqtt").exception("Failed to unsubscribe from topic %s", subscription.topic)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1241,11 +1481,12 @@ async def websocket_endpoint(websocket: WebSocket):
             last_ws_activity_ts = time.time()
             if data == "ping":
                 await websocket.send_text("pong")
-    except WebSocketDisconnect:
+    except WebSocketDisconnect as exc:
+        logging.getLogger("mqtt").info("MQTT websocket client disconnected: %s", exc)
         active_connections.discard(websocket)
         mqtt_ws_clients.discard(websocket)
     except Exception as e:
-        print(f"WS WebSocket error: {e}")
+        logging.getLogger("mqtt").exception("MQTT websocket stream error")
         active_connections.discard(websocket)
         mqtt_ws_clients.discard(websocket)
     finally:
@@ -1300,6 +1541,7 @@ async def publish_message(topic: str, payload: str, qos: int = 0):
 
     except Exception as e:
 
+        logging.getLogger("mqtt").exception("Failed to publish MQTT message to topic %s", topic)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1312,9 +1554,11 @@ async def suggest_topics(session=Depends(get_session)):
 
     bambu_serials = [
         p.cloud_serial
-        for p in session.query(Printer).filter(
-            Printer.printer_type == "bambu",
-            Printer.cloud_serial != None
+        for p in session.exec(
+            select(Printer).where(
+                Printer.printer_type == "bambu",
+                Printer.cloud_serial != None,
+            )
         ).all()
     ]
     bambu_topics = []
@@ -1409,8 +1653,10 @@ async def get_mqtt_logs():
 
     except FileNotFoundError:
 
+        logging.getLogger("mqtt").exception("MQTT log file not found")
         return "Noch keine MQTT-Nachrichten empfangen."
 
     except Exception as e:
 
+        logging.getLogger("mqtt").exception("Failed to read MQTT log file")
         return f"Fehler beim Lesen der Logdatei: {e}"
