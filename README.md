@@ -214,7 +214,6 @@ Heute befindet sich FilamentHub in einer **öffentlichen Beta-Phase** mit Fokus 
 
 # 📅 Status & Roadmap
 
-- Ziel für stabile Version 2.0: **Mai 2026**
 - Aktueller Entwicklungsstand: **Public Beta – stabil nutzbar, aktiv in Entwicklung**
 - Roadmap: [ANLEITUNG/Roadmap.md](ANLEITUNG/Roadmap.md)
 - Handbuch: [ANLEITUNG/Handbuch.md](ANLEITUNG/Handbuch.md)
