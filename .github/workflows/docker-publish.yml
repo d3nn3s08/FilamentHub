@@ -74,11 +74,7 @@ jobs:
       if: ${{ steps.channel.outputs.channel == 'stable' }}
       id: oldversion
       run: |
-        old_ver=$(git show origin/main:config.yaml | python - << 'EOF'
-        import sys, yaml
-        print(yaml.safe_load(sys.stdin)["app"]["version"])
-        EOF
-        )
+        old_ver=$(git show origin/main:config.yaml | python -c "import sys, yaml; data=yaml.safe_load(sys.stdin.read()) or {}; app=data.get('app') or {}; print(app.get('version', ''))")
         echo "old=$old_ver" >> $GITHUB_OUTPUT
 
     - name: Check version change (stable only)
@@ -101,32 +97,31 @@ jobs:
     # 5. Git Tag (NUR stable)
     # ------------------------------------------------------------
     - name: Create Git tag (stable only)
-      if: ${{ steps.channel.outputs.channel == 'stable' }}
+      if: ${{ steps.channel.outputs.channel == 'stable' && steps.version_changed.outputs.changed == 'true' }}
       run: |
         git tag v${{ steps.version.outputs.version }} || echo "Tag existiert bereits"
         git push origin v${{ steps.version.outputs.version }} || true
 
     - name: Wait for tag propagation
+      if: ${{ steps.channel.outputs.channel == 'beta' || (steps.channel.outputs.channel == 'stable' && steps.version_changed.outputs.changed == 'true') }}
       run: sleep 3
 
     # ------------------------------------------------------------
     # 6. Changelog DE (NUR stable)
     # ------------------------------------------------------------
     - name: Generate Changelog (DE)
-      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      if: ${{ steps.channel.outputs.channel == 'stable' && steps.version_changed.outputs.changed == 'true' }}
       id: changelog_de
       uses: mikepenz/release-changelog-builder-action@v4
-      with:
-        configuration: ".github/release-config.json"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Write CHANGELOG.md
-      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      if: ${{ steps.channel.outputs.channel == 'stable' && steps.version_changed.outputs.changed == 'true' }}
       run: echo "${{ steps.changelog_de.outputs.changelog }}" > CHANGELOG.md
 
     - name: Commit CHANGELOG.md
-      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      if: ${{ steps.channel.outputs.channel == 'stable' && steps.version_changed.outputs.changed == 'true' }}
       run: |
         git config user.name "github-actions"
         git config user.email "github-actions@github.com"
@@ -134,7 +129,7 @@ jobs:
         git commit -m "Update CHANGELOG for v${{ steps.version.outputs.version }}" || echo "No changes"
 
     - name: Push CHANGELOG.md
-      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      if: ${{ steps.channel.outputs.channel == 'stable' && steps.version_changed.outputs.changed == 'true' }}
       uses: ad-m/github-push-action@v0.8.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -143,26 +138,24 @@ jobs:
     # 7. Changelog EN (NUR stable)
     # ------------------------------------------------------------
     - name: Generate Changelog (EN)
-      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      if: ${{ steps.channel.outputs.channel == 'stable' && steps.version_changed.outputs.changed == 'true' }}
       id: changelog_en
       uses: mikepenz/release-changelog-builder-action@v4
-      with:
-        configuration: ".github/release-config-en.json"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Write CHANGELOG_EN.md
-      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      if: ${{ steps.channel.outputs.channel == 'stable' && steps.version_changed.outputs.changed == 'true' }}
       run: echo "${{ steps.changelog_en.outputs.changelog }}" > CHANGELOG_EN.md
 
     - name: Commit CHANGELOG_EN.md
-      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      if: ${{ steps.channel.outputs.channel == 'stable' && steps.version_changed.outputs.changed == 'true' }}
       run: |
         git add CHANGELOG_EN.md
         git commit -m "Update CHANGELOG_EN for v${{ steps.version.outputs.version }}" || echo "No changes"
 
     - name: Push CHANGELOG_EN.md
-      if: ${{ steps.channel.outputs.prerelease == 'false' }}
+      if: ${{ steps.channel.outputs.channel == 'stable' && steps.version_changed.outputs.changed == 'true' }}
       uses: ad-m/github-push-action@v0.8.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -186,6 +179,7 @@ jobs:
     # 9. Docker Build & Push
     # ------------------------------------------------------------
     - name: Build & Push Docker Image
+      if: ${{ steps.channel.outputs.channel == 'beta' || (steps.channel.outputs.channel == 'stable' && steps.version_changed.outputs.changed == 'true') }}
       uses: docker/build-push-action@v5
       with:
         context: .
@@ -200,6 +194,7 @@ jobs:
     # 10. GitHub Release (stable + beta)
     # ------------------------------------------------------------
     - name: Create GitHub Release
+      if: ${{ steps.channel.outputs.channel == 'beta' || (steps.channel.outputs.channel == 'stable' && steps.version_changed.outputs.changed == 'true') }}
       uses: softprops/action-gh-release@v1
       with:
         tag_name: v${{ steps.version.outputs.version }}${{ steps.channel.outputs.suffix }}
