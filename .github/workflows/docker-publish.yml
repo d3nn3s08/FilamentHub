@@ -74,11 +74,7 @@ jobs:
       if: ${{ steps.channel.outputs.channel == 'stable' }}
       id: oldversion
       run: |
-        old_ver=$(git show origin/main:config.yaml | python - << 'EOF'
-        import sys, yaml
-        print(yaml.safe_load(sys.stdin)["app"]["version"])
-        EOF
-        )
+        old_ver=$(git show origin/main:config.yaml | python -c "import sys, yaml; data=yaml.safe_load(sys.stdin.read()) or {}; app=data.get('app') or {}; print(app.get('version', ''))")
         echo "old=$old_ver" >> $GITHUB_OUTPUT
 
     - name: Check version change (stable only)
