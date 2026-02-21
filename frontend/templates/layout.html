@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title or "FilamentHub" }}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('frontend_static', path='favicon.png') }}">
     <style>
         /* Critical CSS - verhindert weißen Flash SOFORT */
         html { background-color: #0e1116; }
@@ -11,19 +12,191 @@
     </style>
     <link rel="stylesheet" href="{{ url_for('frontend_static', path='css/main.css') }}">
     <link rel="stylesheet" href="{{ url_for('frontend_static', path='css/global_alerts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('frontend_static', path='css/weight_conflict_dialog.css') }}">
+    <link rel="stylesheet" href="{{ url_for('frontend_static', path='css/spool_assignment_dialog.css') }}">
     <style>
         /* AMS-UI ausgeblendet wenn Backend keinen echten AMS meldet */
-        body.no-ams .ams-grid,
-        body.no-ams .ams-unit,
-        body.no-ams .ams-assign-button,
-        body.no-ams .requires-ams {
+        body.no-ams:not(.admin-show-hidden) .ams-grid,
+        body.no-ams:not(.admin-show-hidden) .ams-unit,
+        body.no-ams:not(.admin-show-hidden) .ams-assign-button,
+        body.no-ams:not(.admin-show-hidden) .requires-ams {
             display: none !important;
         }
 
         /* Optional: sichtbar aber deaktiviert */
-        body.no-ams .requires-ams--disabled {
+        body.no-ams:not(.admin-show-hidden) .requires-ams--disabled {
             pointer-events: none;
             opacity: 0.4;
+        }
+
+        /* Bambu Cloud Button */
+        .bambu-cloud-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-right: 12px;
+        }
+        .bambu-cloud-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+        .bambu-cloud-btn.connected {
+            background: rgba(46,204,113,0.1);
+            border-color: rgba(46,204,113,0.3);
+            color: rgba(46,204,113,1);
+            animation: bambu-glow 2s ease-in-out infinite;
+        }
+        .bambu-cloud-btn.connected:hover {
+            background: rgba(46,204,113,0.2);
+            border-color: rgba(46,204,113,0.4);
+            animation: none;
+        }
+        .bambu-cloud-btn.connected .bambu-cloud-icon {
+            animation: bambu-pulse-green 2s ease-in-out infinite;
+        }
+        @keyframes bambu-glow {
+            0%, 100% { border-color: rgba(46,204,113,0.3); box-shadow: 0 0 4px rgba(46,204,113,0); }
+            50% { border-color: rgba(46,204,113,0.6); box-shadow: 0 0 8px rgba(46,204,113,0.15); }
+        }
+        @keyframes bambu-pulse-green {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .bambu-cloud-btn.error {
+            background: rgba(231,76,60,0.1);
+            border-color: rgba(231,76,60,0.3);
+            color: rgba(231,76,60,1);
+            animation: bambu-glow-red 2s ease-in-out infinite;
+        }
+        .bambu-cloud-btn.error:hover {
+            background: rgba(231,76,60,0.2);
+            border-color: rgba(231,76,60,0.4);
+            animation: none;
+        }
+        .bambu-cloud-btn.error .bambu-cloud-icon {
+            animation: bambu-pulse-red 2s ease-in-out infinite;
+        }
+        @keyframes bambu-glow-red {
+            0%, 100% { border-color: rgba(231,76,60,0.3); box-shadow: 0 0 4px rgba(231,76,60,0); }
+            50% { border-color: rgba(231,76,60,0.6); box-shadow: 0 0 8px rgba(231,76,60,0.15); }
+        }
+        @keyframes bambu-pulse-red {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .bambu-cloud-btn.paused {
+            background: rgba(241,196,15,0.1);
+            border-color: rgba(241,196,15,0.3);
+            color: rgba(241,196,15,1);
+            animation: bambu-glow-yellow 2s ease-in-out infinite;
+        }
+        .bambu-cloud-btn.paused:hover {
+            background: rgba(241,196,15,0.2);
+            border-color: rgba(241,196,15,0.4);
+            animation: none;
+        }
+        .bambu-cloud-btn.paused .bambu-cloud-icon {
+            animation: bambu-pulse-yellow 2s ease-in-out infinite;
+        }
+        @keyframes bambu-glow-yellow {
+            0%, 100% { border-color: rgba(241,196,15,0.3); box-shadow: 0 0 4px rgba(241,196,15,0); }
+            50% { border-color: rgba(241,196,15,0.6); box-shadow: 0 0 8px rgba(241,196,15,0.15); }
+        }
+        @keyframes bambu-pulse-yellow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .bambu-cloud-btn.syncing {
+            background: rgba(52,152,219,0.1);
+            border-color: rgba(52,152,219,0.3);
+            color: rgba(52,152,219,1);
+        }
+        .bambu-cloud-btn.syncing .bambu-cloud-icon {
+            animation: bambu-pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes bambu-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .bambu-cloud-icon {
+            flex-shrink: 0;
+        }
+        .bambu-cloud-status {
+            font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        /* Bambu Cloud Modal Styles */
+        .bambu-tab:hover:not(.active) {
+            background: rgba(255,255,255,0.1) !important;
+            color: rgba(255,255,255,0.9) !important;
+        }
+        .switch-toggle input:checked + .switch-slider {
+            background: #e67e22 !important;
+        }
+        .switch-toggle input:checked + .switch-slider::before {
+            transform: translateX(28px);
+        }
+        .switch-slider {
+            background: rgba(255,255,255,0.2);
+        }
+        .switch-slider::before {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+        .conflict-action-btn:hover {
+            filter: brightness(1.2);
+        }
+        .bambu-printer-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .bambu-printer-item:hover {
+            border-color: rgba(46,204,113,0.3);
+        }
+        .bambu-conflict-item {
+            padding: 16px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .bambu-conflict-item:hover {
+            border-color: rgba(46,204,113,0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Settings Modal Tabs */
+        .settings-tab:hover:not(.active) {
+            background: rgba(255,255,255,0.1) !important;
+            border-color: rgba(255,255,255,0.2) !important;
+            color: rgba(255,255,255,0.9) !important;
+        }
+        .settings-tab:focus {
+            outline: 2px solid rgba(46,134,222,0.5);
+            outline-offset: 2px;
         }
     </style>
     {% block extra_styles %}{% endblock %}
@@ -45,6 +218,13 @@
             </div>
             <div class="header__right">
                 {% block header_actions %}{% endblock %}
+                <!-- Bambu Cloud Button v2 - TEST 2026-01-29 -->
+                <button class="bambu-cloud-btn" id="bambuCloudBtn" title="Bambu Cloud" aria-label="Bambu Cloud Status" style="display: flex !important; visibility: visible !important;">
+                    <svg class="bambu-cloud-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                    </svg>
+                    <span class="bambu-cloud-status" id="bambuCloudStatus">Cloud</span>
+                </button>
                 <div class="user-menu" data-component="user-menu">
                     <button class="user-menu__trigger" aria-haspopup="true" aria-expanded="false">
                         <div class="user-menu__avatar">FH</div>
@@ -70,18 +250,14 @@
                                 <span>Multi AMS (Experimental)</span>
                             </label>
                         </div>
-                            <div class="user-menu__section">
-                                <div class="user-menu__section-title">Debug</div>
-                                <label class="user-menu__option">
-                                    <input type="checkbox" data-setting="debug_ws_logging">
-                                    <span>WS JSON Logging aktivieren</span>
-                                    <span class="tooltip-container">
-                                        <span class="tooltip-icon" tabindex="0">i</span>
-                                        <span class="tooltip-box">Loggt alle eingehenden WebSocket-Events als JSON zur Fehlersuche. Empfohlen nur für Debug-Zwecke.</span>
-                                    </span>
-                                </label>
-                                <a href="/debug" role="menuitem" class="user-menu__link">Debug Center</a>
-                            </div>
+                        <div class="user-menu__section">
+                            <div class="user-menu__section-title">Administration</div>
+                            <a href="/admin" role="menuitem" class="user-menu__link">Admin Panel</a>
+                        </div>
+                        <div class="user-menu__section">
+                            <div class="user-menu__section-title">Debug</div>
+                            <a href="/debug" role="menuitem" class="user-menu__link">Debug Center</a>
+                        </div>
                         <div class="user-menu__section">
                             <div class="user-menu__section-title">Sonstiges</div>
                             <button type="button" role="menuitem" data-action="settings" class="user-menu__link">Einstellungen</button>
@@ -100,17 +276,244 @@
 
     <!-- Settings Modal -->
     <div class="modal" id="settingsModal" aria-hidden="true">
-        <div class="modal__dialog">
+        <div class="modal__dialog" style="max-width: 1000px; width: 92vw;">
             <div class="modal__header">
                 <h2>Einstellungen</h2>
                 <button class="modal__close" data-close-settings>&times;</button>
             </div>
             <div class="modal__body">
-                <label class="field">
-                    <span>Strompreis (€/kWh)</span>
-                    <input type="number" step="0.001" min="0" id="settingsElectricityPrice" placeholder="z.B. 0.32">
-                </label>
-                <div class="modal__actions" style="margin-top:12px;">
+                <!-- Tabs -->
+                <div class="settings-tabs" style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 8px; flex-wrap: wrap;">
+                    <button class="settings-tab active" data-tab="general" style="padding: 8px 16px; background: rgba(46,134,222,0.2); border: 1px solid rgba(46,134,222,0.4); border-radius: 6px; color: #fff; cursor: pointer; transition: all 0.2s;">
+                        Allgemein
+                    </button>
+                    <button class="settings-tab" data-tab="costs" style="padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s;">
+                        Kosten
+                    </button>
+                    <button class="settings-tab" data-tab="advanced" style="padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s;">
+                        Erweitert
+                    </button>
+                    <button class="settings-tab" data-tab="experimental" style="padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s;">
+                        🧪 Experimental
+                    </button>
+                    <button class="settings-tab" data-tab="backup" style="padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s;">
+                        Sicherung
+                    </button>
+                </div>
+
+                <!-- Tab Content: Allgemein -->
+                <div class="settings-tab-content" data-content="general" style="display: block;">
+                    <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 12px;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 14px; color: rgba(255,255,255,0.8);">Theme</h3>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="settingsThemeLight" style="width: 18px; height: 18px;">
+                            <span>Light Mode aktivieren</span>
+                        </label>
+                    </div>
+                    <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 14px; color: rgba(255,255,255,0.8);">Sprache</h3>
+                        <select id="settingsLanguage" class="form-input" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff;">
+                            <option value="de">Deutsch</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Kosten -->
+                <div class="settings-tab-content" data-content="costs" style="display: none;">
+                    <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 14px; color: rgba(255,255,255,0.8);">Stromkosten</h3>
+                        <label class="field">
+                            <span>Strompreis (€/kWh)</span>
+                            <input type="number" step="0.001" min="0" id="settingsElectricityPrice" placeholder="z.B. 0.32" style="margin-top: 6px;">
+                        </label>
+                        <div class="form-hint" style="margin-top: 8px; font-size: 12px; color: rgba(255,255,255,0.5);">
+                            Dieser Wert wird verwendet, um die Stromkosten für Druckvorgänge zu berechnen.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AMS controls moved into Experimental tab (feature in development) -->
+
+                <!-- Tab Content: Erweitert -->
+                <div class="settings-tab-content" data-content="advanced" style="display: none;">
+                    <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 12px;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 14px; color: rgba(255,255,255,0.8);">Debug</h3>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">
+                            <input type="checkbox" id="settingsDebugWsLogging" style="width: 18px; height: 18px;">
+                            <span>WS JSON Logging aktivieren</span>
+                        </label>
+                        <div class="form-hint" style="margin-top: 8px; font-size: 12px; color: rgba(255,255,255,0.5);">
+                            Loggt alle eingehenden WebSocket-Events als JSON zur Fehlersuche. Empfohlen nur für Debug-Zwecke.
+                        </div>
+                    </div>
+                    <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 12px;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 14px; color: rgba(255,255,255,0.8);">Experimentelle Features</h3>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">
+                            <input type="checkbox" id="settingsExperimentalMode" style="width: 18px; height: 18px;">
+                            <span>Experimentelle Features aktivieren</span>
+                        </label>
+                    </div>
+                    <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 14px; color: rgba(255,255,255,0.8);">Cache & Daten</h3>
+                        <button type="button" class="btn ghost" id="settingsClearCache" style="width: 100%;">
+                            Cache leeren
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Experimental -->
+                <div class="settings-tab-content" data-content="experimental" style="display: none;">
+                    <!-- Warning Banner -->
+                    <div style="padding: 12px; background: rgba(255,184,0,0.1); border-left: 3px solid rgba(255,184,0,0.5); border-radius: 4px; margin-bottom: 16px;">
+                        <span style="font-size: 12px; color: rgba(255,184,0,0.9); font-weight: 600;">⚠️ Experimentelle Features</span>
+                        <p style="font-size: 11px; color: rgba(255,255,255,0.7); margin: 6px 0 0 0;">
+                            Diese Features befinden sich in der Entwicklung und könnten instabil sein. Nutze sie auf eigenes Risiko.
+                        </p>
+                    </div>
+
+                    <!-- Disabled Warning (shown when experimental_mode = false) -->
+                    <div id="experimentalDisabledWarning" style="display: none; padding: 12px; background: rgba(231,76,60,0.1); border-left: 3px solid rgba(231,76,60,0.5); border-radius: 4px; margin-bottom: 16px;">
+                        <span style="font-size: 12px; color: rgba(231,76,60,0.9); font-weight: 600;">🔒 Experimentelle Features deaktiviert</span>
+                        <p style="font-size: 11px; color: rgba(255,255,255,0.7); margin: 6px 0 0 0;">
+                            Bitte aktiviere "Experimentelle Features aktivieren" im Tab <strong>Erweitert</strong>, um diese Features zu nutzen.
+                        </p>
+                    </div>
+
+                    <!-- Experimental features grid (2 columns) -->
+                    <div class="experimental-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start;">
+
+                    <!-- 3MF Title-Matching -->
+                        <!-- AMS: Gewichts-Konflikt Erkennung (moved here from own tab) -->
+                        <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 14px; color: rgba(255,255,255,0.8);">Gewichts-Konflikt Erkennung</h3>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 12px;">
+                                <input type="checkbox" id="settingsAmsConflictEnabled" style="width: 18px; height: 18px;">
+                                <span>Gewichts-Konflikte erkennen</span>
+                                <span style="margin-left: auto; padding: 2px 8px; background: rgba(255,184,0,0.2); border-radius: 4px; font-size: 10px; color: rgba(255,184,0,0.9);">🧪 Beta Test</span>
+                            </label>
+                            <div class="form-hint" style="font-size: 12px; color: rgba(255,255,255,0.5);">
+                                Wenn aktiviert, werden Unterschiede zwischen Cloud-Gewicht (AMS) und lokalem DB-Gewicht erkannt und als Warnung angezeigt.
+                            </div>
+                        </div>
+
+                        <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 14px; color: rgba(255,255,255,0.8);">Toleranz</h3>
+                            <label class="field">
+                                <span>Abweichungs-Toleranz (g)</span>
+                                <select id="settingsAmsConflictTolerance" class="form-input" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff; margin-top: 6px;">
+                                    <option value="0">0g (alle Unterschiede melden)</option>
+                                    <option value="5">5g (empfohlen)</option>
+                                    <option value="10">10g</option>
+                                    <option value="20">20g</option>
+                                    <option value="50">50g</option>
+                                </select>
+                            </label>
+                            <div class="form-hint" style="margin-top: 8px; font-size: 12px; color: rgba(255,255,255,0.5);">
+                                Gewichtsunterschiede unter diesem Wert werden ignoriert und nicht als Konflikt gemeldet.
+                            </div>
+                        </div>
+
+                    <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 14px; color: rgba(255,255,255,0.8);">📁 3MF Title-Matching</h3>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">
+                            <input type="checkbox" id="settings3mfTitleMatching" data-setting="enable_3mf_title_matching" style="width: 18px; height: 18px;">
+                            <span>Title-basierte Datei-Erkennung aktivieren</span>
+                            <span style="margin-left: auto; padding: 2px 8px; background: rgba(255,184,0,0.2); border-radius: 4px; font-size: 10px; color: rgba(255,184,0,0.9);">🧪 Beta Test</span>
+                        </label>
+                        <div class="form-hint" style="margin-top: 8px; font-size: 12px; color: rgba(255,255,255,0.5);">
+                            Verwendet den Title aus .3mf-Dateien statt Dateinamen für besseres Matching (Score >= 60% = automatisch verwenden).
+                        </div>
+
+                        <div style="margin-top: 12px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 6px;">
+                            <h4 style="margin: 0 0 8px 0; font-size: 12px; color: rgba(255,255,255,0.7);">Konfidenz-Schwelle</h4>
+                            <label class="field">
+                                <span style="font-size: 11px;">Minimaler Score für automatische Verwendung (%)</span>
+                                <input type="number" min="0" max="100" step="5" value="60" id="settings3mfScoreThreshold" data-setting="3mf_score_threshold" style="margin-top: 6px; width: 100%; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #fff;">
+                            </label>
+                            <div class="form-hint" style="margin-top: 6px; font-size: 11px; color: rgba(255,255,255,0.4);">
+                                Bei Score < Schwelle: User muss manuell bestätigen
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File-Selection-Dialog -->
+                    <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 14px; color: rgba(255,255,255,0.8);">🔍 File-Selection-Dialog</h3>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">
+                            <input type="checkbox" id="settingsFileSelectionDialog" data-setting="enable_file_selection_dialog" style="width: 18px; height: 18px;">
+                            <span>Interaktiven File-Auswahl-Dialog aktivieren</span>
+                            <span style="margin-left: auto; padding: 2px 8px; background: rgba(255,184,0,0.2); border-radius: 4px; font-size: 10px; color: rgba(255,184,0,0.9);">🧪 Beta Test</span>
+                        </label>
+                        <div class="form-hint" style="margin-top: 8px; font-size: 12px; color: rgba(255,255,255,0.5);">
+                            Zeigt Dialog bei Low-Confidence-Matches (Score < 60%) zur manuellen Datei-Auswahl.
+                        </div>
+                    </div>
+
+                    <!-- Multi-Color Job Tracking -->
+                    <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 14px; color: rgba(255,255,255,0.8);">🎨 Multi-Color Job Tracking</h3>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">
+                            <input type="checkbox" id="settingsMultiColorTracking" data-setting="enable_multi_color_tracking" style="width: 18px; height: 18px;">
+                            <span>Slot-Wechsel-Detection aktivieren</span>
+                            <span style="margin-left: auto; padding: 2px 8px; background: rgba(255,184,0,0.2); border-radius: 4px; font-size: 10px; color: rgba(255,184,0,0.9);">🧪 Beta Test</span>
+                        </label>
+                        <div class="form-hint" style="margin-top: 8px; font-size: 12px; color: rgba(255,255,255,0.5);">
+                            Erkennt automatisch Filament-Wechsel bei Multi-Color-Drucken und trackt Verbrauch pro Spule.
+                        </div>
+                    </div>
+
+                    <!-- FTP G-Code Download -->
+                    <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 14px; color: rgba(255,255,255,0.8);">📥 FTP G-Code Download</h3>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">
+                            <input type="checkbox" id="settingsFtpGcodeDownload" data-setting="enable_ftp_gcode_download" style="width: 18px; height: 18px;">
+                            <span>Automatischer G-Code Download aktivieren</span>
+                            <span style="margin-left: auto; padding: 2px 8px; background: rgba(255,184,0,0.2); border-radius: 4px; font-size: 10px; color: rgba(255,184,0,0.9);">🧪 Beta Test</span>
+                        </label>
+                        <div class="form-hint" style="margin-top: 8px; font-size: 12px; color: rgba(255,255,255,0.5);">
+                            Lädt G-Code/.3MF-Dateien via FTPS vom Drucker und extrahiert präzise Slicer-Werte (Gewicht, Länge).
+                        </div>
+                    </div>
+
+                    </div> <!-- /.experimental-grid -->
+                </div>
+
+                <!-- Tab Content: Sicherung -->
+                <div class="settings-tab-content" data-content="backup" style="display: none;">
+                    <div style="padding: 12px; background: rgba(46,204,113,0.06); border-left: 3px solid rgba(46,204,113,0.4); border-radius: 4px; margin-bottom: 16px;">
+                        <span style="font-size: 12px; color: rgba(46,204,113,0.9); font-weight: 600;">Datenbank-Sicherung</span>
+                        <p style="font-size: 11px; color: rgba(255,255,255,0.7); margin: 6px 0 0 0;">
+                            Max. 10 Backups werden gespeichert. Aeltere Backups werden automatisch geloescht.
+                        </p>
+                    </div>
+
+                    <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 16px;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 14px; color: rgba(255,255,255,0.8);">Neues Backup</h3>
+                        <button type="button" id="settingsBackupCreateBtn" style="width: 100%; padding: 10px 16px; background: rgba(46,204,113,0.15); border: 1px solid rgba(46,204,113,0.3); border-radius: 6px; color: #2ecc71; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                            Backup jetzt erstellen
+                        </button>
+                        <button type="button" id="settingsBackupUploadBtn" style="width: 100%; margin-top: 8px; padding: 10px 16px; background: rgba(52,152,219,0.15); border: 1px solid rgba(52,152,219,0.3); border-radius: 6px; color: #3498db; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                            Backup hochladen (.db)
+                        </button>
+                        <input type="file" id="settingsBackupUploadInput" accept=".db" style="display: none;">
+                        <div id="settingsBackupStatus" style="margin-top: 8px; font-size: 12px; color: rgba(255,255,255,0.5); min-height: 1.4em;"></div>
+                    </div>
+
+                    <div style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h3 style="margin: 0; font-size: 14px; color: rgba(255,255,255,0.8);">Vorhandene Backups</h3>
+                            <button type="button" id="settingsBackupRefreshBtn" style="padding: 4px 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: rgba(255,255,255,0.6); font-size: 11px; cursor: pointer;">
+                                Aktualisieren
+                            </button>
+                        </div>
+                        <div id="settingsBackupList" style="min-height: 40px;">
+                            <p style="font-size: 12px; color: rgba(255,255,255,0.4);">Lade Backups...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal__actions" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
                     <button type="button" class="btn ghost" data-close-settings>Abbrechen</button>
                     <button type="button" class="btn success" id="settingsSaveBtn">Speichern</button>
                 </div>
@@ -118,38 +521,1743 @@
         </div>
     </div>
 
+    <!-- Bambu Cloud Modal -->
+    <div class="modal" id="bambuCloudModal" aria-hidden="true">
+        <div class="modal__dialog" style="max-width: 900px; width: 95vw; max-height: 90vh; overflow-y: auto;">
+            <div class="modal__header" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #2ecc71;">
+                        <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                    </svg>
+                    <div>
+                        <h2 style="margin: 0; font-size: 20px;">Bambu Cloud Integration</h2>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; color: rgba(255,255,255,0.5);">Automatische Synchronisation mit Bambu Lab Cloud</p>
+                    </div>
+                </div>
+                <button class="modal__close" data-close-bambu-cloud>&times;</button>
+            </div>
+            <div class="modal__body" style="padding-top: 16px;">
+                <!-- Tabs -->
+                <div class="bambu-cloud-tabs" style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+                    <button class="bambu-tab active" data-bambu-tab="settings" style="padding: 10px 20px; background: rgba(46,204,113,0.15); border: 1px solid rgba(46,204,113,0.3); border-radius: 8px; color: #2ecc71; cursor: pointer; transition: all 0.2s; font-weight: 600;">
+                        ⚙️ Einstellungen
+                    </button>
+                    <button class="bambu-tab" data-bambu-tab="conflicts" style="padding: 10px 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s; position: relative;">
+                        ⚠️ Konflikte
+                        <span id="bambuConflictBadge" style="display: none; position: absolute; top: -6px; right: -6px; background: #e74c3c; color: white; font-size: 11px; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">0</span>
+                    </button>
+                    <button class="bambu-tab" data-bambu-tab="history" style="padding: 10px 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s;">
+                        📋 Druckhistorie
+                    </button>
+                </div>
+
+                <!-- Settings Tab Content -->
+                <div class="bambu-tab-content" data-bambu-content="settings" style="display: block;">
+                    <!-- Enable Switch -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 10px; margin-bottom: 16px;">
+                        <div>
+                            <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px;">Cloud Integration aktivieren</div>
+                            <div style="font-size: 13px; color: rgba(255,255,255,0.5);">Synchronisiere Daten von allen Bambu Lab Druckern</div>
+                        </div>
+                        <label class="switch-toggle" style="position: relative; display: inline-block; width: 56px; height: 28px; cursor: pointer;">
+                            <input type="checkbox" id="bambuCloudEnabled" style="position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 2;">
+                            <span class="switch-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; border-radius: 28px; transition: 0.3s; z-index: 1;"></span>
+                        </label>
+                    </div>
+
+                    <!-- Credentials Section (hidden when disabled) - 2-Spalten Layout -->
+                    <div id="bambuCredentialsSection" style="display: none;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <!-- Linke Spalte -->
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                                <!-- Credentials -->
+                                <div style="padding: 16px; background: rgba(255,255,255,0.03); border-radius: 10px; flex: 1;">
+                                    <h3 style="margin: 0 0 12px 0; font-size: 15px; color: rgba(255,255,255,0.9);">🔑 Cloud Authentifizierung</h3>
+
+                                    <!-- Login Method Toggle -->
+                                    <div style="display: flex; gap: 4px; margin-bottom: 16px; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 8px;">
+                                        <button type="button" id="bambuMethodLogin" class="bambu-method-btn active" style="flex: 1; padding: 8px; background: rgba(52,152,219,0.3); border: none; border-radius: 6px; color: #3498db; font-size: 12px; font-weight: 600; cursor: pointer;">
+                                            🔐 Login
+                                        </button>
+                                        <button type="button" id="bambuMethodToken" class="bambu-method-btn" style="flex: 1; padding: 8px; background: transparent; border: none; border-radius: 6px; color: rgba(255,255,255,0.5); font-size: 12px; cursor: pointer;">
+                                            🎫 Token
+                                        </button>
+                                    </div>
+
+                                    <!-- Login Status Badge (für Fehler/Info während Login) -->
+                                    <div id="bambuLoginStatus" style="display: none; margin-bottom: 12px; padding: 10px; border-radius: 8px; font-size: 12px;"></div>
+
+                                    <!-- LOGGED IN SUCCESS STATE -->
+                                    <div id="bambuLoggedInState" style="display: none;">
+                                        <div style="padding: 16px; background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.3); border-radius: 10px; text-align: center;">
+                                            <div style="font-size: 32px; margin-bottom: 8px;">✅</div>
+                                            <div style="font-size: 14px; font-weight: 600; color: #2ecc71; margin-bottom: 4px;">Erfolgreich verbunden</div>
+                                            <div id="bambuLoggedInEmail" style="font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 12px;">user@email.de</div>
+                                            <div style="display: flex; gap: 8px; justify-content: center;">
+                                                <button type="button" id="bambuLogoutBtn" style="padding: 8px 16px; background: rgba(231,76,60,0.2); border: 1px solid rgba(231,76,60,0.4); border-radius: 6px; color: #e74c3c; font-size: 12px; cursor: pointer;">
+                                                    🚪 Abmelden
+                                                </button>
+                                                <button type="button" id="bambuReconnectBtn" style="padding: 8px 16px; background: rgba(52,152,219,0.2); border: 1px solid rgba(52,152,219,0.4); border-radius: 6px; color: #3498db; font-size: 12px; cursor: pointer;">
+                                                    🔄 Neu verbinden
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div style="margin-top: 12px; padding: 10px; background: rgba(52,152,219,0.1); border-left: 3px solid rgba(52,152,219,0.5); border-radius: 4px;">
+                                            <div style="font-size: 11px; color: rgba(255,255,255,0.7);">
+                                                💡 <strong>Tipp:</strong> Klicke auf "Sync" um Drucker und Spulen zu synchronisieren.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- LOGIN METHOD -->
+                                    <div id="bambuLoginMethod" style="display: grid; gap: 12px;">
+                                        <!-- Email -->
+                                        <div>
+                                            <label style="font-size: 12px; color: rgba(255,255,255,0.6); display: block; margin-bottom: 6px;">E-Mail Adresse</label>
+                                            <input type="email" id="bambuUsername" placeholder="deine@email.de" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px;">
+                                        </div>
+
+                                        <!-- Passwort -->
+                                        <div id="bambuPasswordSection">
+                                            <label style="font-size: 12px; color: rgba(255,255,255,0.6); display: block; margin-bottom: 6px;">Passwort</label>
+                                            <input type="password" id="bambuPassword" placeholder="Dein Bambu Lab Passwort" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px;">
+                                        </div>
+
+                                        <!-- TFA Code (optional, für Google Authenticator) -->
+                                        <div id="bambuTfaSection">
+                                            <label style="font-size: 12px; color: rgba(255,255,255,0.6); display: block; margin-bottom: 6px;">🔐 Authenticator Code (optional)</label>
+                                            <input type="text" id="bambuTfaCode" placeholder="6-stelliger Code aus Google Authenticator" maxlength="6" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px; letter-spacing: 4px; text-align: center;">
+                                            <p style="margin: 8px 0 0 0; font-size: 11px; color: rgba(155,89,182,0.9);">⚡ Falls du 2FA aktiviert hast, gib den Code JETZT ein (vor dem Login!)</p>
+                                        </div>
+
+                                        <!-- Verifikationscode (Email, wird bei Bedarf angezeigt) -->
+                                        <div id="bambuVerifySection" style="display: none;">
+                                            <label style="font-size: 12px; color: rgba(255,255,255,0.6); display: block; margin-bottom: 6px;">📧 Verifikationscode (aus Email)</label>
+                                            <input type="text" id="bambuVerifyCode" placeholder="6-stelliger Code" maxlength="6" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px; letter-spacing: 4px; text-align: center;">
+                                            <p style="margin: 8px 0 0 0; font-size: 11px; color: rgba(241,196,15,0.9);">⚡ Code wurde per Email gesendet!</p>
+                                        </div>
+
+                                        <!-- Region (Login) -->
+                                        <div>
+                                            <label style="font-size: 12px; color: rgba(255,255,255,0.6); display: block; margin-bottom: 6px;">Region</label>
+                                            <select id="bambuRegion" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px;">
+                                                <option value="eu">Europa / Global</option>
+                                                <option value="cn">China</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Login Buttons -->
+                                        <div style="display: flex; gap: 8px;">
+                                            <button type="button" id="bambuLoginBtn" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #3498db, #2980b9); border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; font-size: 13px;">
+                                                🔐 Einloggen
+                                            </button>
+                                            <button type="button" id="bambuVerifyBtn" style="display: none; flex: 1; padding: 12px; background: linear-gradient(135deg, #2ecc71, #27ae60); border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; font-size: 13px;">
+                                                ✓ Code bestätigen
+                                            </button>
+                                        </div>
+
+                                        <!-- Info Box Login -->
+                                        <div style="padding: 10px; background: rgba(46,204,113,0.1); border-left: 3px solid rgba(46,204,113,0.5); border-radius: 4px;">
+                                            <div style="font-size: 11px; color: rgba(255,255,255,0.7);">
+                                                <strong style="color: #2ecc71;">✓ Empfohlen:</strong> Login mit Email + Passwort gibt vollen API-Zugriff inkl. Cloud-MQTT, Job-Namen und Task-IDs.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- TOKEN METHOD (hidden by default) -->
+                                    <div id="bambuTokenMethod" style="display: none;">
+                                        <div style="display: grid; gap: 12px;">
+                                            <!-- Email für Token -->
+                                            <div>
+                                                <label style="font-size: 12px; color: rgba(255,255,255,0.6); display: block; margin-bottom: 6px;">E-Mail (optional)</label>
+                                                <input type="email" id="bambuTokenEmail" placeholder="deine@email.de" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px;">
+                                            </div>
+
+                                            <!-- Access Token -->
+                                            <div>
+                                                <label style="font-size: 12px; color: rgba(255,255,255,0.6); display: block; margin-bottom: 6px;">Access Token</label>
+                                                <input type="password" id="bambuAccessToken" placeholder="Token aus Bambu Handy App" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px;">
+                                                <p style="margin: 8px 0 0 0; font-size: 11px; color: rgba(255,255,255,0.4);">Bambu Handy App → Einstellungen → Konto → Token kopieren</p>
+                                            </div>
+
+                                            <!-- Region (Token) -->
+                                            <div>
+                                                <label style="font-size: 12px; color: rgba(255,255,255,0.6); display: block; margin-bottom: 6px;">Region</label>
+                                                <select id="bambuTokenRegion" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px;">
+                                                    <option value="eu">Europa / Global</option>
+                                                    <option value="cn">China</option>
+                                                </select>
+                                            </div>
+
+                                            <!-- Save Token Button -->
+                                            <button type="button" id="bambuSaveTokenBtn" style="padding: 12px; background: linear-gradient(135deg, #9b59b6, #8e44ad); border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; font-size: 13px;">
+                                                💾 Token speichern
+                                            </button>
+
+                                            <!-- Warning Box Token -->
+                                            <div style="padding: 10px; background: rgba(241,196,15,0.1); border-left: 3px solid rgba(241,196,15,0.5); border-radius: 4px;">
+                                                <div style="font-size: 11px; color: rgba(255,255,255,0.7);">
+                                                    <strong style="color: #f1c40f;">⚠️ Eingeschränkt:</strong> Der Handy-App Token hat limitierte Rechte. Für vollen Zugriff nutze den Login.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Priority Mode -->
+                                <div style="padding: 16px; background: rgba(255,255,255,0.03); border-radius: 10px;">
+                                    <h3 style="margin: 0 0 12px 0; font-size: 15px; color: rgba(255,255,255,0.9);">📊 Daten-Priorität</h3>
+                                    <select id="bambuPriorityMode" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px; margin-bottom: 12px;">
+                                        <option value="cloud_verified">Cloud Verified (Empfohlen)</option>
+                                        <option value="local_priority">Local Priority</option>
+                                        <option value="cloud_only">Cloud Only (Riskant!)</option>
+                                        <option value="manual_only">Nur Manuell</option>
+                                    </select>
+                                    <div id="bambuPriorityInfo" style="padding: 10px; border-radius: 8px; background: rgba(46,204,113,0.1); border-left: 3px solid rgba(46,204,113,0.5);">
+                                        <div style="font-weight: 600; font-size: 12px; color: rgba(46,204,113,1); margin-bottom: 4px;">✅ Cloud Verified</div>
+                                        <div style="font-size: 11px; color: rgba(255,255,255,0.7);">Cloud-Daten nur nach Verifizierung. Sicher und empfohlen.</div>
+                                    </div>
+                                </div>
+
+                                <!-- Sync-Einstellungen -->
+                                <div style="padding: 16px; background: rgba(255,255,255,0.03); border-radius: 10px;">
+                                    <h3 style="margin: 0 0 12px 0; font-size: 15px; color: rgba(255,255,255,0.9);">⏱️ Sync-Einstellungen</h3>
+                                    <div style="margin-bottom: 12px;">
+                                        <label style="display: block; font-size: 12px; color: rgba(255,255,255,0.7); margin-bottom: 6px;">Auto-Sync Intervall (Minuten)</label>
+                                        <input type="number" id="bambuSyncInterval" min="5" max="1440" step="5" value="30" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px;">
+                                        <div style="font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 4px;">Standard: 30 Minuten. Sync erfolgt auch sofort bei Druckstart.</div>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; padding: 10px; background: rgba(46,204,113,0.1); border-radius: 8px; border-left: 3px solid rgba(46,204,113,0.5);">
+                                        <span style="font-size: 16px;">⚡</span>
+                                        <div style="font-size: 12px; color: rgba(255,255,255,0.9);">Automatischer Sync bei jedem Druckstart aktiviert</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Rechte Spalte -->
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                                <!-- Sync Status -->
+                                <div style="padding: 16px; background: rgba(255,255,255,0.03); border-radius: 10px;">
+                                    <h3 style="margin: 0 0 12px 0; font-size: 15px; color: rgba(255,255,255,0.9);">🔄 Sync Status</h3>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 12px;">
+                                        <div>
+                                            <div style="font-size: 11px; color: rgba(255,255,255,0.5);">Letzter Sync</div>
+                                            <div id="bambuLastSync" style="font-family: monospace; color: rgba(255,255,255,0.9); font-size: 13px;">Nie</div>
+                                        </div>
+                                        <div style="display: flex; gap: 8px;">
+                                            <button type="button" id="bambuTestConnectionBtn" class="btn" style="padding: 8px 12px; background: rgba(52,152,219,0.2); border: 1px solid rgba(52,152,219,0.4); color: #3498db; border-radius: 6px; cursor: pointer; font-size: 11px;" title="Verbindung testen">
+                                                🔌 Test
+                                            </button>
+                                            <button type="button" id="bambuSyncNowBtn" class="btn" style="padding: 8px 14px; background: rgba(46,204,113,0.2); border: 1px solid rgba(46,204,113,0.4); color: #2ecc71; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                                                🔄 Sync
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="bambuSyncStatus" style="font-size: 12px; color: rgba(255,255,255,0.6);">
+                                        <span style="color: rgba(255,255,255,0.4);">Nicht verbunden</span>
+                                    </div>
+                                    <!-- Connection Test Result -->
+                                    <div id="bambuConnectionResult" style="display: none; margin-top: 12px; padding: 10px; border-radius: 6px; font-size: 12px;"></div>
+                                </div>
+
+                                <!-- Connected Printers -->
+                                <div style="padding: 16px; background: rgba(255,255,255,0.03); border-radius: 10px; flex: 1;">
+                                    <h3 style="margin: 0 0 12px 0; font-size: 15px; color: rgba(255,255,255,0.9);">🖨️ Verbundene Drucker</h3>
+                                    <div id="bambuPrinterList" style="display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto;">
+                                        <div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; color: rgba(255,255,255,0.5); text-align: center; font-size: 12px;">
+                                            Keine Drucker gefunden. Bitte erst Verbindung herstellen.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sync Controls: Pause/Resume, Dry-Run, Danger Zone -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+
+                            <!-- Pause/Resume -->
+                            <div style="padding: 14px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <span style="font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);">⏸ Sync Pause</span>
+                                    <span id="bambuPauseStatus" style="font-size: 10px; padding: 2px 8px; border-radius: 10px; background: rgba(46,204,113,0.15); color: #2ecc71;">Aktiv</span>
+                                </div>
+                                <div style="font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 10px;">
+                                    Pausiert den Sync, Credentials bleiben erhalten
+                                </div>
+                                <button type="button" id="bambuPauseResumeBtn" class="btn" style="width: 100%; padding: 7px; background: rgba(243,156,18,0.15); border: 1px solid rgba(243,156,18,0.3); color: #f39c12; border-radius: 6px; cursor: pointer; font-size: 12px; transition: 0.2s;">
+                                    ⏸ Pause Sync
+                                </button>
+                            </div>
+
+                            <!-- Dry-Run / Test Mode -->
+                            <div style="padding: 14px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <span style="font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.9);">🧪 Test Modus</span>
+                                    <span id="bambuDryRunStatus" style="font-size: 10px; padding: 2px 8px; border-radius: 10px; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5);">Aus</span>
+                                </div>
+                                <div style="font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 10px;">
+                                    Sync läuft, aber keine DB-Änderungen (Dry-Run)
+                                </div>
+                                <button type="button" id="bambuDryRunBtn" class="btn" style="width: 100%; padding: 7px; background: rgba(52,152,219,0.15); border: 1px solid rgba(52,152,219,0.3); color: #3498db; border-radius: 6px; cursor: pointer; font-size: 12px; transition: 0.2s;">
+                                    🧪 Test Modus An
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Danger Zone -->
+                        <details style="margin-top: 16px;">
+                            <summary style="cursor: pointer; padding: 10px 14px; background: rgba(231,76,60,0.05); border: 1px solid rgba(231,76,60,0.15); border-radius: 8px; color: rgba(231,76,60,0.8); font-size: 13px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px;">
+                                <span style="transition: transform 0.2s;">▶</span> Danger Zone
+                            </summary>
+                            <div style="margin-top: 8px; padding: 14px; background: rgba(231,76,60,0.05); border: 1px solid rgba(231,76,60,0.15); border-radius: 0 0 8px 8px;">
+                                <div style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 12px;">
+                                    Cloud Integration permanent deaktivieren
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button type="button" id="bambuDisableKeepBtn" class="btn" style="flex: 1; padding: 8px; background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.3); color: #e74c3c; border-radius: 6px; cursor: pointer; font-size: 11px;">
+                                        Deaktivieren (Credentials behalten)
+                                    </button>
+                                    <button type="button" id="bambuDisableDeleteBtn" class="btn" style="flex: 1; padding: 8px; background: rgba(231,76,60,0.3); border: 1px solid rgba(231,76,60,0.5); color: #e74c3c; border-radius: 6px; cursor: pointer; font-size: 11px;">
+                                        Alles löschen
+                                    </button>
+                                </div>
+                            </div>
+                        </details>
+
+                    </div>
+                </div>
+
+                <!-- Conflicts Tab Content -->
+                <div class="bambu-tab-content" data-bambu-content="conflicts" style="display: none;">
+                    <div id="bambuConflictList" style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="padding: 24px; background: rgba(255,255,255,0.03); border-radius: 10px; text-align: center; color: rgba(255,255,255,0.5);">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.3;">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div style="font-size: 14px;">Keine Konflikte vorhanden</div>
+                            <div style="font-size: 12px; margin-top: 4px;">Alle Spulen sind synchronisiert</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Tab Content -->
+                <div class="bambu-tab-content" data-bambu-content="history" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.9);">📋 Letzte Druckaufträge</h3>
+                        <button type="button" id="bambuRefreshHistoryBtn" onclick="loadBambuHistory()" style="padding: 8px 12px; background: rgba(52,152,219,0.2); border: 1px solid rgba(52,152,219,0.4); border-radius: 6px; color: #3498db; font-size: 12px; cursor: pointer;">
+                            🔄 Aktualisieren
+                        </button>
+                    </div>
+
+                    <!-- Loading -->
+                    <div id="bambuHistoryLoading" style="display: none; text-align: center; padding: 40px;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">⏳</div>
+                        <div style="color: rgba(255,255,255,0.5);">Lade Druckhistorie...</div>
+                    </div>
+
+                    <!-- History List -->
+                    <div id="bambuHistoryList" style="max-height: 350px; overflow-y: auto;">
+                        <div style="padding: 24px; background: rgba(255,255,255,0.03); border-radius: 10px; text-align: center; color: rgba(255,255,255,0.5);">
+                            <div style="font-size: 14px;">Klicke auf "Aktualisieren" um Jobs zu laden</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 12px; padding: 10px; background: rgba(52,152,219,0.1); border-left: 3px solid rgba(52,152,219,0.5); border-radius: 4px;">
+                        <div style="font-size: 11px; color: rgba(255,255,255,0.7);">
+                            💡 <strong>Tipp:</strong> Du kannst Jobs auch auf der <a href="/jobs" style="color: #3498db;">Jobs-Seite</a> mit "Aus Cloud importieren" übernehmen.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="modal__actions" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between;">
+                    <button type="button" class="btn ghost" data-close-bambu-cloud>Schließen</button>
+                    <button type="button" class="btn" id="bambuSaveBtn" style="background: linear-gradient(135deg, #2ecc71, #27ae60); border: none; padding: 10px 24px; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">
+                        Speichern
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bambu Cloud Conflict Resolution Modal -->
+    <div class="modal" id="bambuConflictModal" aria-hidden="true">
+        <div class="modal__dialog" style="max-width: 600px; width: 95vw;">
+            <div class="modal__header" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 28px;">⚠️</span>
+                    <h2 style="margin: 0; font-size: 20px;">Spulen-Verifizierung erforderlich</h2>
+                </div>
+                <button class="modal__close" data-close-conflict>&times;</button>
+            </div>
+            <div class="modal__body" style="padding-top: 16px;">
+                <!-- Confidence Bar -->
+                <div style="margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-size: 13px; color: rgba(255,255,255,0.6);">Match-Konfidenz</span>
+                        <span id="conflictConfidenceValue" style="font-family: monospace; font-size: 18px; color: #2ecc71;">85%</span>
+                    </div>
+                    <div style="width: 100%; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden;">
+                        <div id="conflictConfidenceBar" style="height: 100%; background: linear-gradient(90deg, #2ecc71, #27ae60); width: 85%; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+
+                <!-- Comparison Table -->
+                <div style="border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; margin-bottom: 20px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: rgba(255,255,255,0.05);">
+                                <th style="padding: 12px; text-align: left; font-size: 12px; color: rgba(255,255,255,0.6); font-weight: 500;">Eigenschaft</th>
+                                <th style="padding: 12px; text-align: left; font-size: 12px; color: rgba(255,255,255,0.6); font-weight: 500;">Lokal</th>
+                                <th style="padding: 12px; text-align: left; font-size: 12px; color: rgba(255,255,255,0.6); font-weight: 500;">Cloud</th>
+                            </tr>
+                        </thead>
+                        <tbody id="conflictComparisonBody">
+                            <tr style="border-top: 1px solid rgba(255,255,255,0.05);">
+                                <td style="padding: 12px; color: rgba(255,255,255,0.8);">Farbe</td>
+                                <td style="padding: 12px;"><div style="display: flex; align-items: center; gap: 8px;"><div id="conflictLocalColor" style="width: 24px; height: 24px; border-radius: 4px; border: 2px solid rgba(255,255,255,0.2); background: #FF5722;"></div><span id="conflictLocalColorHex" style="font-family: monospace; font-size: 11px;">#FF5722</span></div></td>
+                                <td style="padding: 12px;"><div style="display: flex; align-items: center; gap: 8px;"><div id="conflictCloudColor" style="width: 24px; height: 24px; border-radius: 4px; border: 2px solid rgba(255,255,255,0.2); background: #FF6B35;"></div><span id="conflictCloudColorHex" style="font-family: monospace; font-size: 11px;">#FF6B35</span></div></td>
+                            </tr>
+                            <tr style="border-top: 1px solid rgba(255,255,255,0.05);">
+                                <td style="padding: 12px; color: rgba(255,255,255,0.8);">Material</td>
+                                <td id="conflictLocalMaterial" style="padding: 12px; font-family: monospace;">PLA</td>
+                                <td id="conflictCloudMaterial" style="padding: 12px; font-family: monospace;">PLA</td>
+                            </tr>
+                            <tr style="border-top: 1px solid rgba(255,255,255,0.05);">
+                                <td style="padding: 12px; color: rgba(255,255,255,0.8);">Gewicht</td>
+                                <td id="conflictLocalWeight" style="padding: 12px; font-family: monospace;">850g</td>
+                                <td id="conflictCloudWeight" style="padding: 12px; font-family: monospace; color: #e74c3c;">-45.2g</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Resolution Actions -->
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <button type="button" class="conflict-action-btn" data-resolution="accept_cloud" style="width: 100%; padding: 14px 16px; border-radius: 8px; border: none; background: rgba(52,152,219,0.2); color: #3498db; font-weight: 600; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                        <span>✓ Cloud-Daten übernehmen</span>
+                        <span style="font-size: 11px; opacity: 0.7;">Lokale Spule aktualisieren</span>
+                    </button>
+                    <button type="button" class="conflict-action-btn" data-resolution="keep_local" style="width: 100%; padding: 14px 16px; border-radius: 8px; border: none; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.8); font-weight: 600; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                        <span>🔒 Lokale Daten behalten</span>
+                        <span style="font-size: 11px; opacity: 0.7;">Manuelles Tracking fortsetzen</span>
+                    </button>
+                    <button type="button" class="conflict-action-btn" data-resolution="create_new" style="width: 100%; padding: 14px 16px; border-radius: 8px; border: none; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.8); font-weight: 600; cursor: pointer; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                        <span>➕ Neue Spule erstellen</span>
+                        <span style="font-size: 11px; opacity: 0.7;">Aus Cloud-Daten</span>
+                    </button>
+                </div>
+
+                <button type="button" class="btn ghost" data-close-conflict style="width: 100%; margin-top: 12px;">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
     <script src="{{ url_for('frontend_static', path='js/global_notifications.js') }}"></script>
+    <script src="{{ url_for('frontend_static', path='js/weight_conflict_dialog.js') }}"></script>
+    <script src="{{ url_for('frontend_static', path='js/weight_conflict_listener.js') }}"></script>
+    <script src="{{ url_for('frontend_static', path='js/spool_assignment_dialog.js') }}"></script>
+    <script src="{{ url_for('frontend_static', path='js/spool_assignment_listener.js') }}"></script>
     <script src="{{ url_for('frontend_static', path='js/navbar.js') }}"></script>
     <script>
-    // Beim Laden der Seite Design-Version laden
-    (async () => {
-        try {
-            const res = await fetch('/api/admin/design-version');
-            const data = await res.json();
-            const versionEl = document.getElementById('userMenuVersion');
-            if (versionEl) versionEl.textContent = data.design_version || '{{ design_version }}';
-        } catch (err) {
-            console.error('Fehler beim Laden der Design-Version:', err);
-        }
-    })();
-    </script>
-    <script>
-    (async () => {
-        try {
-            const res = await fetch("/api/printers/has_real_ams");
-            const data = await res.json();
+    (() => {
+        let lastAmsValue = null;
 
-            if (!data.has_real_ams) {
-                document.body.classList.add("no-ams");
-            } else {
-                document.body.classList.remove("no-ams");
+        const applyAmsState = (value) => {
+            if (lastAmsValue === value) return;
+            lastAmsValue = value;
+            document.body.classList.toggle("no-ams", !value);
+            window.dispatchEvent(new CustomEvent("ams-status-changed", { detail: { value } }));
+        };
+
+        const refreshAmsState = async () => {
+            try {
+                const res = await fetch("/api/printers/has_real_ams");
+                const data = await res.json();
+                applyAmsState(Boolean(data.value));
+            } catch (e) {
+                // silent by design
             }
-        } catch (e) {
-            console.warn("AMS status check failed", e);
+        };
+
+        refreshAmsState();
+        setInterval(refreshAmsState, 12000);
+    })();
+
+    // Admin Show Hidden - funktioniert auf allen Seiten
+    (function() {
+        const params = new URLSearchParams(window.location.search);
+        const hasParam = params.get('admin_show_hidden') === '1';
+        const hasSession = sessionStorage.getItem('fh_admin_show_hidden') === '1';
+        if (hasParam) {
+            sessionStorage.setItem('fh_admin_show_hidden', '1');
+            const url = new URL(window.location.href);
+            url.searchParams.delete('admin_show_hidden');
+            window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
+        }
+        if (hasParam || hasSession) {
+            document.body.classList.add('admin-show-hidden');
         }
     })();
+
+    // Bambu Cloud Integration
+    (function() {
+        const btn = document.getElementById('bambuCloudBtn');
+        const statusEl = document.getElementById('bambuCloudStatus');
+        const modal = document.getElementById('bambuCloudModal');
+        const conflictModal = document.getElementById('bambuConflictModal');
+        if (!btn || !statusEl || !modal) return;
+
+        let currentConflictId = null;
+
+        // Status Update
+        const updateStatus = async () => {
+            try {
+                const res = await fetch('/api/bambu-cloud/sync/status');
+                if (!res.ok) throw new Error('API error');
+                const data = await res.json();
+
+                btn.classList.remove('connected', 'error', 'syncing', 'paused');
+
+                if (data.is_syncing) {
+                    btn.classList.add('syncing');
+                    statusEl.textContent = 'Sync...';
+                } else if (data.is_paused) {
+                    btn.classList.add('paused');
+                    statusEl.textContent = 'Pausiert';
+                } else if (data.is_connected) {
+                    btn.classList.add('connected');
+                    statusEl.textContent = data.is_dry_run ? 'Test' : 'Verbunden';
+                } else if (data.has_config) {
+                    btn.classList.add('error');
+                    statusEl.textContent = 'Offline';
+                } else {
+                    statusEl.textContent = '';
+                }
+
+                // Update Modal Sync Status - mehr Details
+                const syncStatusEl = document.getElementById('bambuSyncStatus');
+                const lastSyncEl = document.getElementById('bambuLastSync');
+
+                if (syncStatusEl) {
+                    if (data.is_connected) {
+                        const spoolCount = data.synced_spools_count || 0;
+                        const printerCount = data.synced_printers || 0;
+                        syncStatusEl.innerHTML = `
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <span style="color: #2ecc71;">✓ Verbunden mit Bambu Cloud</span>
+                                <span style="font-size: 11px; color: rgba(255,255,255,0.6);">
+                                    ${printerCount} Drucker | ${spoolCount} Spulen | ${data.pending_conflicts || 0} Konflikte
+                                </span>
+                            </div>
+                        `;
+                    } else if (data.has_config) {
+                        syncStatusEl.innerHTML = `<span style="color: #e74c3c;">❌ Verbindung getrennt</span>`;
+                    } else {
+                        syncStatusEl.innerHTML = `<span style="color: rgba(255,255,255,0.4);">Nicht konfiguriert</span>`;
+                    }
+                }
+
+                if (lastSyncEl && data.last_sync) {
+                    const syncDate = new Date(data.last_sync);
+                    const now = new Date();
+                    const diffMs = now - syncDate;
+                    const diffMins = Math.floor(diffMs / 60000);
+
+                    let timeAgo;
+                    if (diffMins < 1) timeAgo = 'Gerade eben';
+                    else if (diffMins < 60) timeAgo = `Vor ${diffMins} Min.`;
+                    else if (diffMins < 1440) timeAgo = `Vor ${Math.floor(diffMins / 60)} Std.`;
+                    else timeAgo = syncDate.toLocaleString('de-DE');
+
+                    lastSyncEl.textContent = timeAgo;
+                }
+
+                // Update Conflict Badge
+                const badge = document.getElementById('bambuConflictBadge');
+                if (badge) {
+                    if (data.pending_conflicts > 0) {
+                        badge.style.display = 'flex';
+                        badge.textContent = data.pending_conflicts;
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            } catch (e) {
+                statusEl.textContent = 'Cloud';
+                btn.classList.remove('connected', 'error', 'syncing', 'paused');
+            }
+        };
+
+        // Track if config is loaded
+        let configLoaded = false;
+
+        // Open Modal
+        const openModal = async () => {
+            configLoaded = false;
+            modal.setAttribute('aria-hidden', 'false');
+            modal.classList.add('is-visible');
+            await loadConfig();
+            configLoaded = true;
+            loadConflicts();
+        };
+
+        // Close Modal
+        const closeModal = (m) => {
+            // Move focus away before hiding (fixes aria-hidden warning)
+            if (m.contains(document.activeElement)) {
+                document.activeElement.blur();
+            }
+            m.setAttribute('aria-hidden', 'true');
+            m.classList.remove('is-visible');
+        };
+
+        // Load Config from API
+        // [BETA] `loadConfig` wird unten erweitert (Wrapper), daher `let` statt `const`.
+        let loadConfig = async () => {
+            try {
+                const res = await fetch('/api/bambu-cloud/config');
+                if (!res.ok) return;
+                const config = await res.json();
+
+                document.getElementById('bambuCloudEnabled').checked = config.sync_enabled || false;
+                document.getElementById('bambuUsername').value = config.bambu_username || '';
+                document.getElementById('bambuRegion').value = config.region || 'eu';
+                document.getElementById('bambuPriorityMode').value = config.conflict_resolution_mode || 'cloud_verified';
+                document.getElementById('bambuSyncInterval').value = config.auto_sync_interval_minutes || 30;
+
+                // Token-Placeholder wenn bereits gespeichert
+                const tokenInput = document.getElementById('bambuAccessToken');
+                if (tokenInput) {
+                    tokenInput.value = '';
+                    tokenInput.placeholder = config.has_token ? 'Token gespeichert ✓ (leer lassen um beizubehalten)' : 'Auth Token aus Bambu Handy App';
+                }
+
+                // Logged-In State anzeigen wenn Token vorhanden und verbunden
+                const loggedInState = document.getElementById('bambuLoggedInState');
+                const loginMethod = document.getElementById('bambuLoginMethod');
+                const tokenMethod = document.getElementById('bambuTokenMethod');
+                const methodToggle = document.querySelector('#bambuMethodLogin')?.parentElement;
+
+                if (config.has_token && config.connection_status === 'connected') {
+                    // Zeige Logged-In State
+                    if (loggedInState) loggedInState.style.display = 'block';
+                    if (loginMethod) loginMethod.style.display = 'none';
+                    if (tokenMethod) tokenMethod.style.display = 'none';
+                    if (methodToggle) methodToggle.style.display = 'none';
+
+                    // Email anzeigen
+                    const emailEl = document.getElementById('bambuLoggedInEmail');
+                    if (emailEl) emailEl.textContent = config.bambu_username || 'Verbunden';
+                } else {
+                    // Zeige Login-Formular
+                    if (loggedInState) loggedInState.style.display = 'none';
+                    if (loginMethod) loginMethod.style.display = 'grid';
+                    if (methodToggle) methodToggle.style.display = 'flex';
+                }
+
+                toggleCredentialsSection(config.sync_enabled);
+                updatePriorityInfo();
+
+                // Last Sync und Status anzeigen
+                const lastSyncEl = document.getElementById('bambuLastSync');
+                if (lastSyncEl && config.last_sync_at) {
+                    lastSyncEl.textContent = new Date(config.last_sync_at).toLocaleString('de-DE');
+                }
+
+                const syncStatusEl = document.getElementById('bambuSyncStatus');
+                if (syncStatusEl) {
+                    if (config.connection_status === 'connected') {
+                        syncStatusEl.innerHTML = `<span style="color: #2ecc71;">✓ Verbunden</span>`;
+                    } else if (config.connection_status === 'error') {
+                        syncStatusEl.innerHTML = `<span style="color: #e74c3c;">❌ ${config.last_error_message || 'Verbindungsfehler'}</span>`;
+                    } else if (config.has_token) {
+                        syncStatusEl.innerHTML = `<span style="color: rgba(255,255,255,0.5);">Token vorhanden - klicke Sync</span>`;
+                    } else {
+                        syncStatusEl.innerHTML = `<span style="color: rgba(255,255,255,0.4);">Nicht verbunden</span>`;
+                    }
+                }
+
+                // Drucker-Liste Placeholder
+                const printerList = document.getElementById('bambuPrinterList');
+                if (printerList) {
+                    if (config.has_token) {
+                        printerList.innerHTML = `<div style="padding: 12px; background: rgba(52,152,219,0.1); border-radius: 8px; color: rgba(52,152,219,0.9); text-align: center; font-size: 12px;">
+                            Klicke "Sync" um Drucker zu laden
+                        </div>`;
+                    } else {
+                        printerList.innerHTML = `<div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; color: rgba(255,255,255,0.5); text-align: center; font-size: 12px;">
+                            Keine Drucker gefunden. Bitte erst Verbindung herstellen.
+                        </div>`;
+                    }
+                }
+
+            } catch (e) {
+                console.error('Failed to load Bambu config:', e);
+            }
+        };
+
+        // Load Printers from Cloud
+        const loadPrinters = async () => {
+            const list = document.getElementById('bambuPrinterList');
+            if (!list) return;
+
+            try {
+                // Erst Config prüfen
+                const configRes = await fetch('/api/bambu-cloud/config');
+                if (!configRes.ok) return;
+                const config = await configRes.json();
+
+                if (!config.has_token) {
+                    list.innerHTML = `<div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; color: rgba(255,255,255,0.5); text-align: center; font-size: 12px;">
+                        Kein Token vorhanden. Bitte erst Token eingeben und speichern.
+                    </div>`;
+                    return;
+                }
+
+                list.innerHTML = `<div style="padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; color: rgba(52,152,219,0.9); text-align: center; font-size: 12px;">
+                    <span class="bambu-cloud-icon" style="animation: bambu-pulse 1.5s ease-in-out infinite;">⏳</span> Lade Drucker...
+                </div>`;
+
+                // Sync auslösen um Drucker zu laden
+                const syncRes = await fetch('/api/bambu-cloud/sync/trigger', { method: 'POST' });
+
+                if (!syncRes.ok) {
+                    const err = await syncRes.json().catch(() => ({}));
+                    list.innerHTML = `<div style="padding: 12px; background: rgba(231,76,60,0.1); border-radius: 8px; color: rgba(231,76,60,0.9); text-align: center; font-size: 12px;">
+                        ❌ Fehler: ${err.detail || 'Verbindung fehlgeschlagen'}
+                    </div>`;
+                    return;
+                }
+
+                const syncData = await syncRes.json();
+
+                // Erfolgreich: Zeige Sync-Ergebnis
+                const devices = syncData.result?.devices || [];
+                const devicesCount = syncData.result?.devices_count || 0;
+                const spoolsCount = syncData.result?.cloud_spools_count || 0;
+                const localSpoolsCount = syncData.result?.local_spools_count || 0;
+                const syncedAt = syncData.timestamp ? new Date(syncData.timestamp).toLocaleString('de-DE') : 'Jetzt';
+                const syncMessage = syncData.result?.message;
+
+                // Update Last Sync
+                const lastSyncEl = document.getElementById('bambuLastSync');
+                if (lastSyncEl) lastSyncEl.textContent = syncedAt;
+
+                // Update Sync Status
+                const syncStatusEl = document.getElementById('bambuSyncStatus');
+                if (syncStatusEl) {
+                    syncStatusEl.innerHTML = `<span style="color: #2ecc71;">✓ Verbunden mit Bambu Cloud</span><br>
+                        <span style="font-size: 11px; color: rgba(255,255,255,0.5);">${devicesCount} Drucker | ${localSpoolsCount} Spulen | ${syncData.result?.conflicts || 0} Konflikte</span>`;
+                }
+
+                // Zeige Warnung wenn Token eingeschränkt
+                if (syncMessage) {
+                    syncStatusEl.innerHTML += `<div style="margin-top: 8px; padding: 8px; background: rgba(255,184,0,0.15); border-radius: 6px; font-size: 11px; color: rgba(255,184,0,0.9); border: 1px solid rgba(255,184,0,0.3);">
+                        ⚠️ Verbunden mit eingeschränkten Berechtigungen<br>
+                        <span style="color: rgba(255,255,255,0.6);">Verbunden, aber Token hat keine Berechtigung für Spulen-Daten. AMS-Daten werden über MQTT synchronisiert.</span>
+                    </div>`;
+                }
+
+                // Zeige Drucker-Liste
+                if (devicesCount > 0) {
+                    let printersHtml = '';
+                    for (const device of devices) {
+                        const statusColor = device.online ? '#2ecc71' : '#95a5a6';
+                        const statusText = device.online ? 'Online' : 'Offline';
+                        const printStatus = device.print_status === 'SUCCESS' ? '✓ Fertig' :
+                                          device.print_status === 'ACTIVE' ? '🖨️ Druckt' :
+                                          device.print_status || '';
+
+                        printersHtml += `
+                            <div style="padding: 10px 12px; background: rgba(0,0,0,0.2); border-radius: 8px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                                <div style="width: 8px; height: 8px; border-radius: 50%; background: ${statusColor}; flex-shrink: 0;"></div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${device.name}</div>
+                                    <div style="font-size: 11px; color: rgba(255,255,255,0.5);">${device.model} | ${statusText} ${printStatus ? '| ' + printStatus : ''}</div>
+                                </div>
+                            </div>`;
+                    }
+                    list.innerHTML = printersHtml;
+                } else {
+                    list.innerHTML = `<div style="padding: 12px; background: rgba(255,184,0,0.1); border-radius: 8px; color: rgba(255,184,0,0.9); text-align: center; font-size: 12px;">
+                        ⚠️ Verbunden, aber keine Drucker gefunden
+                    </div>`;
+                }
+
+            } catch (e) {
+                console.error('Failed to load printers:', e);
+                list.innerHTML = `<div style="padding: 12px; background: rgba(231,76,60,0.1); border-radius: 8px; color: rgba(231,76,60,0.9); text-align: center; font-size: 12px;">
+                    ❌ Netzwerkfehler beim Laden der Drucker
+                </div>`;
+            }
+        };
+
+        // Load Conflicts
+        const loadConflicts = async () => {
+            try {
+                const res = await fetch('/api/bambu-cloud/conflicts');
+                if (!res.ok) return;
+                const conflicts = await res.json();
+
+                const list = document.getElementById('bambuConflictList');
+                if (conflicts.length === 0) {
+                    list.innerHTML = `<div style="padding: 24px; background: rgba(255,255,255,0.03); border-radius: 10px; text-align: center; color: rgba(255,255,255,0.5);">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.3;"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <div style="font-size: 14px;">Keine Konflikte vorhanden</div>
+                        <div style="font-size: 12px; margin-top: 4px;">Alle Spulen sind synchronisiert</div>
+                    </div>`;
+                    return;
+                }
+
+                list.innerHTML = conflicts.map(c => `
+                    <div class="bambu-conflict-item" data-conflict-id="${c.id}">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 40px; height: 40px; border-radius: 8px; background: ${c.cloud_color || '#888'}; border: 2px solid rgba(255,255,255,0.2);"></div>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 14px;">${c.description || 'Spulen-Konflikt'}</div>
+                                    <div style="font-size: 12px; color: rgba(255,255,255,0.5);">${c.conflict_type || 'weight'} - ${c.printer_id || 'Unbekannt'}</div>
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-weight: 600; color: ${c.confidence > 70 ? '#2ecc71' : c.confidence > 40 ? '#f1c40f' : '#e74c3c'};">${c.confidence || 0}% Match</div>
+                                <div style="font-size: 11px; color: rgba(255,255,255,0.4);">Klicken zum Lösen</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Add click handlers
+                list.querySelectorAll('.bambu-conflict-item').forEach(item => {
+                    item.addEventListener('click', () => openConflictModal(item.dataset.conflictId, conflicts));
+                });
+            } catch (e) {
+                console.error('Failed to load conflicts:', e);
+            }
+        };
+
+        // Load Bambu History (Print Jobs)
+        const loadBambuHistory = async () => {
+            const loading = document.getElementById('bambuHistoryLoading');
+            const list = document.getElementById('bambuHistoryList');
+
+            loading.style.display = 'block';
+            list.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/bambu-cloud/tasks?limit=20');
+                if (!res.ok) {
+                    throw new Error('API-Fehler');
+                }
+
+                const data = await res.json();
+                const tasks = data.tasks || [];
+
+                loading.style.display = 'none';
+                list.style.display = 'block';
+
+                if (tasks.length === 0) {
+                    list.innerHTML = `<div style="padding: 24px; background: rgba(255,255,255,0.03); border-radius: 10px; text-align: center; color: rgba(255,255,255,0.5);">
+                        <div style="font-size: 14px;">Keine Druckaufträge gefunden</div>
+                    </div>`;
+                    return;
+                }
+
+                list.innerHTML = tasks.map(task => {
+                    const statusColors = {
+                        'finished': '#2ecc71',
+                        'failed': '#e74c3c',
+                        'running': '#3498db',
+                        'pending': '#f39c12'
+                    };
+                    const statusColor = statusColors[task.status] || '#95a5a6';
+                    const statusIcon = {
+                        'finished': '✅',
+                        'failed': '❌',
+                        'running': '🔄',
+                        'pending': '⏳'
+                    }[task.status] || '❓';
+
+                    const date = task.start_time ? new Date(task.start_time).toLocaleString('de-DE', {
+                        day: '2-digit', month: '2-digit', year: '2-digit',
+                        hour: '2-digit', minute: '2-digit'
+                    }) : '-';
+
+                    return `
+                        <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="font-size: 24px;">${statusIcon}</div>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${task.title || 'Unbenannt'}</div>
+                                <div style="font-size: 11px; color: rgba(255,255,255,0.5);">
+                                    ${task.device_name || task.device_id || '-'} • ${date}
+                                </div>
+                            </div>
+                            <div style="text-align: right; flex-shrink: 0;">
+                                <div style="font-weight: 600; color: #2ecc71; font-size: 14px;">${task.weight_g ? task.weight_g.toFixed(1) + 'g' : '-'}</div>
+                                <div style="font-size: 11px; color: rgba(255,255,255,0.4);">${task.cost_time_formatted || '-'}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (e) {
+                console.error('Failed to load history:', e);
+                loading.style.display = 'none';
+                list.style.display = 'block';
+                list.innerHTML = `<div style="padding: 24px; background: rgba(231,76,60,0.1); border-radius: 10px; text-align: center; color: #e74c3c;">
+                    <div style="font-size: 14px;">Fehler beim Laden der Druckhistorie</div>
+                    <div style="font-size: 12px; margin-top: 4px; color: rgba(255,255,255,0.5);">${e.message}</div>
+                </div>`;
+            }
+        };
+
+        // Open Conflict Modal
+        const openConflictModal = (conflictId, conflicts) => {
+            const conflict = conflicts.find(c => c.id === conflictId);
+            if (!conflict) return;
+
+            currentConflictId = conflictId;
+
+            // Update UI
+            document.getElementById('conflictConfidenceValue').textContent = `${conflict.confidence || 0}%`;
+            document.getElementById('conflictConfidenceBar').style.width = `${conflict.confidence || 0}%`;
+
+            if (conflict.local_value) {
+                try {
+                    const local = JSON.parse(conflict.local_value);
+                    document.getElementById('conflictLocalColor').style.background = local.color || '#888';
+                    document.getElementById('conflictLocalColorHex').textContent = local.color || '-';
+                    document.getElementById('conflictLocalMaterial').textContent = local.material || '-';
+                    document.getElementById('conflictLocalWeight').textContent = local.weight ? `${local.weight}g` : '-';
+                } catch (e) {}
+            }
+
+            if (conflict.cloud_value) {
+                try {
+                    const cloud = JSON.parse(conflict.cloud_value);
+                    document.getElementById('conflictCloudColor').style.background = cloud.color || '#888';
+                    document.getElementById('conflictCloudColorHex').textContent = cloud.color || '-';
+                    document.getElementById('conflictCloudMaterial').textContent = cloud.material || '-';
+                    document.getElementById('conflictCloudWeight').textContent = cloud.weight_used ? `-${cloud.weight_used}g` : '-';
+                } catch (e) {}
+            }
+
+            conflictModal.setAttribute('aria-hidden', 'false');
+            conflictModal.classList.add('is-visible');
+        };
+
+        // Resolve Conflict
+        const resolveConflict = async (resolution) => {
+            if (!currentConflictId) return;
+
+            try {
+                const res = await fetch(`/api/bambu-cloud/conflicts/${currentConflictId}/resolve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ resolution })
+                });
+
+                if (res.ok) {
+                    closeModal(conflictModal);
+                    loadConflicts();
+                    updateStatus();
+                }
+            } catch (e) {
+                console.error('Failed to resolve conflict:', e);
+            }
+        };
+
+        // Toggle Credentials Section
+        const toggleCredentialsSection = (enabled) => {
+            const section = document.getElementById('bambuCredentialsSection');
+            if (section) {
+                section.style.display = enabled ? 'block' : 'none';
+            }
+        };
+
+        // Update Priority Info
+        const updatePriorityInfo = () => {
+            const mode = document.getElementById('bambuPriorityMode').value;
+            const info = document.getElementById('bambuPriorityInfo');
+            const modes = {
+                cloud_verified: { color: '46,204,113', icon: '✅', title: 'Cloud Verified', desc: 'Cloud-Daten werden nur nach Verifizierung angewendet. Sicher und empfohlen.' },
+                local_priority: { color: '52,152,219', icon: 'ℹ️', title: 'Local Priority', desc: 'Lokale Daten haben Vorrang. Cloud-Daten werden nur als Referenz gespeichert.' },
+                cloud_only: { color: '231,76,60', icon: '⚠️', title: 'Cloud Only', desc: 'Cloud überschreibt lokale Daten ohne Prüfung. Vorsicht!' },
+                manual_only: { color: '149,165,166', icon: '🔒', title: 'Nur Manuell', desc: 'Cloud-Daten werden ignoriert. Nur manuelles Tracking.' }
+            };
+            const m = modes[mode] || modes.cloud_verified;
+            info.style.background = `rgba(${m.color},0.1)`;
+            info.style.borderLeftColor = `rgba(${m.color},0.5)`;
+            info.innerHTML = `<div style="font-weight: 600; font-size: 13px; color: rgba(${m.color},1); margin-bottom: 4px;">${m.icon} ${m.title}</div><div style="font-size: 12px; color: rgba(255,255,255,0.7);">${m.desc}</div>`;
+        };
+
+        // Save Config
+        const saveConfig = async () => {
+            // Warte bis Config geladen ist
+            if (!configLoaded) {
+                console.warn('[DEBUG] Config not loaded yet, waiting...');
+                await new Promise(resolve => setTimeout(resolve, 500));
+                if (!configLoaded) {
+                    alert('Bitte warte bis die Konfiguration geladen ist.');
+                    return;
+                }
+            }
+
+            const tokenInput = document.getElementById('bambuAccessToken');
+            const tokenValue = tokenInput ? tokenInput.value.trim() : '';
+
+            const config = {
+                sync_enabled: document.getElementById('bambuCloudEnabled')?.checked || false,
+                bambu_username: document.getElementById('bambuUsername').value,
+                region: document.getElementById('bambuRegion').value,
+                conflict_resolution_mode: document.getElementById('bambuPriorityMode').value,
+                auto_sync_interval_minutes: parseInt(document.getElementById('bambuSyncInterval').value) || 30
+            };
+
+            // Token nur senden wenn nicht leer (verhindert undefined-Problem)
+            if (tokenValue.length > 0) {
+                config.access_token = tokenValue;
+            }
+
+            try {
+                const saveBtn = document.getElementById('bambuSaveBtn');
+                if (saveBtn) {
+                    saveBtn.disabled = true;
+                    saveBtn.textContent = 'Speichern...';
+                }
+
+                const res = await fetch('/api/bambu-cloud/config', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                if (res.ok) {
+                    // Token-Feld leeren nach erfolgreichem Speichern (Sicherheit)
+                    if (tokenInput && tokenValue.length > 0) {
+                        tokenInput.value = '';
+                        tokenInput.placeholder = 'Token gespeichert ✓';
+                    }
+
+                    // Drucker nach Speichern laden
+                    await loadPrinters();
+
+                    closeModal(modal);
+                    updateStatus();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    alert('Fehler beim Speichern: ' + (err.detail || res.statusText));
+                }
+            } catch (e) {
+                console.error('Failed to save config:', e);
+                alert('Netzwerkfehler beim Speichern');
+            } finally {
+                const saveBtn = document.getElementById('bambuSaveBtn');
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Speichern';
+                }
+            }
+        };
+
+        // Event Listeners
+        btn.addEventListener('click', openModal);
+
+        modal.querySelectorAll('[data-close-bambu-cloud]').forEach(el => {
+            el.addEventListener('click', () => closeModal(modal));
+        });
+
+        conflictModal.querySelectorAll('[data-close-conflict]').forEach(el => {
+            el.addEventListener('click', () => closeModal(conflictModal));
+        });
+
+        document.getElementById('bambuCloudEnabled')?.addEventListener('change', (e) => {
+            toggleCredentialsSection(e.target.checked);
+        });
+
+        document.getElementById('bambuPriorityMode')?.addEventListener('change', updatePriorityInfo);
+
+        document.getElementById('bambuSaveBtn')?.addEventListener('click', saveConfig);
+
+        document.getElementById('bambuSyncNowBtn')?.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const syncBtn = document.getElementById('bambuSyncNowBtn');
+            const resultEl = document.getElementById('bambuConnectionResult');
+
+            try {
+                if (syncBtn) {
+                    syncBtn.disabled = true;
+                    syncBtn.textContent = '⏳ Sync...';
+                }
+
+                console.log('[Bambu Cloud] Starting sync...');
+                const res = await fetch('/api/bambu-cloud/sync/trigger', { method: 'POST' });
+                const data = await res.json();
+                console.log('[Bambu Cloud] Sync response:', data);
+
+                if (res.ok) {
+                    if (resultEl) {
+                        resultEl.style.display = 'block';
+                        const cloudSpools = data.result?.cloud_spools_count || 0;
+                        const hasMessage = data.result?.message;
+
+                        if (hasMessage) {
+                            // Eingeschränkte Berechtigung - aber verbunden
+                            resultEl.style.background = 'rgba(241,196,15,0.1)';
+                            resultEl.style.borderLeft = '3px solid #f1c40f';
+                            resultEl.innerHTML = `
+                                <strong style="color: #f1c40f;">⚠️ Verbunden mit eingeschränkten Berechtigungen</strong><br>
+                                <span style="color: rgba(255,255,255,0.7); font-size: 11px;">
+                                    ${data.result.message}
+                                </span>
+                            `;
+                        } else {
+                            resultEl.style.background = 'rgba(46,204,113,0.1)';
+                            resultEl.style.borderLeft = '3px solid #2ecc71';
+                            resultEl.innerHTML = `
+                                <strong style="color: #2ecc71;">✓ Sync erfolgreich!</strong><br>
+                                <span style="color: rgba(255,255,255,0.7);">
+                                    ${cloudSpools} Cloud-Spulen gefunden
+                                </span>
+                            `;
+                        }
+                    }
+                } else {
+                    if (resultEl) {
+                        resultEl.style.display = 'block';
+                        resultEl.style.background = 'rgba(231,76,60,0.1)';
+                        resultEl.style.borderLeft = '3px solid #e74c3c';
+                        resultEl.innerHTML = `<strong style="color: #e74c3c;">❌ Sync fehlgeschlagen</strong><br>${data.detail || 'Unbekannter Fehler'}`;
+                    }
+                }
+
+                updateStatus();
+                // loadConfig() nicht aufrufen - das würde den Toggle zurücksetzen!
+                // Stattdessen nur die Drucker-Liste aktualisieren
+                console.log('[Bambu Cloud] Sync completed successfully');
+            } catch (e) {
+                console.error('[Bambu Cloud] Sync error:', e);
+                if (resultEl) {
+                    resultEl.style.display = 'block';
+                    resultEl.style.background = 'rgba(231,76,60,0.1)';
+                    resultEl.style.borderLeft = '3px solid #e74c3c';
+                    resultEl.innerHTML = `<strong style="color: #e74c3c;">❌ Netzwerkfehler</strong>`;
+                }
+            } finally {
+                if (syncBtn) {
+                    syncBtn.disabled = false;
+                    syncBtn.textContent = '🔄 Sync';
+                }
+            }
+        });
+
+        // ==========================================
+        // AUTH METHOD TOGGLE (Login vs Token)
+        // ==========================================
+        document.getElementById('bambuMethodLogin')?.addEventListener('click', () => {
+            document.getElementById('bambuMethodLogin').style.background = 'rgba(52,152,219,0.3)';
+            document.getElementById('bambuMethodLogin').style.color = '#3498db';
+            document.getElementById('bambuMethodLogin').style.fontWeight = '600';
+            document.getElementById('bambuMethodToken').style.background = 'transparent';
+            document.getElementById('bambuMethodToken').style.color = 'rgba(255,255,255,0.5)';
+            document.getElementById('bambuMethodToken').style.fontWeight = 'normal';
+            document.getElementById('bambuLoginMethod').style.display = 'grid';
+            document.getElementById('bambuTokenMethod').style.display = 'none';
+        });
+
+        document.getElementById('bambuMethodToken')?.addEventListener('click', () => {
+            document.getElementById('bambuMethodToken').style.background = 'rgba(155,89,182,0.3)';
+            document.getElementById('bambuMethodToken').style.color = '#9b59b6';
+            document.getElementById('bambuMethodToken').style.fontWeight = '600';
+            document.getElementById('bambuMethodLogin').style.background = 'transparent';
+            document.getElementById('bambuMethodLogin').style.color = 'rgba(255,255,255,0.5)';
+            document.getElementById('bambuMethodLogin').style.fontWeight = 'normal';
+            document.getElementById('bambuLoginMethod').style.display = 'none';
+            document.getElementById('bambuTokenMethod').style.display = 'block';
+        });
+
+        // ==========================================
+        // LOGOUT / RECONNECT BUTTONS
+        // ==========================================
+        document.getElementById('bambuLogoutBtn')?.addEventListener('click', async () => {
+            if (!confirm('Möchtest du dich wirklich von der Bambu Cloud abmelden? Der Token wird gelöscht.')) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/bambu-cloud/logout', { method: 'POST' });
+                if (res.ok) {
+                    // UI zurücksetzen
+                    document.getElementById('bambuLoggedInState').style.display = 'none';
+                    document.getElementById('bambuLoginMethod').style.display = 'grid';
+                    document.querySelector('#bambuMethodLogin')?.parentElement?.style.setProperty('display', 'flex');
+                    document.getElementById('bambuPassword').value = '';
+                    document.getElementById('bambuTfaCode').value = '';
+
+                    // Config neu laden
+                    loadConfig();
+                } else {
+                    alert('Fehler beim Abmelden');
+                }
+            } catch (e) {
+                console.error('Logout error:', e);
+                alert('Netzwerkfehler beim Abmelden');
+            }
+        });
+
+        document.getElementById('bambuReconnectBtn')?.addEventListener('click', () => {
+            // Zeige Login-Formular wieder an
+            document.getElementById('bambuLoggedInState').style.display = 'none';
+            document.getElementById('bambuLoginMethod').style.display = 'grid';
+            document.querySelector('#bambuMethodLogin')?.parentElement?.style.setProperty('display', 'flex');
+        });
+
+        // ==========================================
+        // SAVE TOKEN (manueller Token)
+        // ==========================================
+        document.getElementById('bambuSaveTokenBtn')?.addEventListener('click', async () => {
+            const saveBtn = document.getElementById('bambuSaveTokenBtn');
+            const statusEl = document.getElementById('bambuLoginStatus');
+            const email = document.getElementById('bambuTokenEmail')?.value || '';
+            const token = document.getElementById('bambuAccessToken')?.value;
+            const region = document.getElementById('bambuTokenRegion')?.value || 'eu';
+
+            if (!token) {
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = 'rgba(231,76,60,0.1)';
+                    statusEl.style.borderLeft = '3px solid #e74c3c';
+                    statusEl.innerHTML = '<strong style="color: #e74c3c;">❌ Bitte Token eingeben</strong>';
+                }
+                return;
+            }
+
+            try {
+                if (saveBtn) {
+                    saveBtn.disabled = true;
+                    saveBtn.textContent = '⏳ Speichern...';
+                }
+
+                const res = await fetch('/api/bambu-cloud/config', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        access_token: token,
+                        bambu_username: email,
+                        region: region,
+                        sync_enabled: true
+                    })
+                });
+                const data = await res.json();
+
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                }
+
+                if (res.ok) {
+                    statusEl.style.background = 'rgba(46,204,113,0.1)';
+                    statusEl.style.borderLeft = '3px solid #2ecc71';
+                    statusEl.innerHTML = `<strong style="color: #2ecc71;">✓ Token gespeichert!</strong><br><span style="color: rgba(255,255,255,0.6); font-size: 11px;">⚠️ Handy-App Token hat eingeschränkte Rechte</span>`;
+                    document.getElementById('bambuAccessToken').value = '';
+                    updateStatus();
+                    loadConfig();
+                } else {
+                    statusEl.style.background = 'rgba(231,76,60,0.1)';
+                    statusEl.style.borderLeft = '3px solid #e74c3c';
+                    statusEl.innerHTML = `<strong style="color: #e74c3c;">❌ Fehler beim Speichern</strong><br>${data.detail || 'Unbekannter Fehler'}`;
+                }
+            } catch (e) {
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = 'rgba(231,76,60,0.1)';
+                    statusEl.style.borderLeft = '3px solid #e74c3c';
+                    statusEl.innerHTML = `<strong style="color: #e74c3c;">❌ Netzwerkfehler</strong>`;
+                }
+            } finally {
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '💾 Token speichern';
+                }
+            }
+        });
+
+        // ==========================================
+        // LOGIN FLOW (Email + Passwort + Verifikation)
+        // ==========================================
+        document.getElementById('bambuLoginBtn')?.addEventListener('click', async () => {
+            const loginBtn = document.getElementById('bambuLoginBtn');
+            const statusEl = document.getElementById('bambuLoginStatus');
+            const email = document.getElementById('bambuUsername')?.value;
+            const password = document.getElementById('bambuPassword')?.value;
+            const region = document.getElementById('bambuRegion')?.value || 'eu';
+            const tfaCode = document.getElementById('bambuTfaCode')?.value?.trim();
+
+            if (!email || !password) {
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = 'rgba(231,76,60,0.1)';
+                    statusEl.style.borderLeft = '3px solid #e74c3c';
+                    statusEl.innerHTML = '<strong style="color: #e74c3c;">❌ Bitte Email und Passwort eingeben</strong>';
+                }
+                return;
+            }
+
+            try {
+                if (loginBtn) {
+                    loginBtn.disabled = true;
+                    loginBtn.textContent = '⏳ Einloggen...';
+                }
+
+                // URL mit optionalem TFA-Code
+                let url = `/api/bambu-cloud/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&region=${region}`;
+                if (tfaCode && tfaCode.length === 6) {
+                    url += `&tfa_code=${encodeURIComponent(tfaCode)}`;
+                    console.log('[LOGIN] Including TFA code in request');
+                }
+
+                const res = await fetch(url, {
+                    method: 'POST'
+                });
+                const data = await res.json();
+
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                }
+
+                if (data.state === 'success') {
+                    // Login erfolgreich! Zeige Logged-In State
+                    if (statusEl) {
+                        statusEl.style.display = 'none';
+                    }
+
+                    // Zeige Logged-In State
+                    const loggedInState = document.getElementById('bambuLoggedInState');
+                    const loginMethod = document.getElementById('bambuLoginMethod');
+                    const methodToggle = document.querySelector('#bambuMethodLogin')?.parentElement;
+
+                    if (loggedInState) loggedInState.style.display = 'block';
+                    if (loginMethod) loginMethod.style.display = 'none';
+                    if (methodToggle) methodToggle.style.display = 'none';
+
+                    // Email anzeigen
+                    const emailEl = document.getElementById('bambuLoggedInEmail');
+                    if (emailEl) emailEl.textContent = email || 'Verbunden';
+
+                    updateStatus();
+                    // Drucker direkt laden
+                    loadPrinters();
+                } else if (data.state === 'need_verification_code') {
+                    // Verifikationscode erforderlich
+                    if (statusEl) {
+                        statusEl.style.background = 'rgba(241,196,15,0.1)';
+                        statusEl.style.borderLeft = '3px solid #f1c40f';
+                        statusEl.innerHTML = `<strong style="color: #f1c40f;">📧 Verifikationscode gesendet!</strong><br><span style="color: rgba(255,255,255,0.7);">Prüfe deine Email und gib den 6-stelligen Code ein.</span>`;
+                    }
+                    // Zeige Verifikations-Sektion
+                    document.getElementById('bambuVerifySection').style.display = 'block';
+                    document.getElementById('bambuVerifyBtn').style.display = 'flex';
+                    document.getElementById('bambuPasswordSection').style.display = 'none';
+                    document.getElementById('bambuLoginBtn').style.display = 'none';
+                    document.getElementById('bambuVerifyCode')?.focus();
+                } else if (data.state === 'need_tfa') {
+                    // 2FA/Authenticator erforderlich
+                    const tfaKeyLen = data.tfa_key_length || (data.tfa_key ? data.tfa_key.length : 0);
+                    console.log('[TFA DEBUG] Received tfaKey length:', tfaKeyLen);
+                    console.log('[TFA DEBUG] tfaKey preview:', data.tfa_key ? data.tfa_key.substring(0, 30) + '...' : 'NULL');
+
+                    if (statusEl) {
+                        statusEl.style.background = 'rgba(155,89,182,0.1)';
+                        statusEl.style.borderLeft = '3px solid #9b59b6';
+                        statusEl.innerHTML = `<strong style="color: #9b59b6;">🔐 Authenticator Code erforderlich</strong><br><span style="color: rgba(255,255,255,0.7);">Gib deinen 6-stelligen Google Authenticator Code ein.</span><br><small style="color: rgba(255,255,255,0.4);">Debug: tfaKey length=${tfaKeyLen}</small>`;
+                    }
+                    // Zeige Code-Eingabe, verstecke Login
+                    document.getElementById('bambuVerifySection').style.display = 'block';
+                    document.getElementById('bambuVerifyBtn').style.display = 'flex';
+                    document.getElementById('bambuPasswordSection').style.display = 'none';
+                    document.getElementById('bambuLoginBtn').style.display = 'none';
+                    // TFA Key speichern für Verify-Request
+                    window._bambuTfaKey = data.tfa_key;
+                    // Label ändern
+                    const label = document.querySelector('#bambuVerifySection label');
+                    if (label) label.textContent = '🔐 Authenticator Code (Google Auth)';
+                    const hint = document.querySelector('#bambuVerifySection p');
+                    if (hint) hint.innerHTML = '⚡ Gib den Code aus deiner Authenticator-App ein';
+                    document.getElementById('bambuVerifyCode')?.focus();
+                } else {
+                    // Fehler
+                    if (statusEl) {
+                        statusEl.style.background = 'rgba(231,76,60,0.1)';
+                        statusEl.style.borderLeft = '3px solid #e74c3c';
+                        statusEl.innerHTML = `<strong style="color: #e74c3c;">❌ Login fehlgeschlagen</strong><br><span style="color: rgba(255,255,255,0.7);">${data.message || 'Unbekannter Fehler'}</span>`;
+                    }
+                }
+            } catch (e) {
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = 'rgba(231,76,60,0.1)';
+                    statusEl.style.borderLeft = '3px solid #e74c3c';
+                    statusEl.innerHTML = `<strong style="color: #e74c3c;">❌ Netzwerkfehler</strong>`;
+                }
+            } finally {
+                if (loginBtn) {
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = '🔐 Einloggen';
+                }
+            }
+        });
+
+        // Verify Code Button (Email-Code ODER 2FA/Authenticator)
+        document.getElementById('bambuVerifyBtn')?.addEventListener('click', async () => {
+            const verifyBtn = document.getElementById('bambuVerifyBtn');
+            const statusEl = document.getElementById('bambuLoginStatus');
+            const email = document.getElementById('bambuUsername')?.value;
+            const code = document.getElementById('bambuVerifyCode')?.value;
+            const region = document.getElementById('bambuRegion')?.value || 'eu';
+            const tfaKey = window._bambuTfaKey; // Wurde beim Login gesetzt falls 2FA
+
+            if (!code || code.length !== 6) {
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = 'rgba(231,76,60,0.1)';
+                    statusEl.style.borderLeft = '3px solid #e74c3c';
+                    statusEl.innerHTML = '<strong style="color: #e74c3c;">❌ Bitte 6-stelligen Code eingeben</strong>';
+                }
+                return;
+            }
+
+            try {
+                if (verifyBtn) {
+                    verifyBtn.disabled = true;
+                    verifyBtn.textContent = '⏳ Prüfen...';
+                }
+
+                let res;
+                if (tfaKey) {
+                    // 2FA/Authenticator Flow
+                    res = await fetch(`/api/bambu-cloud/login/tfa?tfa_key=${encodeURIComponent(tfaKey)}&tfa_code=${encodeURIComponent(code)}&email=${encodeURIComponent(email)}&region=${region}`, {
+                        method: 'POST'
+                    });
+                } else {
+                    // Email-Code Flow
+                    res = await fetch(`/api/bambu-cloud/login/verify?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&region=${region}`, {
+                        method: 'POST'
+                    });
+                }
+                const data = await res.json();
+
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                }
+
+                if (data.state === 'success') {
+                    // Verifikation erfolgreich! Zeige Logged-In State
+                    if (statusEl) {
+                        statusEl.style.display = 'none';
+                    }
+
+                    // Zeige Logged-In State
+                    const loggedInState = document.getElementById('bambuLoggedInState');
+                    const loginMethod = document.getElementById('bambuLoginMethod');
+                    const methodToggle = document.querySelector('#bambuMethodLogin')?.parentElement;
+
+                    if (loggedInState) loggedInState.style.display = 'block';
+                    if (loginMethod) loginMethod.style.display = 'none';
+                    if (methodToggle) methodToggle.style.display = 'none';
+
+                    // Email anzeigen
+                    const emailEl = document.getElementById('bambuLoggedInEmail');
+                    if (emailEl) emailEl.textContent = email || 'Verbunden';
+
+                    document.getElementById('bambuVerifySection').style.display = 'none';
+                    document.getElementById('bambuVerifyBtn').style.display = 'none';
+                    // TFA Key zurücksetzen
+                    window._bambuTfaKey = null;
+                    updateStatus();
+                    // Drucker direkt laden
+                    loadPrinters();
+                } else {
+                    // Fehler
+                    if (statusEl) {
+                        statusEl.style.background = 'rgba(231,76,60,0.1)';
+                        statusEl.style.borderLeft = '3px solid #e74c3c';
+                        statusEl.innerHTML = `<strong style="color: #e74c3c;">❌ Code ungültig</strong><br><span style="color: rgba(255,255,255,0.7);">${data.message || 'Bitte erneut versuchen'}</span>`;
+                    }
+                }
+            } catch (e) {
+                if (statusEl) {
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = 'rgba(231,76,60,0.1)';
+                    statusEl.style.borderLeft = '3px solid #e74c3c';
+                    statusEl.innerHTML = `<strong style="color: #e74c3c;">❌ Netzwerkfehler</strong>`;
+                }
+            } finally {
+                if (verifyBtn) {
+                    verifyBtn.disabled = false;
+                    verifyBtn.textContent = '✓ Code bestätigen';
+                }
+            }
+        });
+
+        // Test Connection Button
+        document.getElementById('bambuTestConnectionBtn')?.addEventListener('click', async () => {
+            const testBtn = document.getElementById('bambuTestConnectionBtn');
+            const resultEl = document.getElementById('bambuConnectionResult');
+
+            try {
+                if (testBtn) {
+                    testBtn.disabled = true;
+                    testBtn.textContent = '⏳...';
+                }
+
+                const res = await fetch('/api/bambu-cloud/test-connection', { method: 'POST' });
+                const data = await res.json();
+
+                if (resultEl) {
+                    resultEl.style.display = 'block';
+
+                    if (data.connected) {
+                        resultEl.style.background = 'rgba(46,204,113,0.1)';
+                        resultEl.style.borderLeft = '3px solid #2ecc71';
+                        resultEl.innerHTML = `
+                            <strong style="color: #2ecc71;">✓ Verbindung erfolgreich!</strong><br>
+                            <span style="color: rgba(255,255,255,0.7);">
+                                Region: ${data.region || 'EU'} | User: ${data.username || '-'}
+                            </span>
+                        `;
+                    } else {
+                        resultEl.style.background = 'rgba(231,76,60,0.1)';
+                        resultEl.style.borderLeft = '3px solid #e74c3c';
+                        resultEl.innerHTML = `
+                            <strong style="color: #e74c3c;">❌ Verbindung fehlgeschlagen</strong><br>
+                            <span style="color: rgba(255,255,255,0.7);">${data.message || 'Unbekannter Fehler'}</span>
+                        `;
+                    }
+                }
+
+                updateStatus();
+            } catch (e) {
+                if (resultEl) {
+                    resultEl.style.display = 'block';
+                    resultEl.style.background = 'rgba(231,76,60,0.1)';
+                    resultEl.style.borderLeft = '3px solid #e74c3c';
+                    resultEl.innerHTML = `<strong style="color: #e74c3c;">❌ Netzwerkfehler</strong>`;
+                }
+            } finally {
+                if (testBtn) {
+                    testBtn.disabled = false;
+                    testBtn.textContent = '🔌 Test';
+                }
+            }
+        });
+
+        conflictModal.querySelectorAll('.conflict-action-btn').forEach(btn => {
+            btn.addEventListener('click', () => resolveConflict(btn.dataset.resolution));
+        });
+
+        // Tab Switching
+        modal.querySelectorAll('.bambu-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                modal.querySelectorAll('.bambu-tab').forEach(t => {
+                    t.classList.remove('active');
+                    t.style.background = 'rgba(255,255,255,0.05)';
+                    t.style.borderColor = 'rgba(255,255,255,0.1)';
+                    t.style.color = 'rgba(255,255,255,0.7)';
+                });
+                tab.classList.add('active');
+                tab.style.background = 'rgba(46,204,113,0.15)';
+                tab.style.borderColor = 'rgba(46,204,113,0.3)';
+                tab.style.color = '#2ecc71';
+
+                const tabName = tab.dataset.bambuTab;
+                modal.querySelectorAll('.bambu-tab-content').forEach(c => c.style.display = 'none');
+                modal.querySelector(`[data-bambu-content="${tabName}"]`).style.display = 'block';
+
+                // Bei History-Tab: Daten laden
+                if (tabName === 'history') {
+                    loadBambuHistory();
+                }
+            });
+        });
+
+        // Close on backdrop click
+        [modal, conflictModal].forEach(m => {
+            m.addEventListener('click', (e) => {
+                if (e.target === m) closeModal(m);
+            });
+        });
+
+        // === Pause/Resume, Dry-Run, Danger Zone Handlers ===
+
+        const updateSyncControls = (config) => {
+            const pauseBtn = document.getElementById('bambuPauseResumeBtn');
+            const pauseStatus = document.getElementById('bambuPauseStatus');
+            const dryRunBtn = document.getElementById('bambuDryRunBtn');
+            const dryRunStatus = document.getElementById('bambuDryRunStatus');
+
+            if (pauseBtn && pauseStatus) {
+                if (config.sync_paused) {
+                    pauseBtn.innerHTML = '▶ Resume Sync';
+                    pauseBtn.style.background = 'rgba(46,204,113,0.15)';
+                    pauseBtn.style.borderColor = 'rgba(46,204,113,0.3)';
+                    pauseBtn.style.color = '#2ecc71';
+                    pauseStatus.textContent = 'Pausiert';
+                    pauseStatus.style.background = 'rgba(243,156,18,0.15)';
+                    pauseStatus.style.color = '#f39c12';
+                } else {
+                    pauseBtn.innerHTML = '⏸ Pause Sync';
+                    pauseBtn.style.background = 'rgba(243,156,18,0.15)';
+                    pauseBtn.style.borderColor = 'rgba(243,156,18,0.3)';
+                    pauseBtn.style.color = '#f39c12';
+                    pauseStatus.textContent = 'Aktiv';
+                    pauseStatus.style.background = 'rgba(46,204,113,0.15)';
+                    pauseStatus.style.color = '#2ecc71';
+                }
+            }
+
+            if (dryRunBtn && dryRunStatus) {
+                if (config.dry_run_mode) {
+                    dryRunBtn.innerHTML = '🧪 Test Modus Aus';
+                    dryRunBtn.style.background = 'rgba(52,152,219,0.3)';
+                    dryRunStatus.textContent = 'An';
+                    dryRunStatus.style.background = 'rgba(52,152,219,0.2)';
+                    dryRunStatus.style.color = '#3498db';
+                } else {
+                    dryRunBtn.innerHTML = '🧪 Test Modus An';
+                    dryRunBtn.style.background = 'rgba(52,152,219,0.15)';
+                    dryRunStatus.textContent = 'Aus';
+                    dryRunStatus.style.background = 'rgba(255,255,255,0.1)';
+                    dryRunStatus.style.color = 'rgba(255,255,255,0.5)';
+                }
+            }
+        };
+
+        // Pause/Resume Button
+        document.getElementById('bambuPauseResumeBtn')?.addEventListener('click', async () => {
+            const btn = document.getElementById('bambuPauseResumeBtn');
+            const isPaused = btn.textContent.includes('Resume');
+            const endpoint = isPaused ? '/api/bambu-cloud/sync/resume' : '/api/bambu-cloud/sync/pause';
+            try {
+                btn.disabled = true;
+                const res = await fetch(endpoint, { method: 'POST' });
+                if (res.ok) {
+                    const data = await res.json();
+                    updateSyncControls({ sync_paused: data.sync_paused });
+                    updateStatus();
+                }
+            } catch (e) {
+                console.error('Pause/Resume failed:', e);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        // Dry-Run Button
+        document.getElementById('bambuDryRunBtn')?.addEventListener('click', async () => {
+            const btn = document.getElementById('bambuDryRunBtn');
+            const isActive = btn.textContent.includes('Aus');
+            try {
+                btn.disabled = true;
+                const res = await fetch(`/api/bambu-cloud/sync/dry-run?enable=${!isActive}`, { method: 'POST' });
+                if (res.ok) {
+                    const data = await res.json();
+                    updateSyncControls({ dry_run_mode: data.dry_run_mode });
+                }
+            } catch (e) {
+                console.error('Dry-Run toggle failed:', e);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        // Danger Zone: Disable with keep credentials
+        document.getElementById('bambuDisableKeepBtn')?.addEventListener('click', async () => {
+            if (!confirm('Cloud Integration deaktivieren?\nCredentials werden beibehalten.')) return;
+            try {
+                const res = await fetch('/api/bambu-cloud/disable?keep_credentials=true', { method: 'POST' });
+                if (res.ok) {
+                    document.getElementById('bambuCloudEnabled').checked = false;
+                    toggleCredentialsSection(false);
+                    updateStatus();
+                    closeModal(modal);
+                }
+            } catch (e) {
+                console.error('Disable failed:', e);
+            }
+        });
+
+        // Danger Zone: Delete everything
+        document.getElementById('bambuDisableDeleteBtn')?.addEventListener('click', async () => {
+            if (!confirm('ACHTUNG: Alle Cloud-Daten und Credentials werden gelöscht!\n\nDies kann nicht rückgängig gemacht werden.\n\nFortfahren?')) return;
+            try {
+                const res = await fetch('/api/bambu-cloud/disable?keep_credentials=false', { method: 'POST' });
+                if (res.ok) {
+                    document.getElementById('bambuCloudEnabled').checked = false;
+                    toggleCredentialsSection(false);
+                    updateStatus();
+                    closeModal(modal);
+                    location.reload();
+                }
+            } catch (e) {
+                console.error('Delete all failed:', e);
+            }
+        });
+
+        // Load sync controls when config loads
+        const origLoadConfig = loadConfig;
+        loadConfig = async () => {
+            await origLoadConfig();
+            try {
+                const res = await fetch('/api/bambu-cloud/config');
+                if (res.ok) {
+                    const config = await res.json();
+                    updateSyncControls(config);
+                }
+            } catch (e) { /* ignore */ }
+        };
+
+        updateStatus();
+        setInterval(updateStatus, 30000);
+    })();
     </script>
+
+    <!-- Standalone Cloud Button Status Updater (robust fallback) -->
+    <script>
+    (function() {
+        const _btn = document.getElementById('bambuCloudBtn');
+        const _status = document.getElementById('bambuCloudStatus');
+        if (!_btn || !_status) return;
+
+        const _updateCloudBtn = async () => {
+            try {
+                const r = await fetch('/api/bambu-cloud/sync/status');
+                if (!r.ok) return;
+                const d = await r.json();
+                _btn.classList.remove('connected', 'error', 'syncing', 'paused');
+                if (d.is_syncing) {
+                    _btn.classList.add('syncing');
+                    _status.textContent = 'Sync...';
+                } else if (d.is_paused) {
+                    _btn.classList.add('paused');
+                    _status.textContent = 'Pausiert';
+                } else if (d.is_connected) {
+                    _btn.classList.add('connected');
+                    _status.textContent = d.is_dry_run ? 'Test' : 'Verbunden';
+                } else if (d.has_config) {
+                    _btn.classList.add('error');
+                    _status.textContent = 'Offline';
+                } else {
+                    _status.textContent = 'Cloud';
+                }
+            } catch (e) { /* silent */ }
+        };
+        setTimeout(_updateCloudBtn, 500);
+        setInterval(_updateCloudBtn, 15000);
+    })();
+    </script>
+
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>
-
