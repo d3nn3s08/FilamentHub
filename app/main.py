@@ -224,9 +224,18 @@ async def lifespan(app: FastAPI):
         logger.info("[APP] Bambu Cloud Scheduler gestartet")
     except Exception as e:
         logger.warning(f"[APP] Bambu Cloud Scheduler konnte nicht gestartet werden: {e}")
-    
+
+    # Starte Klipper Polling
+    klipper_poller_task = None
+    try:
+        from services.klipper_polling_service import start_klipper_polling, stop_klipper_polling
+        klipper_poller_task = asyncio.create_task(start_klipper_polling())
+        logger.info("[APP] Klipper Polling gestartet")
+    except Exception as e:
+        logger.warning(f"[APP] Klipper Polling konnte nicht gestartet werden: {e}")
+
     print("[DEBUG] Auto-connect starting...")  # DEBUG: Direct terminal output
-    
+
     # Background-Task für kontinuierliches Auto-Reconnect
     auto_reconnect_task = None
     _shutdown_reconnect = asyncio.Event()
@@ -389,6 +398,20 @@ async def lifespan(app: FastAPI):
             logger.info("[APP] Bambu Cloud Scheduler gestoppt")
         except Exception as e:
             logger.warning(f"[APP] Bambu Cloud Scheduler konnte nicht gestoppt werden: {e}")
+
+        # Stoppe Klipper Polling
+        try:
+            from services.klipper_polling_service import stop_klipper_polling
+            stop_klipper_polling()
+            if klipper_poller_task and not klipper_poller_task.done():
+                klipper_poller_task.cancel()
+                try:
+                    await asyncio.wait_for(klipper_poller_task, timeout=3)
+                except (asyncio.CancelledError, asyncio.TimeoutError):
+                    pass
+            logger.info("[APP] Klipper Polling gestoppt")
+        except Exception as e:
+            logger.warning(f"[APP] Klipper Polling konnte nicht gestoppt werden: {e}")
         
         # 1. KRITISCH: Flag auch an mqtt_routes setzen um on_message() zu stoppen
         try:
@@ -494,7 +517,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="FilamentHub",
     description="Filament Management System fuer Bambu, Klipper & Standalone",
-    version="0.2.0",
+    version="1.6",
     lifespan=lifespan,
     # Note: redirect_slashes=True (default) causes 307 redirects but ensures both
     # /api/spools and /api/spools/ work correctly. Overhead is minimal (~5-10ms).
@@ -569,8 +592,8 @@ FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "app", "static")), name="static")
 app.mount("/frontend", StaticFiles(directory=os.path.join(FRONTEND_DIR, "static")), name="frontend_static")
 templates = Jinja2Templates(directory=os.path.join(FRONTEND_DIR, "templates"))
-templates.env.globals["app_version"] = os.environ.get("APP_VERSION", "Beta 1.6 - FilamentHub")
-templates.env.globals["design_version"] = os.environ.get("DESIGN_VERSION", "Design Beta-1.0")
+templates.env.globals["app_version"] = os.environ.get("APP_VERSION", "1.6")
+templates.env.globals["design_version"] = os.environ.get("DESIGN_VERSION", "Design 1.6")
 
 
 
@@ -734,6 +757,18 @@ async def all_slots_page(request: Request):
     )
 
 
+@app.get('/mmu-klipper', response_class=HTMLResponse)
+async def mmu_klipper_page(request: Request):
+    return templates.TemplateResponse(
+        'mmu_klipper.html',
+        {
+            'request': request,
+            'title': 'MMU-Klipper - FilamentHub',
+            'active_page': 'mmu_klipper'
+        },
+    )
+
+
 @app.get('/printers', response_class=HTMLResponse)
 async def printers_page(request: Request):
     return templates.TemplateResponse(
@@ -875,9 +910,6 @@ async def ams_help_page(request: Request):
         'ams_help.html',
         {'request': request, 'title': 'AMS Helper'},
     )
-
-
-
 
 
 
