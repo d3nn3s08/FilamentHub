@@ -26,7 +26,6 @@ COPY entrypoint.sh /app/
 COPY run.py /app/
 COPY config.yaml /app/
 COPY frontend/ /app/frontend/
-COPY .env /app/.env
 
 EXPOSE 8085
 
