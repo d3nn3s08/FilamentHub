@@ -48,8 +48,8 @@ _mmu_no_mmu_printers:    Set[str] = set()
 _MMU_REDETECT_INTERVAL = 60  # Sekunden
 _mmu_last_check: Dict[str, float] = {}
 
-_POLL_INTERVAL = 1    # Sekunden zwischen Abfragen (Klipper-only, lokales Netz → 1s)
-_HTTP_TIMEOUT  = 1.5  # Sekunden pro Request (lokales Netz, Moonraker antwortet <100ms)
+_POLL_INTERVAL = 2    # Sekunden zwischen Abfragen
+_HTTP_TIMEOUT  = 3.0  # Sekunden pro Request (erhöht für Beta-Tester mit WAN/VPN)
 
 _stop_event: Optional[asyncio.Event] = None
 
@@ -132,30 +132,41 @@ async def _poll_single(printer: Printer, client: httpx.AsyncClient, printer_serv
         server_info = info_resp.json().get("result", {})
         klippy_state = server_info.get("klippy_state", "unknown")
 
+        # Drucker ist erreichbar sobald /server/info erfolgreich ist
+        now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        if printer_service:
+            printer_service.set_connected(key, True, last_seen=now_iso)
+
         # 2. Happy Hare MMU erkennen (non-blocking, gecacht)
         has_mmu = await _detect_mmu(printer, client, base_url)
 
         # 3. Druckerobjekte abfragen (mit optionalen MMU-Objekten)
+        # Moonraker gibt 400 zurück wenn ein Objekt (z.B. display_status, temperature_sensor)
+        # nicht in der Drucker-Config vorhanden ist → kein raise_for_status(), stattdessen
+        # graceful fallback auf leere Status-Daten.
         query_str = _QUERY_OBJECTS + (_MMU_QUERY_OBJECTS if has_mmu else "")
-        objects_resp = await client.get(
-            f"{base_url}/printer/objects/query?{query_str}",
-            timeout=_HTTP_TIMEOUT,
-        )
-        objects_resp.raise_for_status()
-        objects_data = objects_resp.json().get("result", {})
+        objects_data: dict = {}
+        try:
+            objects_resp = await client.get(
+                f"{base_url}/printer/objects/query?{query_str}",
+                timeout=_HTTP_TIMEOUT,
+            )
+            if objects_resp.status_code == 200:
+                objects_data = objects_resp.json().get("result", {})
+            else:
+                logger.debug(
+                    "[Klipper Poller] Objects-Query HTTP %d für %s — optionale Objekte fehlen in Config",
+                    objects_resp.status_code, printer.name,
+                )
+        except Exception as obj_exc:
+            logger.debug("[Klipper Poller] Objects-Query Fehler für %s: %s", printer.name, obj_exc)
 
         # 3. Payload zusammenbauen und in live_state schreiben
         payload = {
             "klippy_state": klippy_state,
             **objects_data,
         }
-        now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         set_live_state(key, {"ts": now_iso, "payload": payload})
-
-        # --- 4. PrinterService: online markieren ---
-        # [BETA] Klipper-Support: last_seen mitgeben damit Offline-Timeout korrekt funktioniert
-        if printer_service:
-            printer_service.set_connected(key, True, last_seen=now_iso)
 
         # --- 4b. [BETA] Klipper-Support: Temperatur-Verlauf für Detail-Modal Chart speichern ---
         # Enthält auch Heizleistung (power 0.0–1.0) für zusätzliche Chart-Linien

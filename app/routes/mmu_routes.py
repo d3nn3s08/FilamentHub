@@ -25,6 +25,7 @@ Endpunkte:
 import logging
 from typing import Optional
 
+import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
@@ -43,6 +44,10 @@ router = APIRouter(prefix="/api/mmu", tags=["mmu"])
 # ---------------------------------------------------------------------------
 class AssignSpoolRequest(BaseModel):
     spool_id: str
+
+
+class GcodeRequest(BaseModel):
+    script: str
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +169,30 @@ def assign_spool_to_gate(printer_id: str, gate: int, body: AssignSpoolRequest):
         "gate":       gate,
         "spool_id":   body.spool_id,
     }
+
+
+@router.post("/{printer_id}/gcode")
+async def send_mmu_gcode(printer_id: str, body: GcodeRequest):
+    """
+    Proxy: Sendet einen GCode-Befehl über FilamentHub an Moonraker.
+    Kein direkter Browser→Moonraker Zugriff nötig (kein CORS-Problem).
+    """
+    printer = _get_printer_or_404(printer_id)
+    base_url = f"http://{printer.ip_address}:{printer.port or 7125}"
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{base_url}/printer/gcode/script",
+                json={"script": body.script},
+                timeout=5.0,
+            )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"Moonraker: HTTP {resp.status_code}")
+        return {"ok": True}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Moonraker nicht erreichbar: {exc}")
 
 
 @router.delete("/{printer_id}/gates/{gate}/assign")

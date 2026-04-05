@@ -136,7 +136,10 @@ async def list_live_state(request: Request, session=Depends(get_session)) -> Any
         if getattr(printer, "active", True) is not True:
             continue
         entry = _build_live_entry(printer, live.get(live_key), printer_service, runtime_status, now)
-        if entry.get("offline_reason") == "never_seen" and not entry.get("payload"):
+        # Klipper-Drucker immer einschließen (auch "never_seen"), damit das Frontend "Offline" anzeigen kann
+        # Bambu-Drucker ohne jegliche Aktivität weiterhin überspringen
+        is_klipper = getattr(printer, "printer_type", None) == "klipper"
+        if not is_klipper and entry.get("offline_reason") == "never_seen" and not entry.get("payload"):
             continue
         # [BETA] Klipper-Support: Key = "klipper_{id}" für Klipper, cloud_serial für Bambu
         result[live_key] = entry

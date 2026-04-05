@@ -195,7 +195,7 @@ function renderCard(printer) {
                 <div class="temp"><span class="label">Filament:</span><span class="value">${filament}</span></div>
                 <div class="temp"><span class="label">Düse:</span><span class="value">${nozzle}</span><span style="margin:0 8px;color:var(--text-dim)">·</span><span class="label">Bett:</span><span class="value">${bed}</span></div>
                 ${lastSeenText ? `<div class="temp"><span class="label">Letzter Kontakt:</span><span class="value">${lastSeenText}</span></div>` : ''}
-                ${printer.printer_type === 'klipper' ? `<div class="temp"><span class="label">Details:</span><span class="value"><button onclick="openKlipperDetailModal('${printer.id}')" title="Klipper Detail-Modal öffnen" style="background:rgba(52,152,219,0.18);border:1px solid rgba(52,152,219,0.4);border-radius:6px;padding:2px 10px;color:#5dade2;cursor:pointer;font-size:0.75rem;font-weight:600;font-family:inherit;letter-spacing:0.03em;">Live-Daten ⊕</button></span></div>` : ''}
+                ${printer.printer_type === 'klipper' ? `<div class="temp"><span class="label">Details:</span><span class="value"><button onclick="openKlipperDetailModal(${printer.id})" title="Klipper Detail-Modal öffnen" style="background:rgba(52,152,219,0.18);border:1px solid rgba(52,152,219,0.4);border-radius:6px;padding:2px 10px;color:#5dade2;cursor:pointer;font-size:0.75rem;font-weight:600;font-family:inherit;letter-spacing:0.03em;">Live-Daten ⊕</button></span></div>` : ''}
                 ${amsTemp && amsHumidity ? `<div class="temp"><span class="label">AMS:</span><span class="value">🌡️ ${amsTemp}°C 💧 ${amsHumidity}%</span></div>` : ''}
                 ${wifiRaw ? `<div class="temp"><span class="label">WiFi:</span><span class="value"><span class="wifi-icon" title="${wifiRaw}" style="display:inline-flex;align-items:center;gap:8px;">` +
                     `<svg width="16" height="16" viewBox="0 0 24 24" fill="${wifiColor}" xmlns="http://www.w3.org/2000/svg"><path d="M12 18c.6 0 1-.4 1-1s-.4-1-1-1-1 .4-1 1 .4 1 1 1zm0-4c2 0 3.8.8 5.2 2.1.2.2.5.2.7 0 .2-.2.2-.5 0-.7C16.8 13.3 14.6 12 12 12s-4.8 1.3-6.9 3.4c-.2.2-.2.5 0 .7.2.2.5.2.7 0C8.2 14.8 10 14 12 14zM12 6c3.9 0 7 1.6 9.4 4.1.2.2.5.2.7 0 .2-.2.2-.5 0-.7C19.1 7.2 15.7 5 12 5s-7.1 2.2-10.1 4.4c-.2.2-.2.5 0 .7.2.2.5.2.7 0C5 7.6 8.1 6 12 6z"/></svg>` +
@@ -555,9 +555,9 @@ async function openKlipperDetailModal(printerId) {
 
     const online       = liveState.printer_online === true;
     const cacheAge     = formatCacheAge(liveState.cache_age_sec, liveState.offline_reason);
-    const nozzle       = live.nozzle_temper ?? '-';
+    const nozzle       = live.nozzle_temper ?? raw.extruder?.temperature ?? '-';
     const nozzleTarget = raw.extruder?.target ?? null;
-    const bed          = live.bed_temper ?? '-';
+    const bed          = live.bed_temper    ?? raw.heater_bed?.temperature ?? '-';
     const bedTarget    = raw.heater_bed?.target ?? null;
     const state        = live.gcode_state ?? raw.print_stats?.state ?? '-';
     const filename     = live.subtask_name ?? raw.print_stats?.filename ?? '-';

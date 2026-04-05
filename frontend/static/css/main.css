@@ -453,10 +453,23 @@ body.page {
 @media (max-width: 960px) {
     body.page {
         grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
     }
-    .sidebar { flex-direction: row; align-items: center; }
-    .sidebar__nav { flex-direction: row; flex-wrap: wrap; }
-    .content { padding: 18px; }
+    .sidebar {
+        grid-column: 1;
+        grid-row: 1;
+        flex-direction: row;
+        align-items: center;
+        min-height: unset;
+        position: static;
+        padding: 12px 20px;
+    }
+    .sidebar__nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+    .content {
+        grid-column: 1;
+        grid-row: 2;
+        padding: 18px;
+    }
     .content__header { flex-direction: column; align-items: flex-start; }
 }
 

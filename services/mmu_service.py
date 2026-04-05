@@ -157,7 +157,19 @@ class MmuService:
         """Parsed das rohe mmu-Objekt in ein sauberes Dict."""
 
         num_gates = int(mmu_raw.get("num_gates", 0))
-        action_code = int(mmu_raw.get("action", 12))
+
+        # Happy Hare liefert "action" je nach Version als String ("Idle") oder Int (0)
+        action_raw = mmu_raw.get("action", 12)
+        if isinstance(action_raw, str):
+            action_label = action_raw
+            action_code = next(
+                (k for k, v in _ACTION_LABELS.items() if v == action_raw.lower()),
+                12,
+            )
+        else:
+            action_code = int(action_raw)
+            action_label = _ACTION_LABELS.get(action_code, "unknown")
+
         filament_pos_code = int(mmu_raw.get("filament_pos", 0))
 
         # Gate-Arrays auslesen (Happy Hare liefert Listen)
@@ -167,6 +179,7 @@ class MmuService:
         gate_spool_id   = mmu_raw.get("gate_spool_id", [])   # Spoolman IDs
         gate_filament_name = mmu_raw.get("gate_filament_name", [])
         gate_speed_override = mmu_raw.get("gate_speed_override", [])
+        gate_temperature = mmu_raw.get("gate_temperature", [])
         ttg_map         = mmu_raw.get("ttg_map", [])           # tool→gate Mapping
 
         # Gates zusammenbauen
@@ -182,6 +195,7 @@ class MmuService:
                 "status_label":  _GATE_STATUS_LABELS.get(g_status_code, "unknown"),
                 "spool_id_spoolman": _safe_list_get(gate_spool_id, i, None),
                 "speed_override": _safe_list_get(gate_speed_override, i, 100),
+                "temperature":   _safe_list_get(gate_temperature, i, 0),
                 "is_active":     (int(mmu_raw.get("gate", -1)) == i),
             })
 
@@ -200,9 +214,13 @@ class MmuService:
             "filament_pos":      filament_pos_code,
             "filament_pos_label": _FILAMENT_POS_LABELS.get(filament_pos_code, "unknown"),
             "action":            action_code,
-            "action_label":      _ACTION_LABELS.get(action_code, "unknown"),
+            "action_label":      action_label,
             "print_state":       mmu_raw.get("print_state", ""),
             "has_bypass":        bool(mmu_raw.get("has_bypass", False)),
+            "is_locked":         bool(mmu_raw.get("is_locked", False)),
+            "is_paused":         bool(mmu_raw.get("is_paused", False)),
+            "is_in_print":       bool(mmu_raw.get("is_in_print", False)),
+            "num_toolchanges":   int(mmu_raw.get("num_toolchanges", 0)),
             "sync_drive":        bool(mmu_raw.get("sync_drive", False)),
             "ttg_map":           ttg_map,
             "tool_to_gate":      tool_to_gate,

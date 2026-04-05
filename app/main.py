@@ -286,7 +286,10 @@ async def lifespan(app: FastAPI):
                 for printer in printers:
                     if not getattr(printer, "auto_connect", False):
                         continue
-                    
+                    # Klipper-Drucker verwenden HTTP-Polling (klipper_polling_service) – kein MQTT-Reconnect nötig
+                    if getattr(printer, "printer_type", None) == "klipper":
+                        continue
+
                     # Prüfe ob bereits verbunden
                     is_connected = False
                     connection_id = f"{printer.ip_address}:8883_{printer.id}"
