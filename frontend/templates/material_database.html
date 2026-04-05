@@ -1,0 +1,512 @@
+{% extends "layout.html" %}
+{% set page_title = "Material-Datenbank" %}
+{% set page_subtitle = "Alle 3D-Druck Materialien mit Druckeinstellungen und Eigenschaften" %}
+
+{% block extra_styles %}
+<style>
+/* === Stats Bar === */
+.matdb-stats {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 20px; margin-bottom: 24px;
+    box-shadow: var(--shadow);
+}
+.matdb-stats__icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: rgba(243,156,18,0.1); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+}
+.matdb-stats__num { font-size: 1.8rem; font-weight: 700; color: var(--text); }
+.matdb-stats__label { font-size: 0.85rem; color: var(--text-dim); }
+
+/* === Search & Filters === */
+.matdb-controls {
+    display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;
+}
+.matdb-search {
+    position: relative;
+}
+.matdb-search__input {
+    width: 100%; padding: 12px 16px 12px 42px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--text); font-size: 1rem;
+    transition: all 0.2s;
+}
+.matdb-search__input:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(243,156,18,0.1);
+}
+.matdb-search__icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    color: var(--text-dim); font-size: 1rem;
+}
+.matdb-filters {
+    display: flex; gap: 8px; flex-wrap: wrap;
+}
+.matdb-filter-btn {
+    padding: 6px 14px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 0.85rem; cursor: pointer;
+    transition: all 0.2s;
+}
+.matdb-filter-btn:hover { background: rgba(255,255,255,0.05); border-color: var(--accent); }
+.matdb-filter-btn.active {
+    background: var(--accent); border-color: var(--accent);
+    color: #0f141c; font-weight: 600;
+}
+
+/* === Card Grid === */
+.matdb-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+/* === Material Card === */
+.mat-card {
+    background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.03), transparent 40%), var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+.mat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2), 0 0 20px rgba(243,156,18,0.1);
+    border-color: var(--accent);
+}
+.mat-card__header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; margin-bottom: 14px;
+}
+.mat-card__left { display: flex; align-items: center; gap: 12px; }
+.mat-card__icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 1.1rem;
+}
+.mat-card__name { font-size: 1.15rem; font-weight: 600; color: var(--text); }
+.mat-card__arrow {
+    color: var(--text-dim); opacity: 0; transition: opacity 0.2s;
+    font-size: 1.2rem;
+}
+.mat-card:hover .mat-card__arrow { opacity: 1; }
+.mat-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 6px;
+    font-size: 0.7rem; font-weight: 600; border: 1px solid; margin-top: 4px;
+}
+.mat-card__stats {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-bottom: 14px;
+}
+.mat-stat { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+.mat-stat__icon { font-size: 0.9rem; flex-shrink: 0; }
+.mat-stat__label { color: var(--text-dim); }
+.mat-stat__value { font-family: 'JetBrains Mono', monospace; color: var(--text); }
+.mat-card__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.mat-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; background: rgba(255,255,255,0.05);
+    border-radius: 6px; font-size: 0.75rem; color: var(--text-dim);
+}
+.mat-tag--uv { color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); background: rgba(245,158,11,0.08); }
+.mat-tag--water { color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); background: rgba(59,130,246,0.08); }
+
+/* === Empty State === */
+.matdb-empty {
+    text-align: center; padding: 48px 20px; color: var(--text-dim);
+}
+.matdb-empty__icon { font-size: 3rem; opacity: 0.5; margin-bottom: 12px; }
+.matdb-empty__text { font-size: 1rem; }
+
+/* === Detail Modal === */
+.mat-modal {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); z-index: 1000;
+    align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+}
+.mat-modal.active { display: flex; }
+.mat-modal__content {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; max-width: 700px; width: 92%;
+    max-height: 90vh; overflow-y: auto;
+    animation: matModalIn 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5); padding: 28px;
+    position: relative;
+}
+@keyframes matModalIn {
+    from { opacity: 0; transform: translateY(-40px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.mat-modal__header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.mat-modal__icon {
+    width: 64px; height: 64px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 1.5rem;
+}
+.mat-modal__title { font-size: 1.6rem; font-weight: 700; color: var(--text); }
+.mat-modal__close {
+    position: absolute; top: 16px; right: 20px;
+    background: none; border: none; color: var(--text-dim);
+    font-size: 1.8rem; cursor: pointer; border-radius: 8px;
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+}
+.mat-modal__close:hover { background: rgba(255,255,255,0.05); color: #ef4444; }
+.mat-modal__desc { color: var(--text-dim); font-size: 0.95rem; line-height: 1.6; margin-bottom: 20px; }
+.mat-modal__section { margin-bottom: 20px; }
+.mat-modal__section-title {
+    font-weight: 600; color: var(--text); font-size: 1rem;
+    margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+}
+.mat-separator { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.mat-modal__settings-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;
+}
+.mat-setting-card {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px;
+}
+.mat-setting-card__label {
+    font-size: 0.8rem; color: var(--text-dim); margin-bottom: 4px;
+    display: flex; align-items: center; gap: 6px;
+}
+.mat-setting-card__value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.1rem; color: var(--text); font-weight: 500;
+}
+.mat-props-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px;
+}
+.mat-prop {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; background: rgba(255,255,255,0.03);
+    border-radius: 8px; font-size: 0.85rem;
+}
+.mat-prop__label { color: var(--text-dim); }
+.mat-prop__value { color: var(--text); font-weight: 500; }
+.mat-apps { display: flex; flex-wrap: wrap; gap: 6px; }
+.mat-app-tag {
+    padding: 4px 10px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 0.8rem; color: var(--text-dim);
+}
+.mat-pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.mat-list { list-style: none; padding: 0; margin: 0; }
+.mat-list li {
+    font-size: 0.85rem; display: flex; align-items: flex-start; gap: 6px;
+    margin-bottom: 4px;
+}
+.mat-list__icon { flex-shrink: 0; margin-top: 2px; }
+.mat-list--pro .mat-list__icon { color: #22c55e; }
+.mat-list--con .mat-list__icon { color: #ef4444; }
+.mat-list--tip .mat-list__icon { color: #f59e0b; }
+.mat-modal__section-title--pro { color: #22c55e; }
+.mat-modal__section-title--con { color: #ef4444; }
+
+/* === Back Link === */
+.matdb-back {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--text-dim); text-decoration: none; font-size: 0.9rem;
+    margin-bottom: 20px; transition: color 0.2s;
+}
+.matdb-back:hover { color: var(--accent); }
+
+@media (max-width: 768px) {
+    .matdb-grid { grid-template-columns: 1fr; }
+    .mat-card__stats { grid-template-columns: 1fr; }
+    .mat-modal__content { width: 96%; padding: 20px; }
+    .mat-modal__settings-grid { grid-template-columns: 1fr; }
+    .mat-pros-cons { grid-template-columns: 1fr; }
+    .mat-props-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<a href="/lexikon" class="matdb-back">&#8592; Zurueck zum Lexikon</a>
+
+<!-- Stats -->
+<div class="matdb-stats">
+    <div class="matdb-stats__icon">&#128218;</div>
+    <div>
+        <div class="matdb-stats__num" id="matCount">0</div>
+        <div class="matdb-stats__label">Materialien in der Datenbank</div>
+    </div>
+</div>
+
+<!-- Search & Filters -->
+<div class="matdb-controls">
+    <div class="matdb-search">
+        <span class="matdb-search__icon">&#128269;</span>
+        <input type="text" class="matdb-search__input" id="matSearch" placeholder="Material suchen...">
+    </div>
+    <div class="matdb-filters" id="matFilters">
+        <button class="matdb-filter-btn active" data-cat="all">Alle</button>
+        <button class="matdb-filter-btn" data-cat="standard">Standard</button>
+        <button class="matdb-filter-btn" data-cat="technical">Technisch</button>
+        <button class="matdb-filter-btn" data-cat="flexible">Flexibel</button>
+        <button class="matdb-filter-btn" data-cat="specialty">Spezial</button>
+    </div>
+</div>
+
+<!-- Card Grid -->
+<div class="matdb-grid" id="matGrid"></div>
+
+<!-- Empty State -->
+<div class="matdb-empty" id="matEmpty" style="display:none;">
+    <div class="matdb-empty__icon">&#128218;</div>
+    <p class="matdb-empty__text">Keine Materialien gefunden</p>
+</div>
+
+<!-- Detail Modal -->
+<div id="matDetailModal" class="mat-modal">
+    <div class="mat-modal__content">
+        <button class="mat-modal__close" onclick="closeMatDetail()">&times;</button>
+        <div id="matDetailBody"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// === Data ===
+const materialCategories = {
+    standard:  { label: 'Standard',  color: '#f39c12' },
+    technical: { label: 'Technisch', color: '#22c55e' },
+    flexible:  { label: 'Flexibel',  color: '#3b82f6' },
+    specialty: { label: 'Spezial',   color: '#a855f7' },
+};
+const strengthLabels = { low:'Gering', medium:'Mittel', high:'Hoch', 'very-high':'Sehr Hoch' };
+const flexLabels = { rigid:'Starr', 'semi-rigid':'Halbstarr', flexible:'Flexibel', 'very-flexible':'Sehr Flexibel' };
+
+const materialsDB = [
+  {id:'pla',name:'PLA',category:'standard',nozzleTemp:{min:190,max:220},bedTemp:{min:50,max:60},printSpeed:{min:40,max:100},coolingFan:{min:80,max:100},retraction:{distance:4,speed:45},density:1.24,strength:'medium',flexibility:'rigid',heatResistance:55,uvResistant:false,waterResistant:false,description:'Polylactid (PLA) ist das beliebteste 3D-Druck-Material. Es ist biologisch abbaubar, einfach zu drucken und ideal fuer Anfaenger.',applications:['Prototypen','Dekoration','Spielzeug','Modelle'],pros:['Einfach zu drucken','Geruchsarm','Viele Farben','Guenstig'],cons:['Geringe Hitzebestaendigkeit','Sproede','Nicht UV-bestaendig'],tips:['Kuehlung ist wichtig','Beheiztes Bett optional aber empfohlen','Lagerung trocken halten'],color:'#4ade80'},
+  {id:'pla-plus',name:'PLA+',category:'standard',nozzleTemp:{min:200,max:230},bedTemp:{min:55,max:65},printSpeed:{min:40,max:80},coolingFan:{min:70,max:100},retraction:{distance:4,speed:45},density:1.24,strength:'high',flexibility:'rigid',heatResistance:60,uvResistant:false,waterResistant:false,description:'PLA+ ist eine verbesserte Version von PLA mit hoeherer Schlagfestigkeit und besserer Schichthaftung.',applications:['Funktionale Prototypen','Mechanische Teile','Spielzeug','Gehaeuse'],pros:['Staerker als PLA','Weniger sproede','Einfach zu drucken','Gute Oberflaeche'],cons:['Teurer als PLA','Geringe Hitzebestaendigkeit','Nicht UV-bestaendig'],tips:['Etwas hoehere Temperaturen als PLA','Gute Kuehlung wichtig','Langsamer fuer bessere Festigkeit'],color:'#22c55e'},
+  {id:'petg',name:'PETG',category:'standard',nozzleTemp:{min:220,max:250},bedTemp:{min:70,max:85},printSpeed:{min:30,max:80},coolingFan:{min:30,max:60},retraction:{distance:5,speed:40},density:1.27,strength:'high',flexibility:'semi-rigid',heatResistance:75,uvResistant:true,waterResistant:true,description:'PETG kombiniert die Benutzerfreundlichkeit von PLA mit der Festigkeit von ABS. Ideal fuer funktionale Teile.',applications:['Funktionale Teile','Mechanische Bauteile','Outdoor-Anwendungen','Lebensmittelbehaelter'],pros:['Gute Schlagfestigkeit','UV-bestaendig','Lebensmittelecht','Wenig Warping'],cons:['Stringing-Anfaellig','Schwieriger zu schleifen','Kratzerempfindlich'],tips:['Niedrige Kuehlung fuer bessere Schichthaftung','Trockenes Filament wichtig','Erste Schicht langsam drucken'],color:'#3b82f6'},
+  {id:'pla-matte',name:'PLA Matte',category:'standard',nozzleTemp:{min:195,max:225},bedTemp:{min:50,max:60},printSpeed:{min:40,max:80},coolingFan:{min:80,max:100},retraction:{distance:4,speed:45},density:1.24,strength:'medium',flexibility:'rigid',heatResistance:55,uvResistant:false,waterResistant:false,description:'PLA Matte bietet eine samtweiche, matte Oberflaeche ohne Glanz. Ideal fuer Dekorationen und Praesentationsmodelle.',applications:['Dekoration','Figuren','Kunstobjekte','Praesentationsmodelle'],pros:['Matte Oberflaeche','Keine Layer-Lines sichtbar','Einfach zu drucken','Fingerabdruckresistent'],cons:['Geringe Hitzebestaendigkeit','Weniger Farbauswahl','Teurer als Standard-PLA'],tips:['Wie Standard-PLA drucken','Niedrige Schichthoehe fuer besten Effekt','Hohe Kuehlung'],color:'#6b7280'},
+  {id:'pla-wood',name:'Wood PLA',category:'standard',nozzleTemp:{min:190,max:220},bedTemp:{min:50,max:60},printSpeed:{min:30,max:60},coolingFan:{min:80,max:100},retraction:{distance:4,speed:40},density:1.15,strength:'low',flexibility:'rigid',heatResistance:50,uvResistant:false,waterResistant:false,description:'Wood PLA enthaelt echte Holzfasern und erzeugt eine holzaehnliche Optik und Haptik.',applications:['Holzoptik-Modelle','Dekoration','Moebel-Prototypen','Kunstobjekte'],pros:['Echte Holzoptik','Schleifbar','Beizbar','Riecht nach Holz'],cons:['Verstopfungsgefahr','Geringe Festigkeit','Groessere Duese empfohlen'],tips:['Mindestens 0.5mm Duese verwenden','Temperatur variieren fuer Farbeffekte','Nicht zu schnell drucken'],color:'#a16207'},
+  {id:'abs',name:'ABS',category:'technical',nozzleTemp:{min:230,max:260},bedTemp:{min:90,max:110},printSpeed:{min:40,max:80},coolingFan:{min:0,max:30},retraction:{distance:5,speed:45},density:1.04,strength:'high',flexibility:'semi-rigid',heatResistance:100,uvResistant:false,waterResistant:true,description:'ABS ist ein technisches Material mit hoher Hitze- und Schlagfestigkeit. Erfordert eine geschlossene Druckkammer.',applications:['Automobil-Teile','Gehaeuse','Werkzeuge','Funktionale Prototypen'],pros:['Hohe Hitzebestaendigkeit','Schlagfest','Nachbearbeitbar','Acetone-glaettbar'],cons:['Warping','Starker Geruch','Geschlossene Kammer noetig'],tips:['Gehaeuse/Enclosure verwenden','Keine Kuehlung fuer beste Ergebnisse','Brim empfohlen'],color:'#ef4444'},
+  {id:'asa',name:'ASA',category:'technical',nozzleTemp:{min:240,max:270},bedTemp:{min:90,max:110},printSpeed:{min:40,max:70},coolingFan:{min:0,max:20},retraction:{distance:5,speed:45},density:1.07,strength:'high',flexibility:'semi-rigid',heatResistance:95,uvResistant:true,waterResistant:true,description:'ASA ist die UV-bestaendige Alternative zu ABS. Perfekt fuer Aussenanwendungen.',applications:['Outdoor-Teile','Automobil-Aussenteile','Garten-Werkzeuge','Schilder'],pros:['UV-bestaendig','Witterungsbestaendig','Hohe Festigkeit','Aehnlich ABS'],cons:['Teurer als ABS','Geruch beim Drucken','Enclosure erforderlich'],tips:['Wie ABS behandeln','Gute Belueftung wichtig','Trockenes Filament essentiell'],color:'#f59e0b'},
+  {id:'nylon',name:'Nylon (PA)',category:'technical',nozzleTemp:{min:250,max:280},bedTemp:{min:70,max:90},printSpeed:{min:30,max:60},coolingFan:{min:0,max:30},retraction:{distance:3,speed:35},density:1.14,strength:'very-high',flexibility:'semi-rigid',heatResistance:120,uvResistant:false,waterResistant:false,description:'Nylon bietet extreme Festigkeit und Abriebbestaendigkeit. Ideal fuer hochbelastete mechanische Teile.',applications:['Zahnraeder','Scharniere','Lager','Hochbelastete Teile'],pros:['Extrem fest','Abriebfest','Selbstschmierend','Chemikalienbestaendig'],cons:['Sehr hygroskopisch','Schwierig zu drucken','Warping'],tips:['Immer trocken halten','Drucktrockner empfohlen','PVA-Kleber auf Druckbett'],color:'#94a3b8'},
+  {id:'pa-cf',name:'PA-CF (Nylon Carbon)',category:'technical',nozzleTemp:{min:260,max:290},bedTemp:{min:80,max:100},printSpeed:{min:30,max:50},coolingFan:{min:0,max:30},retraction:{distance:2,speed:30},density:1.20,strength:'very-high',flexibility:'rigid',heatResistance:140,uvResistant:true,waterResistant:true,description:'PA-CF kombiniert die Festigkeit von Nylon mit Carbonfaser-Verstaerkung fuer maximale Steifigkeit.',applications:['Strukturelle Teile','Industriekomponenten','Robotik','Luft- und Raumfahrt'],pros:['Extrem steif','Hohe Hitzebestaendigkeit','Dimensionsstabil','Leicht'],cons:['Sehr teuer','Gehaertete Duese erforderlich','Schwierig zu drucken'],tips:['Hardened Steel Duese Pflicht','Trocken lagern','Enclosure empfohlen'],color:'#374151'},
+  {id:'pc',name:'Polycarbonat (PC)',category:'technical',nozzleTemp:{min:260,max:310},bedTemp:{min:100,max:130},printSpeed:{min:30,max:60},coolingFan:{min:0,max:20},retraction:{distance:4,speed:35},density:1.20,strength:'very-high',flexibility:'semi-rigid',heatResistance:140,uvResistant:true,waterResistant:true,description:'Polycarbonat ist eines der staerksten druckbaren Materialien mit hervorragender Hitze- und Schlagfestigkeit.',applications:['Schutzausruestung','Elektrische Gehaeuse','Hochtemperatur-Teile','Transparente Teile'],pros:['Extrem schlagfest','Hohe Hitzebestaendigkeit','Transparent moeglich','Selbstverloeschend'],cons:['Sehr hohe Temperaturen noetig','Starkes Warping','Hygroskopisch'],tips:['Enclosure Pflicht','All-Metal Hotend erforderlich','Sehr trocken halten'],color:'#06b6d4'},
+  {id:'pom',name:'POM (Delrin)',category:'technical',nozzleTemp:{min:200,max:230},bedTemp:{min:90,max:120},printSpeed:{min:20,max:50},coolingFan:{min:0,max:30},retraction:{distance:4,speed:40},density:1.41,strength:'very-high',flexibility:'semi-rigid',heatResistance:90,uvResistant:false,waterResistant:true,description:'POM ist ein technisches Material mit exzellenter Steifigkeit, geringer Reibung und hoher Dimensionsstabilitaet.',applications:['Zahnraeder','Lager','Gleitfuehrungen','Praezisionsteile'],pros:['Selbstschmierend','Hohe Steifigkeit','Chemikalienbestaendig','Niedriger Reibungskoeffizient'],cons:['Schwierige Betthaftung','Warping','Giftige Daempfe'],tips:['Spezielle Druckoberflaeche noetig','Gute Belueftung wichtig','Brim verwenden'],color:'#e5e7eb'},
+  {id:'hips',name:'HIPS',category:'technical',nozzleTemp:{min:220,max:250},bedTemp:{min:90,max:110},printSpeed:{min:40,max:80},coolingFan:{min:0,max:30},retraction:{distance:5,speed:45},density:1.04,strength:'medium',flexibility:'semi-rigid',heatResistance:80,uvResistant:false,waterResistant:false,description:'HIPS ist ein leichtes, schlagfestes Material, oft als loesliches Stuetzmaterial fuer ABS verwendet.',applications:['Stuetzmaterial fuer ABS','Leichte Teile','Prototypen','Verpackungen'],pros:['Loeslich in Limonen','Leicht','Gute Schlagfestigkeit','Einfach zu bearbeiten'],cons:['Nicht so stark wie ABS','Enclosure empfohlen','UV-empfindlich'],tips:['Als Stuetzmaterial fuer ABS ideal','Aehnliche Einstellungen wie ABS','In Limonen aufloesen'],color:'#fafaf9'},
+  {id:'pp',name:'Polypropylen (PP)',category:'technical',nozzleTemp:{min:220,max:250},bedTemp:{min:80,max:100},printSpeed:{min:20,max:50},coolingFan:{min:0,max:30},retraction:{distance:6,speed:40},density:0.90,strength:'high',flexibility:'semi-rigid',heatResistance:100,uvResistant:true,waterResistant:true,description:'Polypropylen ist chemikalienbestaendig, lebensmittelecht und hat eine sehr niedrige Dichte.',applications:['Lebensmittelbehaelter','Chemische Behaelter','Lebende Scharniere','Medizinische Teile'],pros:['Sehr leicht','Chemikalienbestaendig','Lebensmittelecht','Ermuedungsresistent'],cons:['Extreme Betthaftungsprobleme','Starkes Warping','Schwierig zu drucken'],tips:['PP-Tape auf Druckbett','Enclosure verwenden','Sehr langsam drucken'],color:'#f0fdf4'},
+  {id:'peek',name:'PEEK',category:'technical',nozzleTemp:{min:360,max:420},bedTemp:{min:120,max:160},printSpeed:{min:15,max:35},coolingFan:{min:0,max:10},retraction:{distance:1,speed:25},density:1.30,strength:'very-high',flexibility:'semi-rigid',heatResistance:250,uvResistant:true,waterResistant:true,description:'PEEK ist ein Hochleistungskunststoff fuer extreme Temperaturen und mechanische Belastungen.',applications:['Luft- und Raumfahrt','Medizinische Implantate','Hochtemperatur-Anwendungen','Chemie-Industrie'],pros:['Extreme Hitzebestaendigkeit','Biokompatibel','Chemikalienbestaendig','Sehr stark'],cons:['Extrem teuer','Spezial-Drucker noetig','Sehr schwierig zu drucken'],tips:['Nur mit PEEK-faehigen Druckern','Beheizte Kammer ueber 100C','All-Metal Hotend ueber 400C'],color:'#d4a373'},
+  {id:'ultem',name:'ULTEM (PEI)',category:'technical',nozzleTemp:{min:350,max:400},bedTemp:{min:130,max:160},printSpeed:{min:15,max:30},coolingFan:{min:0,max:10},retraction:{distance:1,speed:25},density:1.27,strength:'very-high',flexibility:'semi-rigid',heatResistance:217,uvResistant:true,waterResistant:true,description:'ULTEM ist ein Hochleistungsmaterial fuer Luft- und Raumfahrt mit FST-Zertifizierung.',applications:['Luft- und Raumfahrt','Automobilindustrie','Elektrische Isolierung','Hochtemperatur-Teile'],pros:['FST-zertifiziert','Extrem hitzebestaendig','Selbstverloeschend','Chemikalienbestaendig'],cons:['Sehr teuer','Spezial-Drucker erforderlich','Schwierig zu drucken'],tips:['Industrielle High-Temp-Drucker noetig','Beheizte Kammer essentiell','Langsam drucken'],color:'#b45309'},
+  {id:'tpu-95a',name:'TPU 95A',category:'flexible',nozzleTemp:{min:210,max:240},bedTemp:{min:40,max:60},printSpeed:{min:15,max:40},coolingFan:{min:50,max:100},retraction:{distance:0,speed:25},density:1.21,strength:'high',flexibility:'very-flexible',heatResistance:70,uvResistant:true,waterResistant:true,description:'TPU 95A ist ein sehr flexibles, gummiartiges Material. Ideal fuer Stossdaempfer und Wearables.',applications:['Handyhuellen','Dichtungen','Stossdaempfer','Wearables','Schuhhuellen'],pros:['Sehr flexibel','Stossabsorbierend','Abriebfest','UV-bestaendig'],cons:['Langsamer Druck','Schwierig zu drucken','Stringing'],tips:['Direct Drive bevorzugt','Sehr langsam drucken','Retraction minimieren oder deaktivieren'],color:'#8b5cf6'},
+  {id:'tpu-85a',name:'TPU 85A (Soft)',category:'flexible',nozzleTemp:{min:220,max:250},bedTemp:{min:40,max:60},printSpeed:{min:10,max:25},coolingFan:{min:50,max:100},retraction:{distance:0,speed:20},density:1.15,strength:'medium',flexibility:'very-flexible',heatResistance:65,uvResistant:true,waterResistant:true,description:'TPU 85A ist weicher als Standard-TPU fuer maximale Flexibilitaet und Komfort.',applications:['Einlegesohlen','Weiche Griffe','Polsterungen','Medizinische Anwendungen'],pros:['Extrem weich','Sehr komfortabel','Gute Daempfung','Hautvertraeglich'],cons:['Sehr schwierig zu drucken','Extrem langsam','Nur Direct Drive'],tips:['Nur mit Direct Drive','Maximale Langsamkeit','Keine Retraction'],color:'#a78bfa'},
+  {id:'tpe',name:'TPE',category:'flexible',nozzleTemp:{min:200,max:230},bedTemp:{min:30,max:50},printSpeed:{min:15,max:35},coolingFan:{min:50,max:100},retraction:{distance:0,speed:25},density:1.10,strength:'medium',flexibility:'flexible',heatResistance:60,uvResistant:true,waterResistant:true,description:'TPE ist ein gummiartiges Material mit guter Flexibilitaet und einfacherer Druckbarkeit als TPU.',applications:['Dichtungen','Griffe','Spielzeug','Vibrationsschutz'],pros:['Flexibel','Einfacher als TPU','Gute Oberflaeche','Chemikalienbestaendig'],cons:['Nicht so stark wie TPU','Langsamer Druck','Stringing moeglich'],tips:['Langsam drucken','Niedrige Retraction','Direct Drive empfohlen'],color:'#c084fc'},
+  {id:'flex-pla',name:'Flex PLA',category:'flexible',nozzleTemp:{min:200,max:230},bedTemp:{min:45,max:60},printSpeed:{min:25,max:50},coolingFan:{min:70,max:100},retraction:{distance:2,speed:35},density:1.20,strength:'medium',flexibility:'semi-rigid',heatResistance:55,uvResistant:false,waterResistant:false,description:'Flex PLA kombiniert die Druckfreundlichkeit von PLA mit leichter Flexibilitaet.',applications:['Leicht biegsame Teile','Scharniere','Snap-Fits','Spielzeug'],pros:['Einfacher zu drucken als TPU','Leicht flexibel','Auch mit Bowden moeglich'],cons:['Nicht so flexibel wie TPU','Geringe Hitzebestaendigkeit','Begrenzte Dehnung'],tips:['Wie PLA drucken aber langsamer','Moderate Retraction','Gute Kuehlung'],color:'#f472b6'},
+  {id:'silk-pla',name:'Silk PLA',category:'specialty',nozzleTemp:{min:200,max:230},bedTemp:{min:50,max:65},printSpeed:{min:30,max:60},coolingFan:{min:80,max:100},retraction:{distance:4,speed:45},density:1.24,strength:'low',flexibility:'rigid',heatResistance:50,uvResistant:false,waterResistant:false,description:'Silk PLA hat einen glaenzenden, seidenartigen Finish. Perfekt fuer dekorative Objekte und Vasen.',applications:['Vasen','Dekoration','Schmuck','Geschenke'],pros:['Glaenzende Oberflaeche','Keine Nachbearbeitung noetig','Einfach zu drucken'],cons:['Geringe Festigkeit','Nicht fuer funktionale Teile','Teurer als Standard-PLA'],tips:['Langsamerer Druck fuer besseren Glanz','Hohe Kuehlung','Grosse Schichthoehen verstaerken den Effekt'],color:'#fbbf24'},
+  {id:'carbon-fiber',name:'Carbon Fiber PLA',category:'specialty',nozzleTemp:{min:210,max:240},bedTemp:{min:55,max:70},printSpeed:{min:30,max:50},coolingFan:{min:50,max:80},retraction:{distance:4,speed:40},density:1.30,strength:'high',flexibility:'rigid',heatResistance:65,uvResistant:true,waterResistant:true,description:'Carbon Fiber PLA ist mit Carbonfasern verstaerkt fuer erhoehte Steifigkeit und professionelle Optik.',applications:['Drohnen-Rahmen','RC-Teile','Werkzeuge','Dekorative Teile'],pros:['Steif','Matte Oberflaeche','Dimensionsstabil','Professionelle Optik'],cons:['Gehaertete Duese erforderlich','Abrasiv','Sproeder als normales PLA'],tips:['Hardened Steel Duese empfohlen','Mindestens 0.4mm Duese','Langsamer drucken'],color:'#1e293b'},
+  {id:'petg-cf',name:'Carbon Fiber PETG',category:'specialty',nozzleTemp:{min:240,max:270},bedTemp:{min:75,max:90},printSpeed:{min:30,max:50},coolingFan:{min:30,max:60},retraction:{distance:4,speed:40},density:1.35,strength:'very-high',flexibility:'rigid',heatResistance:85,uvResistant:true,waterResistant:true,description:'CF-PETG kombiniert die Chemikalienbestaendigkeit von PETG mit Carbonfaser-Verstaerkung.',applications:['Industrieteile','Werkzeuge','Funktionale Prototypen','Outdoor-Komponenten'],pros:['Sehr steif','Chemikalienbestaendig','UV-bestaendig','Dimensionsstabil'],cons:['Gehaertete Duese noetig','Teuer','Schwieriger als Standard-PETG'],tips:['Hardened Steel Duese Pflicht','Trockenes Filament wichtig','Langsamer Druck'],color:'#334155'},
+  {id:'glow-pla',name:'Glow-in-the-Dark PLA',category:'specialty',nozzleTemp:{min:200,max:230},bedTemp:{min:50,max:65},printSpeed:{min:30,max:60},coolingFan:{min:80,max:100},retraction:{distance:4,speed:45},density:1.30,strength:'low',flexibility:'rigid',heatResistance:50,uvResistant:false,waterResistant:false,description:'Phosphoreszierendes PLA das nach Lichtexposition im Dunkeln leuchtet.',applications:['Nachtlichter','Dekoration','Spielzeug','Sicherheitsmarkierungen'],pros:['Leuchtet im Dunkeln','Spasseffekt','Einfach zu drucken'],cons:['Sehr abrasiv','Geringe Festigkeit','Begrenzte Farben'],tips:['Gehaertete Duese empfohlen','Groessere Duese verwenden','Nach UV-Licht laden'],color:'#84cc16'},
+  {id:'marble-pla',name:'Marble PLA',category:'specialty',nozzleTemp:{min:195,max:220},bedTemp:{min:50,max:60},printSpeed:{min:40,max:70},coolingFan:{min:80,max:100},retraction:{distance:4,speed:45},density:1.24,strength:'medium',flexibility:'rigid',heatResistance:55,uvResistant:false,waterResistant:false,description:'Marble PLA erzeugt eine marmorartige Optik mit zufaelligen Farbmustern.',applications:['Vasen','Skulpturen','Dekoration','Architekturmodelle'],pros:['Einzigartige Optik','Jeder Druck anders','Einfach zu drucken','Edle Erscheinung'],cons:['Nicht vorhersehbar','Nur fuer Dekoration','Begrenzte Festigkeit'],tips:['Groessere Schichthoehe fuer bessere Muster','Vasen-Modus ideal','Wie Standard-PLA drucken'],color:'#f1f5f9'},
+  {id:'metal-pla',name:'Metal-Fill PLA',category:'specialty',nozzleTemp:{min:195,max:220},bedTemp:{min:50,max:60},printSpeed:{min:25,max:50},coolingFan:{min:60,max:100},retraction:{distance:4,speed:40},density:2.00,strength:'low',flexibility:'rigid',heatResistance:50,uvResistant:false,waterResistant:false,description:'Metal-Fill PLA enthaelt echte Metallpartikel fuer authentische Metalloptik und -haptik.',applications:['Schmuck','Statuen','Dekorative Objekte','Requisiten'],pros:['Echte Metalloptik','Polierbar','Patinierbar','Schwer wie Metall'],cons:['Sehr abrasiv','Schwer','Gehaertete Duese noetig'],tips:['Hardened Steel Duese verwenden','Langsam drucken','Mit Stahlwolle polieren'],color:'#78716c'},
+  {id:'pva',name:'PVA (Stuetzmaterial)',category:'specialty',nozzleTemp:{min:180,max:210},bedTemp:{min:45,max:60},printSpeed:{min:20,max:40},coolingFan:{min:80,max:100},retraction:{distance:4,speed:35},density:1.23,strength:'low',flexibility:'rigid',heatResistance:45,uvResistant:false,waterResistant:false,description:'PVA ist ein wasserloesliches Stuetzmaterial, ideal fuer komplexe Ueberhaenge in Dual-Extrusion-Drucken.',applications:['Stuetzmaterial fuer PLA/PETG','Komplexe Geometrien','Praezisionsteile'],pros:['Wasserloeslich','Saubere Oberflaechen','Keine manuelle Entfernung'],cons:['Sehr hygroskopisch','Teuer','Kurze Haltbarkeit'],tips:['Absolut trocken lagern','Vakuumverpackt aufbewahren','Mit warmem Wasser aufloesen'],color:'#fef3c7'},
+  {id:'ht-pla',name:'HT-PLA (High-Temp)',category:'specialty',nozzleTemp:{min:200,max:230},bedTemp:{min:50,max:70},printSpeed:{min:40,max:80},coolingFan:{min:80,max:100},retraction:{distance:4,speed:45},density:1.24,strength:'high',flexibility:'rigid',heatResistance:120,uvResistant:false,waterResistant:false,description:'High-Temperature PLA kann nach dem Tempern Hitze wie ABS widerstehen.',applications:['Hitzebestaendige Teile','Automobil-Innenraum','Kuechenutensilien','Funktionale Teile'],pros:['Hohe Hitzebestaendigkeit nach Tempern','Einfach zu drucken','Staerker als normales PLA'],cons:['Tempern erforderlich','Schrumpfung beim Tempern','Aufwaendigere Nachbearbeitung'],tips:['Nach Druck bei 110C tempern','Groesser drucken wegen Schrumpfung','Im Ofen langsam abkuehlen'],color:'#dc2626'},
+  {id:'recycled-petg',name:'Recycled PETG',category:'specialty',nozzleTemp:{min:220,max:250},bedTemp:{min:70,max:85},printSpeed:{min:30,max:70},coolingFan:{min:30,max:60},retraction:{distance:5,speed:40},density:1.27,strength:'high',flexibility:'semi-rigid',heatResistance:75,uvResistant:true,waterResistant:true,description:'Aus recycelten Flaschen hergestelltes PETG mit gleichen Eigenschaften wie Virgin-PETG.',applications:['Nachhaltige Projekte','Funktionale Teile','Allzweck-Druck'],pros:['Umweltfreundlich','Gleiche Qualitaet wie neu','Guenstig','CO2-reduziert'],cons:['Farbvariationen moeglich','Manchmal Verunreinigungen','Begrenzte Farben'],tips:['Wie normales PETG drucken','Qualitaet kann variieren','Gute Alternative fuer Nachhaltigkeit'],color:'#22c55e'},
+];
+
+// === Helpers ===
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// === Rendering ===
+function renderCards(materials) {
+    const grid = document.getElementById('matGrid');
+    const empty = document.getElementById('matEmpty');
+    document.getElementById('matCount').textContent = materialsDB.length;
+
+    if (materials.length === 0) {
+        grid.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+    }
+    empty.style.display = 'none';
+
+    grid.innerHTML = materials.map((m, i) => {
+        const idx = materialsDB.indexOf(m);
+        const cat = materialCategories[m.category];
+        const abbr = m.name.slice(0,2).toUpperCase();
+        return `
+        <div class="mat-card" onclick="openMatDetail(${idx})">
+            <div class="mat-card__header">
+                <div class="mat-card__left">
+                    <div class="mat-card__icon" style="background:${m.color}20;color:${m.color}">${abbr}</div>
+                    <div>
+                        <div class="mat-card__name">${escHtml(m.name)}</div>
+                        <span class="mat-badge" style="border-color:${cat.color};color:${cat.color}">${cat.label}</span>
+                    </div>
+                </div>
+                <span class="mat-card__arrow">&#8250;</span>
+            </div>
+            <div class="mat-card__stats">
+                <div class="mat-stat">
+                    <span class="mat-stat__icon" style="color:#ef4444">&#127777;</span>
+                    <span class="mat-stat__label">Duese:</span>
+                    <span class="mat-stat__value">${m.nozzleTemp.min}-${m.nozzleTemp.max}&deg;C</span>
+                </div>
+                <div class="mat-stat">
+                    <span class="mat-stat__icon" style="color:#f39c12">&#127777;</span>
+                    <span class="mat-stat__label">Bett:</span>
+                    <span class="mat-stat__value">${m.bedTemp.min}-${m.bedTemp.max}&deg;C</span>
+                </div>
+                <div class="mat-stat">
+                    <span class="mat-stat__icon" style="color:#a855f7">&#9202;</span>
+                    <span class="mat-stat__label">Speed:</span>
+                    <span class="mat-stat__value">${m.printSpeed.min}-${m.printSpeed.max}mm/s</span>
+                </div>
+                <div class="mat-stat">
+                    <span class="mat-stat__icon" style="color:#3b82f6">&#128168;</span>
+                    <span class="mat-stat__label">Luefter:</span>
+                    <span class="mat-stat__value">${m.coolingFan.min}-${m.coolingFan.max}%</span>
+                </div>
+            </div>
+            <div class="mat-card__tags">
+                <span class="mat-tag">&#128737; ${strengthLabels[m.strength]}</span>
+                <span class="mat-tag">${flexLabels[m.flexibility]}</span>
+                ${m.uvResistant ? '<span class="mat-tag mat-tag--uv">&#9728; UV</span>' : ''}
+                ${m.waterResistant ? '<span class="mat-tag mat-tag--water">&#128167; H&#8322;O</span>' : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// === Detail Modal ===
+function openMatDetail(idx) {
+    const m = materialsDB[idx];
+    if (!m) return;
+    const cat = materialCategories[m.category];
+    const abbr = m.name.slice(0,2).toUpperCase();
+    document.getElementById('matDetailBody').innerHTML = `
+        <div class="mat-modal__header">
+            <div class="mat-modal__icon" style="background:${m.color}20;color:${m.color}">${abbr}</div>
+            <div>
+                <div class="mat-modal__title">${escHtml(m.name)}</div>
+                <span class="mat-badge" style="border-color:${cat.color};color:${cat.color};margin-top:6px">${cat.label}</span>
+            </div>
+        </div>
+        <p class="mat-modal__desc">${escHtml(m.description)}</p>
+        <hr class="mat-separator">
+
+        <div class="mat-modal__section">
+            <div class="mat-modal__section-title">&#127777; Druck-Einstellungen</div>
+            <div class="mat-modal__settings-grid">
+                <div class="mat-setting-card">
+                    <div class="mat-setting-card__label"><span style="color:#ef4444">&#127777;</span> Duesentemperatur</div>
+                    <div class="mat-setting-card__value">${m.nozzleTemp.min} - ${m.nozzleTemp.max}&deg;C</div>
+                </div>
+                <div class="mat-setting-card">
+                    <div class="mat-setting-card__label"><span style="color:#f39c12">&#127777;</span> Betttemperatur</div>
+                    <div class="mat-setting-card__value">${m.bedTemp.min} - ${m.bedTemp.max}&deg;C</div>
+                </div>
+                <div class="mat-setting-card">
+                    <div class="mat-setting-card__label"><span style="color:#a855f7">&#9202;</span> Druckgeschwindigkeit</div>
+                    <div class="mat-setting-card__value">${m.printSpeed.min} - ${m.printSpeed.max} mm/s</div>
+                </div>
+                <div class="mat-setting-card">
+                    <div class="mat-setting-card__label"><span style="color:#3b82f6">&#128168;</span> Kuehlung</div>
+                    <div class="mat-setting-card__value">${m.coolingFan.min} - ${m.coolingFan.max}%</div>
+                </div>
+                <div class="mat-setting-card" style="grid-column: span 2">
+                    <div class="mat-setting-card__label">&#8634; Retraction</div>
+                    <div class="mat-setting-card__value">${m.retraction.distance}mm @ ${m.retraction.speed}mm/s</div>
+                </div>
+            </div>
+        </div>
+        <hr class="mat-separator">
+
+        <div class="mat-modal__section">
+            <div class="mat-modal__section-title">&#128737; Physische Eigenschaften</div>
+            <div class="mat-props-grid">
+                <div class="mat-prop"><span class="mat-prop__label">Dichte:</span><span class="mat-prop__value">${m.density} g/cm&sup3;</span></div>
+                <div class="mat-prop"><span class="mat-prop__label">Festigkeit:</span><span class="mat-prop__value">${strengthLabels[m.strength]}</span></div>
+                <div class="mat-prop"><span class="mat-prop__label">Flexibilitaet:</span><span class="mat-prop__value">${flexLabels[m.flexibility]}</span></div>
+                <div class="mat-prop"><span class="mat-prop__label">&#128293; Hitze:</span><span class="mat-prop__value">${m.heatResistance}&deg;C</span></div>
+                <div class="mat-prop"><span class="mat-prop__label">&#9728; UV:</span><span class="mat-prop__value">${m.uvResistant ? '&#10004; Ja' : '&#10008; Nein'}</span></div>
+                <div class="mat-prop"><span class="mat-prop__label">&#128167; Wasser:</span><span class="mat-prop__value">${m.waterResistant ? '&#10004; Ja' : '&#10008; Nein'}</span></div>
+            </div>
+        </div>
+        <hr class="mat-separator">
+
+        <div class="mat-modal__section">
+            <div class="mat-modal__section-title">&#127919; Anwendungsbereiche</div>
+            <div class="mat-apps">${m.applications.map(a => '<span class="mat-app-tag">' + escHtml(a) + '</span>').join('')}</div>
+        </div>
+        <hr class="mat-separator">
+
+        <div class="mat-pros-cons">
+            <div>
+                <div class="mat-modal__section-title mat-modal__section-title--pro">&#10004; Vorteile</div>
+                <ul class="mat-list mat-list--pro">${m.pros.map(p => '<li><span class="mat-list__icon">&#10004;</span>' + escHtml(p) + '</li>').join('')}</ul>
+            </div>
+            <div>
+                <div class="mat-modal__section-title mat-modal__section-title--con">&#10008; Nachteile</div>
+                <ul class="mat-list mat-list--con">${m.cons.map(c => '<li><span class="mat-list__icon">&#10008;</span>' + escHtml(c) + '</li>').join('')}</ul>
+            </div>
+        </div>
+        <hr class="mat-separator">
+
+        <div class="mat-modal__section">
+            <div class="mat-modal__section-title">&#128161; Tipps</div>
+            <ul class="mat-list mat-list--tip">${m.tips.map(t => '<li><span class="mat-list__icon">&#128161;</span>' + escHtml(t) + '</li>').join('')}</ul>
+        </div>
+    `;
+    document.getElementById('matDetailModal').classList.add('active');
+}
+
+function closeMatDetail() {
+    document.getElementById('matDetailModal').classList.remove('active');
+}
+
+// === Init ===
+document.addEventListener('DOMContentLoaded', function() {
+    let currentCat = 'all';
+    let currentSearch = '';
+
+    function filterAndRender() {
+        const filtered = materialsDB.filter(m => {
+            const matchesCat = currentCat === 'all' || m.category === currentCat;
+            const matchesSearch = currentSearch === '' ||
+                m.name.toLowerCase().includes(currentSearch) ||
+                m.description.toLowerCase().includes(currentSearch);
+            return matchesCat && matchesSearch;
+        });
+        renderCards(filtered);
+    }
+
+    // Filter buttons
+    document.querySelectorAll('.matdb-filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.matdb-filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentCat = this.dataset.cat;
+            filterAndRender();
+        });
+    });
+
+    // Search
+    document.getElementById('matSearch').addEventListener('input', function() {
+        currentSearch = this.value.toLowerCase().trim();
+        filterAndRender();
+    });
+
+    // Initial render
+    filterAndRender();
+
+    // Modal close handlers
+    document.getElementById('matDetailModal').addEventListener('click', function(e) {
+        if (e.target === this) closeMatDetail();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeMatDetail();
+    });
+});
+</script>
+{% endblock %}

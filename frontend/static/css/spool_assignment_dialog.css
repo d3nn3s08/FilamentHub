@@ -1,0 +1,305 @@
+/* ========================================
+   Spool Assignment Dialog
+   Modal for assigning new AMS spools to existing storage spools
+   ======================================== */
+
+.spool-assign-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    animation: sa-fadeIn 0.2s ease-out;
+}
+
+@keyframes sa-fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes sa-slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.spool-assign-content {
+    background: #1a1d24;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 520px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    animation: sa-slideUp 0.3s ease-out;
+}
+
+/* Header */
+.spool-assign-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #2980b9, #27ae60);
+    border-radius: 16px 16px 0 0;
+}
+
+.spool-assign-header h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.spool-assign-close {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.spool-assign-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Body */
+.spool-assign-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Detected spool info */
+.detected-spool-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: rgba(41, 128, 185, 0.12);
+    border: 1px solid rgba(41, 128, 185, 0.25);
+    border-radius: 10px;
+    margin-bottom: 16px;
+}
+
+.detected-spool-color {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+}
+
+.detected-spool-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.detected-spool-details strong {
+    font-size: 15px;
+    color: #e0e0e0;
+}
+
+.detected-spool-details span {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Description */
+.spool-assign-description {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+/* Search */
+.spool-assign-search {
+    margin-bottom: 12px;
+}
+
+.spool-assign-search input {
+    width: 100%;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    color: #e0e0e0;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.spool-assign-search input:focus {
+    border-color: rgba(41, 128, 185, 0.5);
+}
+
+.spool-assign-search input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* Spool list */
+.spool-assign-list {
+    max-height: 280px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.spool-assign-loading,
+.spool-assign-empty {
+    text-align: center;
+    padding: 30px 16px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 13px;
+}
+
+/* Spool card */
+.sa-spool-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.sa-spool-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.sa-spool-card.sa-selected {
+    background: rgba(41, 128, 185, 0.15);
+    border-color: rgba(41, 128, 185, 0.5);
+    box-shadow: 0 0 0 1px rgba(41, 128, 185, 0.3);
+}
+
+.sa-spool-color {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+}
+
+.sa-spool-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.sa-spool-number {
+    font-size: 14px;
+    font-weight: 700;
+    color: #e0e0e0;
+}
+
+.sa-spool-name {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sa-spool-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.sa-spool-weight {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.sa-spool-status {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Footer */
+.spool-assign-footer {
+    padding: 16px 24px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    gap: 10px;
+}
+
+.sa-btn {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sa-btn-assign {
+    background: linear-gradient(135deg, #2980b9, #27ae60);
+    color: #fff;
+}
+
+.sa-btn-assign:hover:not(:disabled) {
+    filter: brightness(1.1);
+}
+
+.sa-btn-assign:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.sa-btn-keep {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sa-btn-keep:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Scrollbar */
+.spool-assign-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.spool-assign-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.spool-assign-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+
+.spool-assign-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+}

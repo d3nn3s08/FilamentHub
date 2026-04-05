@@ -1,0 +1,311 @@
+{% extends "layout.html" %}
+{% set page_title = "Filament Inventar" %}
+{% set page_subtitle = "Verwalten Sie Ihre Filament-Spulen und Materialbestände" %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='spools.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats Row -->
+<section class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon-wrapper">
+            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">Spulen gesamt</p>
+            <p class="stat-value" id="statTotal">0</p>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon-wrapper">
+            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">Gesamtvorrat</p>
+            <p class="stat-value" id="statWeight">0 kg</p>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon-wrapper euro">
+            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M14.5 9.5c-.7-.5-1.6-.8-2.5-.8-2.2 0-4 1.8-4 4s1.8 4 4 4c.9 0 1.8-.3 2.5-.8M7 10h5M7 14h5"/>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">Gesamtwert</p>
+            <p class="stat-value primary" id="statValue">€0.00</p>
+        </div>
+    </div>
+
+    <div class="stat-card warning clickable" id="warningCard" onclick="showLowStockSpools()" title="Klicken um Spulen mit niedrigem Bestand anzuzeigen">
+        <div class="stat-icon-wrapper warning">
+            <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <p class="stat-label">Niedriger Bestand</p>
+            <p class="stat-value warning" id="warningCount">0</p>
+        </div>
+    </div>
+</section>
+
+<!-- Material Distribution Chart -->
+<section class="material-distribution">
+    <div class="distribution-card">
+        <h3 class="distribution-title">Materialverteilung</h3>
+        <div class="distribution-content">
+            <div class="donut-chart-container">
+                <canvas id="materialChart" width="160" height="160"></canvas>
+            </div>
+            <div class="material-legend" id="materialLegend">
+                <!-- Wird von JavaScript gefüllt -->
+            </div>
+            <div class="material-weights" id="materialWeights">
+                <!-- Wird von JavaScript gefüllt -->
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Actions Row -->
+<section class="actions-row">
+    <div class="actions-left">
+        <button class="btn btn-primary" onclick="openAddModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Spule hinzufügen
+        </button>
+        <button class="btn btn-outline" onclick="toggleFilterPanel()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+            Filter
+        </button>
+    </div>
+
+    <div class="view-toggle">
+        <button class="view-btn active" id="viewCards" onclick="setViewMode('grid')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <rect x="3" y="3" width="7" height="7"/>
+                <rect x="14" y="3" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/>
+            </svg>
+            Karten
+        </button>
+        <button class="view-btn" id="viewTable" onclick="setViewMode('table')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <line x1="8" y1="6" x2="21" y2="6"/>
+                <line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/>
+                <line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            Tabelle
+        </button>
+    </div>
+</section>
+
+<!-- Filter Panel (initially hidden) -->
+<section class="filter-panel" id="filterPanel" style="display: none;">
+    <div class="filter-group">
+        <input type="text" id="searchInput" placeholder="Suchen..." class="search-input">
+        <input type="text" id="searchColor" placeholder="Farbe suchen (Gelb, Rot, Blau...)" class="search-input">
+        <select id="filterStatus" class="filter-select">
+            <option value="">Alle Status</option>
+            <option value="active">Aktiv</option>
+            <option value="empty">Leer</option>
+            <option value="low">Niedrig</option>
+            <option value="ams">Im AMS</option>
+            <option value="storage">Im Lager</option>
+        </select>
+        <button class="btn btn-outline" onclick="clearFilters()">
+            Filter zurücksetzen
+        </button>
+    </div>
+</section>
+
+<!-- Material Filter Chips -->
+<section class="material-chips">
+    <span class="chip-label">Material:</span>
+    <div class="chips-container" id="materialChips">
+        <!-- Wird von JavaScript gefüllt -->
+    </div>
+</section>
+
+<!-- Spool Cards Grid -->
+<section class="spool-grid" id="spoolGrid">
+    <!-- Wird von JavaScript gefüllt -->
+</section>
+
+<!-- Spool Table (hidden by default) -->
+<section class="table-section" id="spoolTableSection" style="display: none;">
+    <div id="spoolsTable">
+        <!-- Wird von JavaScript gefüllt -->
+    </div>
+</section>
+
+<!-- Edit/Add Modal -->
+<div id="spoolModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Spule hinzufügen</h2>
+            <button class="modal-close" onclick="closeModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+
+        <form id="spoolForm" onsubmit="saveSpool(event)">
+            <input type="hidden" id="spoolId">
+
+            <div class="form-columns">
+                <div class="form-column">
+                    <div class="form-group">
+                        <label for="spoolMaterial">Material *</label>
+                        <select id="spoolMaterial" required class="form-control">
+                            <option value="">-- Material wählen --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolVendor">Marke / Hersteller</label>
+                        <input type="text" id="spoolVendor" class="form-control" placeholder="z.B. Prusament">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolLabel">Anzeigename</label>
+                        <input type="text" id="spoolLabel" class="form-control" placeholder="z.B. 'PLA Weiß 1kg'">
+                        <small class="form-hint">Wird in Listen und Karten als Name angezeigt</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolColor">Farbe</label>
+                        <div class="color-picker-row">
+                            <input type="color" id="spoolColor" class="form-control color-input" value="#ffffff">
+                            <input type="text" id="spoolColorHex" placeholder="#ffffff" class="form-control color-hex" readonly>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="spoolWeightFull">Gewicht brutto (g) *</label>
+                            <input type="number" id="spoolWeightFull" class="form-control" required placeholder="z.B. 1000">
+                            <small class="form-hint">Laut Packung (z.B. 1kg = 1000g)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="spoolWeightEmpty">Leergewicht (g) *</label>
+                            <input type="number" id="spoolWeightEmpty" class="form-control" required placeholder="z.B. 209">
+                            <small class="form-hint">Wird vom Material übernommen</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-column">
+                    <div class="form-group">
+                        <label for="spoolWeightRemaining">Restgewicht (g)</label>
+                        <input type="number" id="spoolWeightRemaining" class="form-control" placeholder="Leer = volle Spule" step="0.01">
+                        <small class="form-hint">Nur das Filament (ohne Spule)</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolManufacturerId">RFID / Hersteller ID</label>
+                        <input type="text" id="spoolManufacturerId" class="form-control" placeholder="Optional">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolNumber">Spulen-Nummer</label>
+                        <input type="number" id="spoolNumber" class="form-control" placeholder="z.B. 5" min="1">
+                        <small class="form-hint">Nummer für Lager-System</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolStatus">Status</label>
+                        <select id="spoolStatus" class="form-control">
+                            <option value="Lager" selected>Lager</option>
+                            <option value="Aktiv">Aktiv</option>
+                            <option value="In Benutzung">In Benutzung</option>
+                            <option value="Leer">Leer</option>
+                        </select>
+                        <small id="spoolStatusHint" class="form-hint">Status wird bei AMS-Nutzung automatisch aktualisiert</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolPrice">Preis (€)</label>
+                        <input type="number" id="spoolPrice" class="form-control" placeholder="z.B. 24.99" step="0.01" min="0">
+                        <small class="form-hint">Kaufpreis der vollen Spule</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-info">
+                <strong>Hinweis:</strong> Neue Spulen starten als "Lager". Bei Einlage ins AMS wechselt der Status automatisch zu "Aktiv".
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeModal()">
+                    Abbrechen
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    Speichern
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>Spule löschen?</h2>
+            <button class="modal-close" onclick="closeDeleteModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <p>Diese Aktion kann nicht rückgängig gemacht werden. Die Spule wird dauerhaft aus Ihrem Inventar entfernt.</p>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeDeleteModal()">
+                Abbrechen
+            </button>
+            <button class="btn btn-danger" onclick="confirmDelete()">
+                Löschen
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Toast -->
+<div id="notification" class="notification"></div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='spools.js') }}"></script>
+{% endblock %}

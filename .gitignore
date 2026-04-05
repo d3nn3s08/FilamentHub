@@ -1,0 +1,52 @@
+# Secrets
+.env
+.env.local
+*.key
+*.pem
+
+# Runtime data (auto-created on start)
+data/
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Backups
+*.bak
+*.backup*
+backups/
+
+# 3D Print files
+*.gcode
+*.3mf
+
+# Logs
+*.log

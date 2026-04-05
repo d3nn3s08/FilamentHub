@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FilamentHub Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('frontend_static', path='admin_panel.css') }}">
+</head>
+<body>
+
+<div class="admin-container">
+    <!-- Header -->
+    <header class="admin-header">
+        <div class="header-left">
+            <img src="{{ url_for('frontend_static', path='logo.svg') }}" alt="FilamentHub" class="header-logo">
+            <div>
+                <h1 class="header-title">Admin Panel</h1>
+                <p class="header-sub">Systemsteuerung &middot; FilamentHub</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <a href="/" class="btn-back">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                Dashboard
+            </a>
+        </div>
+    </header>
+
+    <!-- Hinweis-Box: Admin öffentlich -->
+    <div class="public-notice">
+        <svg width="20" height="20" fill="none" stroke="#f39c12" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>
+            <strong>Hinweis:</strong> Diese Admin-Seite ist ohne Passwort zugänglich. Alle Funktionen sind öffentlich erreichbar. Stelle sicher, dass der Zugriff auf Netzwerkebene eingeschränkt ist.
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats-bar" id="statsBar">
+        <div class="stat-item">
+            <span class="stat-value" id="statMaterials">-</span>
+            <span class="stat-label">Materialien</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-value" id="statSpools">-</span>
+            <span class="stat-label">Spulen</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-value" id="statPrinters">-</span>
+            <span class="stat-label">Drucker</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-value" id="statJobs">-</span>
+            <span class="stat-label">Aufträge</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-value" id="statDbSize">-</span>
+            <span class="stat-label">DB Größe</span>
+        </div>
+    </div>
+
+    <!-- BEREICH: Datenbank -->
+    <section class="admin-section">
+        <h2 class="section-title">
+            <svg width="22" height="22" fill="none" stroke="#f39c12" stroke-width="2" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+            Datenbank
+        </h2>
+        <div class="tile-grid">
+            <!-- Migration -->
+            <div class="tile">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #f39c12, #ff6b35);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg>
+                </div>
+                <h3 class="tile-title">Migration</h3>
+                <p class="tile-desc">Alembic upgrade head ausführen</p>
+                <button class="btn-tile" id="migrateBtn">Migration starten</button>
+                <div class="tile-status" id="migrateStatus"></div>
+                <pre class="tile-log" id="migrationLog">Kein Lauf protokolliert.</pre>
+            </div>
+
+            <!-- Backup -->
+            <div class="tile">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #2ecc71, #27ae60);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </div>
+                <h3 class="tile-title">Backup</h3>
+                <p class="tile-desc">Datenbank-Backup erstellen</p>
+                <button class="btn-tile" id="backupBtn">Backup erstellen</button>
+                <div class="tile-status" id="backupStatus"></div>
+            </div>
+
+            <!-- VACUUM -->
+            <div class="tile">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #3498db, #2980b9);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                </div>
+                <h3 class="tile-title">Optimieren</h3>
+                <p class="tile-desc">VACUUM - Datenbank komprimieren</p>
+                <button class="btn-tile" id="vacuumBtn">VACUUM starten</button>
+                <div class="tile-status" id="vacuumStatus"></div>
+            </div>
+
+            <!-- DB-Editor -->
+            <div class="tile tile-wide">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #9b59b6, #8e44ad);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                </div>
+                <h3 class="tile-title">SQL-Editor</h3>
+                <p class="tile-desc">Beliebige SQL-Befehle ausführen (INSERT, UPDATE, DELETE, CREATE, ALTER, DROP)</p>
+                <textarea class="sql-input" id="dbEditorQuery" placeholder="SQL-Befehl eingeben..."></textarea>
+                <div class="sql-examples">
+                    <span class="sql-example-label">Beispiele:</span>
+                    <button type="button" data-sql-example="update" class="btn-example">UPDATE</button>
+                    <button type="button" data-sql-example="insert" class="btn-example">INSERT</button>
+                    <button type="button" data-sql-example="delete" class="btn-example">DELETE</button>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                    <button class="btn-tile" id="dbEditorExecute">Ausführen</button>
+                    <button class="btn-tile btn-secondary" id="dbEditorClear">Leeren</button>
+                </div>
+                <div class="tile-output" id="dbEditorOutput"></div>
+            </div>
+
+            <!-- Eintrag löschen (Danger) -->
+            <div class="tile tile-danger">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                </div>
+                <h3 class="tile-title">Eintrag löschen</h3>
+                <p class="tile-desc">Datensatz per Tabelle + ID entfernen</p>
+                <div class="form-row">
+                    <select id="deleteTable" class="form-select">
+                        <option value="material">material</option>
+                        <option value="spool">spool</option>
+                        <option value="printer">printer</option>
+                        <option value="job">job</option>
+                        <option value="userflag">userflag</option>
+                        <option value="setting">setting</option>
+                    </select>
+                    <input id="deleteId" type="text" class="form-input" placeholder="UUID oder PK">
+                </div>
+                <button class="btn-danger" id="deleteBtn">Eintrag löschen</button>
+                <div class="tile-status" id="deleteStatus"></div>
+            </div>
+
+            <!-- Tabellen-Übersicht -->
+            <div class="tile">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #1abc9c, #16a085);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                </div>
+                <h3 class="tile-title">Tabellen</h3>
+                <p class="tile-desc">Schema-Übersicht mit Spalten &amp; Datenvorschau</p>
+                <button class="btn-tile" onclick="openModal('modal-tables')">Tabellen anzeigen</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- BEREICH: Inhalte -->
+    <section class="admin-section">
+        <h2 class="section-title">
+            <svg width="22" height="22" fill="none" stroke="#f39c12" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Inhalte
+        </h2>
+        <div class="tile-grid">
+            <!-- Begrüßungstext -->
+            <div class="tile">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #f39c12, #e67e22);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                </div>
+                <h3 class="tile-title">Begrüßungstext</h3>
+                <p class="tile-desc">Willkommens-Popup Text bearbeiten</p>
+                <textarea id="welcomeText" class="sql-input" placeholder="Text für das Willkommens-Popup..." style="min-height:80px;"></textarea>
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                    <button class="btn-tile" onclick="saveWelcomeText()">Speichern</button>
+                    <button class="btn-tile btn-secondary" onclick="triggerWelcomePopup()">Popup auslösen</button>
+                </div>
+                <div class="tile-status" id="welcomeStatus"></div>
+            </div>
+
+            <!-- Systeminfo -->
+            <div class="tile">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #3498db, #2980b9);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                </div>
+                <h3 class="tile-title">System-Info</h3>
+                <p class="tile-desc">App- und Design-Version</p>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">App-Version</span>
+                        <span class="info-value" id="appVersion">Lädt...</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Design-Version</span>
+                        <span class="info-value" id="designVersion">Lädt...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Benachrichtigungen -->
+            <div class="tile">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #f1c40f, #f39c12);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+                </div>
+                <h3 class="tile-title">Benachrichtigungen</h3>
+                <p class="tile-desc">Globale Alerts verwalten</p>
+                <button class="btn-tile" onclick="window.location.href='/admin/notifications'">Verwalten</button>
+            </div>
+
+            <!-- Lexikon -->
+            <div class="tile">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #2ecc71, #27ae60);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+                </div>
+                <h3 class="tile-title">Lexikon</h3>
+                <p class="tile-desc">Filament-Lexikon Einträge verwalten</p>
+                <button class="btn-tile" onclick="openModal('modal-lexikon')">Verwalten</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- BEREICH: Einstellungen -->
+    <section class="admin-section">
+        <h2 class="section-title">
+            <svg width="22" height="22" fill="none" stroke="#f39c12" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            Einstellungen
+        </h2>
+        <div class="tile-grid">
+            <!-- Runtime-Modell Reset -->
+            <div class="tile tile-danger">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 5v4h4"/></svg>
+                </div>
+                <h3 class="tile-title">Runtime-Modell Reset</h3>
+                <p class="tile-desc">Drucker-Modell zurücksetzen (Serie bleibt erhalten)</p>
+                <select id="runtimeResetPrinterSelect" class="form-select">
+                    <option value="">-- Drucker wählen --</option>
+                </select>
+                <div class="tile-status" id="runtimeResetPrinterInfo" style="margin:8px 0;">Keine Auswahl</div>
+                <button class="btn-danger" id="runtimeResetBtn">Reset ausführen</button>
+            </div>
+
+            <!-- Debug-Einstellungen -->
+            <div class="tile">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #9b59b6, #8e44ad);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m6.36 6.36l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m6.36-6.36l4.24-4.24"/></svg>
+                </div>
+                <h3 class="tile-title">Debug-Einstellungen</h3>
+                <p class="tile-desc">Pro-Mode Warnung zurücksetzen</p>
+                <div class="info-item" style="margin-bottom:12px;">
+                    <span class="info-label">Pro-Mode Status</span>
+                    <span class="info-value" id="proModeStatus">Lädt...</span>
+                </div>
+                <button class="btn-tile" onclick="resetProModeWarning()">Warnung zurücksetzen</button>
+                <div class="tile-status" id="proModeResult"></div>
+            </div>
+
+            <!-- Coverage -->
+            <div class="tile">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #1abc9c, #16a085);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </div>
+                <h3 class="tile-title">Coverage</h3>
+                <p class="tile-desc">Code-Coverage Auswertung</p>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-tile" id="coverageRunBtn">Coverage ausführen</button>
+                    <button class="btn-tile btn-secondary" id="coverageReportBtn" disabled>Report öffnen</button>
+                </div>
+                <div class="tile-status" id="coverageStatus"></div>
+            </div>
+
+            <!-- Admin-View Toggle -->
+            <div class="tile">
+                <div class="tile-icon" style="background: linear-gradient(135deg, #f39c12, #e67e22);">
+                    <svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </div>
+                <h3 class="tile-title">Admin-Ansicht</h3>
+                <p class="tile-desc">Versteckte Elemente auf allen Seiten sichtbar machen</p>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-tile" id="adminViewEnableBtn" onclick="toggleAdminView(true)">Aktivieren</button>
+                    <button class="btn-danger" id="adminViewDisableBtn" onclick="toggleAdminView(false)">Deaktivieren</button>
+                </div>
+                <div class="tile-status" id="adminViewStatus"></div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- MODAL: Tabellen -->
+<div id="modal-tables" class="admin-modal">
+    <div class="modal-overlay" onclick="closeModal('modal-tables')"></div>
+    <div class="modal-box modal-large">
+        <div class="modal-header">
+            <h2>Datenbank-Tabellen</h2>
+            <button class="modal-close" onclick="closeModal('modal-tables')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="dbTables" style="min-height:100px;">Lädt...</div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Lexikon -->
+<div id="modal-lexikon" class="admin-modal">
+    <div class="modal-overlay" onclick="closeModal('modal-lexikon')"></div>
+    <div class="modal-box modal-large">
+        <div class="modal-header">
+            <h2>Lexikon-Verwaltung</h2>
+            <button class="modal-close" onclick="closeModal('modal-lexikon')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="display:flex;justify-content:space-between;margin-bottom:20px;">
+                <button class="btn-tile" onclick="showLexikonForm()">+ Neuer Eintrag</button>
+                <button class="btn-tile btn-secondary" onclick="loadLexikonEntries()">Aktualisieren</button>
+            </div>
+            <div id="lexikon-form" style="display:none;background:var(--panel-2);padding:20px;border-radius:12px;margin-bottom:20px;border:1px solid var(--border);">
+                <h3 id="form-title">Neuer Eintrag</h3>
+                <input type="hidden" id="entry-id">
+                <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+                    <div><label class="form-label">Titel</label><input type="text" id="entry-title" class="form-input" placeholder="z.B. PLA (Polylactid)"></div>
+                    <div><label class="form-label">Kategorie</label><select id="entry-category" class="form-select"><option value="material">Material</option><option value="term">Fachbegriff</option><option value="property">Eigenschaft</option><option value="spool">Spule</option></select></div>
+                    <div><label class="form-label">Icon</label><input type="text" id="entry-icon" class="form-input" placeholder="z.B. U+1F33F"></div>
+                </div>
+                <div style="margin-bottom:12px;"><label class="form-label">Beschreibung</label><textarea id="entry-description" class="sql-input" rows="3" placeholder="Kurze Beschreibung..."></textarea></div>
+                <div style="margin-bottom:12px;"><label class="form-label">Keywords (kommagetrennt)</label><input type="text" id="entry-keywords" class="form-input" placeholder="pla, kunststoff, biodegradable"></div>
+                <h4 style="margin:16px 0 8px;color:var(--text-dim);">Eigenschaften</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;"><div><label class="form-label">Label 1</label><input type="text" id="entry-prop1-label" class="form-input" placeholder="z.B. Drucktemperatur"></div><div><label class="form-label">Wert 1</label><input type="text" id="entry-prop1-value" class="form-input" placeholder="z.B. 190-220 Grad"></div></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;"><div><label class="form-label">Label 2</label><input type="text" id="entry-prop2-label" class="form-input" placeholder="z.B. Betttemperatur"></div><div><label class="form-label">Wert 2</label><input type="text" id="entry-prop2-value" class="form-input" placeholder="z.B. 50-60 Grad"></div></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;"><div><label class="form-label">Label 3</label><input type="text" id="entry-prop3-label" class="form-input"></div><div><label class="form-label">Wert 3</label><input type="text" id="entry-prop3-value" class="form-input"></div></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;"><div><label class="form-label">Label 4</label><input type="text" id="entry-prop4-label" class="form-input"></div><div><label class="form-label">Wert 4</label><input type="text" id="entry-prop4-value" class="form-input"></div></div>
+                <div style="display:flex;gap:12px;">
+                    <button class="btn-tile" onclick="saveLexikonEntry()">Speichern</button>
+                    <button class="btn-tile btn-secondary" onclick="cancelLexikonForm()">Abbrechen</button>
+                </div>
+                <div class="tile-status" id="lexikon-form-status"></div>
+            </div>
+            <div id="lexikon-entries-list"><p style="color:var(--text-dim);">Lade Einträge...</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Dialog -->
+<div id="confirmDialog" class="admin-modal">
+    <div class="modal-overlay" onclick="closeConfirm()"></div>
+    <div class="modal-box" style="max-width:420px;">
+        <div class="modal-header">
+            <h2 id="confirmTitle">Bestätigung</h2>
+            <button class="modal-close" onclick="closeConfirm()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="confirmMessage" style="margin:0 0 20px;"></p>
+            <div style="display:flex;gap:10px;justify-content:flex-end;">
+                <button class="btn-tile btn-secondary" onclick="closeConfirm()">Abbrechen</button>
+                <button class="btn-danger" id="confirmOkBtn">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- Scripts -->
+<script src="{{ url_for('frontend_static', path='admin_db_editor.js') }}"></script>
+<script>
+// ===== MODAL SYSTEM =====
+function openModal(id) {
+    const m = document.getElementById(id);
+    if (m) { m.classList.add('active'); document.body.style.overflow = 'hidden'; }
+    if (id === 'modal-tables') loadTables();
+    if (id === 'modal-lexikon') loadLexikonEntries();
+}
+function closeModal(id) {
+    const m = document.getElementById(id);
+    if (m) { m.classList.remove('active'); document.body.style.overflow = ''; }
+}
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.admin-modal.active').forEach(m => m.classList.remove('active'));
+        document.body.style.overflow = '';
+    }
+});
+
+// ===== CONFIRM DIALOG =====
+let _confirmCb = null;
+function showConfirm(title, message, cb) {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    _confirmCb = cb;
+    document.getElementById('confirmDialog').classList.add('active');
+}
+function closeConfirm() {
+    document.getElementById('confirmDialog').classList.remove('active');
+    _confirmCb = null;
+}
+document.getElementById('confirmOkBtn').addEventListener('click', () => {
+    if (_confirmCb) _confirmCb();
+    closeConfirm();
+});
+
+// ===== TOAST =====
+function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast toast-' + type + ' toast-show';
+    setTimeout(() => t.classList.remove('toast-show'), 3500);
+}
+
+// ===== STATS =====
+async function loadStats() {
+    try {
+        const [statsRes, infoRes] = await Promise.all([
+            fetch('/api/database/stats'),
+            fetch('/api/database/info')
+        ]);
+        const stats = await statsRes.json();
+        const info = await infoRes.json();
+        document.getElementById('statMaterials').textContent = stats.materials_count ?? '-';
+        document.getElementById('statSpools').textContent = stats.spools_count ?? '-';
+        document.getElementById('statPrinters').textContent = stats.printers_count ?? '-';
+        document.getElementById('statJobs').textContent = stats.jobs_count ?? '-';
+        document.getElementById('statDbSize').textContent = info.size_mb ? info.size_mb + ' MB' : '-';
+    } catch (e) { console.error('Stats laden fehlgeschlagen:', e); }
+}
+
+// ===== MIGRATION =====
+document.getElementById('migrateBtn').addEventListener('click', async function() {
+    const btn = this;
+    const status = document.getElementById('migrateStatus');
+    const log = document.getElementById('migrationLog');
+    btn.disabled = true; btn.textContent = 'Läuft...';
+    status.textContent = 'Migration wird ausgeführt...';
+    status.className = 'tile-status';
+    try {
+        const res = await fetch('/api/admin/migrate', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            status.textContent = 'Migration abgeschlossen!';
+            status.classList.add('status-success');
+            log.textContent = data.output?.trim() || 'Keine Ausgabe.';
+            showToast('Migration erfolgreich!');
+        } else {
+            status.textContent = 'Fehler: ' + (data.error || 'Unbekannt');
+            status.classList.add('status-error');
+            log.textContent = data.error || 'Fehler.';
+        }
+    } catch (e) {
+        status.textContent = 'Netzwerkfehler!';
+        status.classList.add('status-error');
+        log.textContent = e.message;
+    } finally {
+        btn.disabled = false; btn.textContent = 'Migration starten';
+    }
+});
+
+// ===== BACKUP =====
+document.getElementById('backupBtn').addEventListener('click', async function() {
+    const btn = this; const status = document.getElementById('backupStatus');
+    btn.disabled = true; btn.textContent = 'Läuft...';
+    try {
+        const res = await fetch('/api/database/backups/create', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            status.textContent = 'Backup erstellt: ' + data.backup_size_mb + ' MB';
+            status.className = 'tile-status status-success';
+            showToast('Backup erstellt!');
+        } else {
+            status.textContent = 'Fehler: ' + (data.detail || 'Unbekannt');
+            status.className = 'tile-status status-error';
+        }
+    } catch (e) {
+        status.textContent = 'Fehler: ' + e.message;
+        status.className = 'tile-status status-error';
+    } finally {
+        btn.disabled = false; btn.textContent = 'Backup erstellen';
+    }
+});
+
+// ===== VACUUM =====
+document.getElementById('vacuumBtn').addEventListener('click', async function() {
+    const btn = this; const status = document.getElementById('vacuumStatus');
+    btn.disabled = true; btn.textContent = 'Läuft...';
+    try {
+        const res = await fetch('/api/database/vacuum', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            status.textContent = `Optimiert! ${data.size_before_mb} MB -> ${data.size_after_mb} MB (${data.saved_kb} KB gespart)`;
+            status.className = 'tile-status status-success';
+            showToast('Datenbank optimiert!');
+            loadStats();
+        } else {
+            status.textContent = 'Fehler: ' + (data.detail || 'Unbekannt');
+            status.className = 'tile-status status-error';
+        }
+    } catch (e) {
+        status.textContent = 'Fehler: ' + e.message;
+        status.className = 'tile-status status-error';
+    } finally {
+        btn.disabled = false; btn.textContent = 'VACUUM starten';
+    }
+});
+
+// ===== EINTRAG LÖSCHEN =====
+document.getElementById('deleteBtn').addEventListener('click', function() {
+    const table = document.getElementById('deleteTable').value;
+    const id = document.getElementById('deleteId').value.trim();
+    const status = document.getElementById('deleteStatus');
+    if (!id) { status.textContent = 'Bitte eine ID angeben!'; status.className = 'tile-status status-error'; return; }
+    showConfirm('Eintrag löschen', `Wirklich ${table} mit ID "${id}" löschen? Diese Aktion kann nicht rückgängig gemacht werden.`, async () => {
+        status.textContent = 'Lösche...'; status.className = 'tile-status';
+        try {
+            const res = await fetch('/api/admin/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ table, id })
+            });
+            const data = await res.json();
+            if (data.success) {
+                status.textContent = `Eintrag aus ${table} mit ID ${id} gelöscht!`;
+                status.className = 'tile-status status-success';
+                showToast('Eintrag gelöscht!');
+                loadStats();
+            } else {
+                status.textContent = 'Fehler: ' + (data.error || 'Unbekannt');
+                status.className = 'tile-status status-error';
+            }
+        } catch (e) {
+            status.textContent = 'Fehler beim Löschen!';
+            status.className = 'tile-status status-error';
+        }
+    });
+});
+
+// ===== BEGRÜßUNGSTEXT =====
+async function loadWelcomeText() {
+    try {
+        const res = await fetch('/api/admin/greeting');
+        const data = await res.json();
+        document.getElementById('welcomeText').value = data.greeting_text || '';
+    } catch (e) { document.getElementById('welcomeStatus').textContent = 'Fehler beim Laden.'; }
+}
+async function saveWelcomeText() {
+    const text = document.getElementById('welcomeText').value;
+    const status = document.getElementById('welcomeStatus');
+    try {
+        const res = await fetch('/api/admin/greeting', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ greeting_text: text })
+        });
+        const data = await res.json();
+        status.textContent = data.success ? 'Gespeichert!' : 'Fehler!';
+        status.className = 'tile-status ' + (data.success ? 'status-success' : 'status-error');
+        if (data.success) showToast('Begrüßungstext gespeichert!');
+    } catch (e) { status.textContent = 'Fehler!'; status.className = 'tile-status status-error'; }
+}
+async function triggerWelcomePopup() {
+    const userId = localStorage.getItem('fh_userid');
+    const status = document.getElementById('welcomeStatus');
+    if (!userId) { status.textContent = 'Kein User gefunden!'; return; }
+    try {
+        await fetch(`/api/user/flag/${userId}/welcome_popup`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: false })
+        });
+        status.textContent = 'Popup wird beim nächsten Dashboard-Start angezeigt!';
+        status.className = 'tile-status status-success';
+    } catch (e) { status.textContent = 'Fehler!'; status.className = 'tile-status status-error'; }
+}
+
+// ===== SYSTEM-INFO =====
+async function loadSystemInfo() {
+    try {
+        const [appRes, designRes] = await Promise.all([
+            fetch('/api/admin/app-version'),
+            fetch('/api/admin/design-version')
+        ]);
+        const app = await appRes.json();
+        const design = await designRes.json();
+        document.getElementById('appVersion').textContent = app.app_version || '-';
+        document.getElementById('designVersion').textContent = design.design_version || '-';
+    } catch (e) { console.error('System-Info laden fehlgeschlagen:', e); }
+}
+
+// ===== RUNTIME-MODELL RESET =====
+let runtimeResetPrinters = [];
+async function loadRuntimeResetPrinters() {
+    const sel = document.getElementById('runtimeResetPrinterSelect');
+    const info = document.getElementById('runtimeResetPrinterInfo');
+    sel.innerHTML = '<option value="">-- Drucker wählen --</option>';
+    info.textContent = 'Lade Drucker...';
+    try {
+        const res = await fetch('/api/printers');
+        const printers = await res.json();
+        runtimeResetPrinters = Array.isArray(printers) ? printers : [];
+        runtimeResetPrinters.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = `${p.name || 'Unbenannt'} | ${p.cloud_serial || '-'} | ${p.series || '?'} | ${p.model || '-'}`;
+            sel.appendChild(opt);
+        });
+        info.textContent = 'Bitte Drucker auswählen.';
+    } catch (e) { info.textContent = 'Fehler beim Laden.'; }
+}
+
+document.getElementById('runtimeResetPrinterSelect').addEventListener('change', function() {
+    const info = document.getElementById('runtimeResetPrinterInfo');
+    const p = runtimeResetPrinters.find(x => x.id === this.value);
+    if (!p) { info.textContent = 'Keine Auswahl'; return; }
+    info.textContent = `Name: ${p.name || '-'} | Serial: ${p.cloud_serial || '-'} | Serie: ${p.series || '-'} | Modell: ${p.model || '-'}`;
+});
+
+document.getElementById('runtimeResetBtn').addEventListener('click', function() {
+    const printerId = document.getElementById('runtimeResetPrinterSelect').value;
+    const info = document.getElementById('runtimeResetPrinterInfo');
+    if (!printerId) { info.textContent = 'Bitte Drucker auswählen!'; return; }
+    showConfirm('Runtime-Modell Reset', 'Runtime-Modell zurücksetzen? Ein Server-Neustart ist danach erforderlich.', async () => {
+        info.textContent = 'Sende Reset...';
+        try {
+            const res = await fetch(`/api/admin/printers/${printerId}/reset-runtime-model`, { method: 'POST' });
+            if (res.ok) {
+                info.textContent = 'Reset erfolgreich! Server-Neustart erforderlich.';
+                showToast('Runtime-Modell zurückgesetzt!');
+            } else {
+                const err = await res.json().catch(() => ({}));
+                info.textContent = err.detail || 'Fehler beim Reset.';
+            }
+        } catch (e) { info.textContent = 'Fehler beim Reset.'; }
+    });
+});
+
+// ===== PRO-MODE =====
+async function loadProModeStatus() {
+    try {
+        const res = await fetch('/api/debug/pro-mode/status');
+        const data = await res.json();
+        const el = document.getElementById('proModeStatus');
+        el.textContent = data.accepted ? 'Bestätigt' : 'Nicht bestätigt';
+        el.style.color = data.accepted ? '#2ecc71' : '#f39c12';
+    } catch (e) { console.error(e); }
+}
+async function resetProModeWarning() {
+    const result = document.getElementById('proModeResult');
+    try {
+        const res = await fetch('/api/admin/debug/reset-pro-mode', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            result.textContent = 'Warnung zurückgesetzt!';
+            result.className = 'tile-status status-success';
+            loadProModeStatus();
+            showToast('Pro-Mode Warnung zurückgesetzt!');
+        } else {
+            result.textContent = 'Fehler: ' + (data.error || 'Unbekannt');
+            result.className = 'tile-status status-error';
+        }
+    } catch (e) {
+        result.textContent = 'Fehler!';
+        result.className = 'tile-status status-error';
+    }
+}
+
+// ===== COVERAGE =====
+const coverageRunBtn = document.getElementById('coverageRunBtn');
+const coverageReportBtn = document.getElementById('coverageReportBtn');
+const coverageStatus = document.getElementById('coverageStatus');
+
+async function refreshCoverageReportButton() {
+    try {
+        const res = await fetch('/coverage/report', { method: 'HEAD' });
+        coverageReportBtn.disabled = !res.ok;
+    } catch (e) { coverageReportBtn.disabled = true; }
+}
+
+coverageRunBtn.addEventListener('click', async function() {
+    coverageRunBtn.disabled = true; coverageRunBtn.textContent = 'Läuft...';
+    coverageStatus.textContent = 'Coverage läuft...';
+    try {
+        const res = await fetch('/coverage/run', { method: 'POST' });
+        const data = await res.json();
+        coverageStatus.textContent = data.message || 'Fertig';
+        coverageStatus.className = 'tile-status ' + (data.success ? 'status-success' : 'status-error');
+        if (data.success) { refreshCoverageReportButton(); showToast('Coverage abgeschlossen!'); }
+    } catch (e) {
+        coverageStatus.textContent = 'Fehler!';
+        coverageStatus.className = 'tile-status status-error';
+    } finally {
+        coverageRunBtn.disabled = false; coverageRunBtn.textContent = 'Coverage ausführen';
+    }
+});
+coverageReportBtn.addEventListener('click', () => window.open('/coverage/ui', '_blank'));
+
+// ===== ADMIN VIEW =====
+function toggleAdminView(enable) {
+    try {
+        if (enable) { sessionStorage.setItem('fh_admin_show_hidden', '1'); }
+        else { sessionStorage.removeItem('fh_admin_show_hidden'); }
+        updateAdminViewStatus(enable);
+    } catch (e) { console.error(e); }
+}
+function updateAdminViewStatus(enabled) {
+    const el = document.getElementById('adminViewStatus');
+    if (!el) return;
+    el.textContent = enabled ? 'Aktiv - Versteckte Elemente sichtbar' : 'Inaktiv - Normale Ansicht';
+    el.className = 'tile-status ' + (enabled ? 'status-success' : '');
+}
+
+// ===== TABELLEN =====
+async function loadTables() {
+    const container = document.getElementById('dbTables');
+    container.innerHTML = 'Lädt...';
+    try {
+        const res = await fetch('/api/database/tables');
+        const data = await res.json();
+        if (!data.tables || data.tables.length === 0) { container.innerHTML = '<p>Keine Tabellen gefunden.</p>'; return; }
+        let html = '';
+        data.tables.forEach(t => {
+            html += `<div style="margin-bottom:20px;"><h3 style="color:var(--accent);margin-bottom:8px;">${t.name} <span style="color:var(--text-dim);font-size:13px;">(${t.row_count} Zeilen, ${t.column_count} Spalten)</span></h3>`;
+            html += '<table class="db-table"><thead><tr>';
+            t.columns.forEach(c => { html += `<th>${c.name} <span style="color:var(--text-dim);font-weight:400;font-size:11px;">${c.type}</span></th>`; });
+            html += '</tr></thead><tbody>';
+            if (t.preview && t.preview.rows.length > 0) {
+                t.preview.rows.forEach(row => {
+                    html += '<tr>';
+                    row.forEach(val => { html += `<td>${val !== null && val !== undefined ? val : '-'}</td>`; });
+                    html += '</tr>';
+                });
+            } else { html += `<tr><td colspan="${t.columns.length}" style="text-align:center;color:var(--text-dim);">Keine Daten</td></tr>`; }
+            html += '</tbody></table></div>';
+        });
+        container.innerHTML = html;
+    } catch (e) { container.innerHTML = '<p style="color:var(--error);">Fehler beim Laden!</p>'; }
+}
+
+// ===== LEXIKON =====
+let currentEditId = null;
+async function loadLexikonEntries() {
+    try {
+        const res = await fetch('/api/lexikon/entries');
+        const entries = await res.json();
+        const list = document.getElementById('lexikon-entries-list');
+        if (entries.length === 0) { list.innerHTML = '<p style="color:var(--text-dim);">Keine Einträge vorhanden.</p>'; return; }
+        let html = '<table class="db-table"><thead><tr><th>Icon</th><th>Titel</th><th>Kategorie</th><th>Aktionen</th></tr></thead><tbody>';
+        entries.forEach(e => {
+            html += `<tr><td style="font-size:24px;">${e.icon}</td><td>${e.title}</td><td><span class="badge">${e.category}</span></td><td><button class="btn-sm" onclick="editLexikonEntry('${e.id}')">Bearbeiten</button> <button class="btn-sm btn-sm-danger" onclick="deleteLexikonEntry('${e.id}')">Löschen</button></td></tr>`;
+        });
+        html += '</tbody></table>';
+        list.innerHTML = html;
+    } catch (e) { document.getElementById('lexikon-entries-list').innerHTML = '<p style="color:var(--error);">Fehler!</p>'; }
+}
+function showLexikonForm() { currentEditId = null; document.getElementById('form-title').textContent = 'Neuer Eintrag'; document.getElementById('lexikon-form').style.display = 'block'; clearLexikonForm(); }
+function cancelLexikonForm() { document.getElementById('lexikon-form').style.display = 'none'; clearLexikonForm(); currentEditId = null; }
+function clearLexikonForm() {
+    ['entry-id','entry-title','entry-icon','entry-description','entry-keywords','entry-prop1-label','entry-prop1-value','entry-prop2-label','entry-prop2-value','entry-prop3-label','entry-prop3-value','entry-prop4-label','entry-prop4-value'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    document.getElementById('entry-category').value = 'material';
+    document.getElementById('lexikon-form-status').textContent = '';
+}
+async function editLexikonEntry(id) {
+    try {
+        const res = await fetch(`/api/lexikon/entries/${id}`);
+        const e = await res.json();
+        currentEditId = id;
+        document.getElementById('form-title').textContent = 'Eintrag bearbeiten';
+        document.getElementById('entry-id').value = e.id;
+        document.getElementById('entry-title').value = e.title;
+        document.getElementById('entry-category').value = e.category;
+        document.getElementById('entry-icon').value = e.icon;
+        document.getElementById('entry-description').value = e.description;
+        document.getElementById('entry-keywords').value = e.keywords || '';
+        document.getElementById('entry-prop1-label').value = e.property_1_label || '';
+        document.getElementById('entry-prop1-value').value = e.property_1_value || '';
+        document.getElementById('entry-prop2-label').value = e.property_2_label || '';
+        document.getElementById('entry-prop2-value').value = e.property_2_value || '';
+        document.getElementById('entry-prop3-label').value = e.property_3_label || '';
+        document.getElementById('entry-prop3-value').value = e.property_3_value || '';
+        document.getElementById('entry-prop4-label').value = e.property_4_label || '';
+        document.getElementById('entry-prop4-value').value = e.property_4_value || '';
+        document.getElementById('lexikon-form').style.display = 'block';
+    } catch (e) { showToast('Fehler beim Laden!', 'error'); }
+}
+async function saveLexikonEntry() {
+    const data = {
+        title: document.getElementById('entry-title').value,
+        category: document.getElementById('entry-category').value,
+        icon: document.getElementById('entry-icon').value,
+        description: document.getElementById('entry-description').value,
+        keywords: document.getElementById('entry-keywords').value,
+        property_1_label: document.getElementById('entry-prop1-label').value,
+        property_1_value: document.getElementById('entry-prop1-value').value,
+        property_2_label: document.getElementById('entry-prop2-label').value,
+        property_2_value: document.getElementById('entry-prop2-value').value,
+        property_3_label: document.getElementById('entry-prop3-label').value,
+        property_3_value: document.getElementById('entry-prop3-value').value,
+        property_4_label: document.getElementById('entry-prop4-label').value,
+        property_4_value: document.getElementById('entry-prop4-value').value,
+    };
+    try {
+        const res = currentEditId
+            ? await fetch(`/api/lexikon/entries/${currentEditId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+            : await fetch('/api/lexikon/entries', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        if (res.ok) { cancelLexikonForm(); loadLexikonEntries(); showToast('Gespeichert!'); }
+        else { document.getElementById('lexikon-form-status').textContent = 'Fehler beim Speichern!'; }
+    } catch (e) { document.getElementById('lexikon-form-status').textContent = 'Fehler!'; }
+}
+async function deleteLexikonEntry(id) {
+    showConfirm('Eintrag löschen', 'Diesen Lexikon-Eintrag wirklich löschen?', async () => {
+        try {
+            const res = await fetch(`/api/lexikon/entries/${id}`, { method: 'DELETE' });
+            if (res.ok) { loadLexikonEntries(); showToast('Gelöscht!'); }
+            else { showToast('Fehler!', 'error'); }
+        } catch (e) { showToast('Fehler!', 'error'); }
+    });
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+    loadStats();
+    loadWelcomeText();
+    loadSystemInfo();
+    loadRuntimeResetPrinters();
+    loadProModeStatus();
+    refreshCoverageReportButton();
+    updateAdminViewStatus(sessionStorage.getItem('fh_admin_show_hidden') === '1');
+});
+</script>
+</body>
+</html>

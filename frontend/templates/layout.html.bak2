@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title or "FilamentHub" }}</title>
+    <link rel="stylesheet" href="{{ url_for('frontend_static', path='css/main.css') }}">
+    {% block extra_styles %}{% endblock %}
+</head>
+<body class="page" data-active-page="{{ active_page|default('dashboard') }}">
+    {% include "sidebar.html" %}
+
+    <main class="content">
+        {% block header %}
+        <header class="content__header">
+            <div>
+                <p class="eyebrow">FilamentHub</p>
+                <h1 class="title">{{ page_title or title or "Übersicht" }}</h1>
+                <p class="subtitle">{{ page_subtitle or "Modernes Dark-Layout basierend auf der printers-modern Vorschau." }}</p>
+            </div>
+            {% block header_actions %}{% endblock %}
+        </header>
+        {% endblock %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="{{ url_for('frontend_static', path='js/navbar.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

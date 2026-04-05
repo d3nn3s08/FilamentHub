@@ -1,0 +1,884 @@
+{% extends "layout.html" %}
+{% set page_title = "Lexikon" %}
+{% set page_subtitle = "Fachbegriffe, Eigenschaften und FAQ rund um den 3D-Druck" %}
+
+{% block extra_styles %}
+<style>
+.lexikon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.lexikon-card {
+    background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.03), transparent 40%), var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.lexikon-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2), 0 0 20px rgba(243, 156, 18, 0.1);
+    border-color: var(--accent);
+}
+
+.lexikon-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lexikon-card-icon {
+    font-size: 1.5rem;
+    opacity: 0.9;
+}
+
+.lexikon-card-description {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 12px;
+}
+
+.lexikon-card-properties {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.property-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+}
+
+.property-label {
+    color: var(--text-dim);
+}
+
+.property-value {
+    color: var(--text);
+    font-weight: 500;
+}
+
+.search-container {
+    margin-bottom: 24px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.1);
+}
+
+.category-filter {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 8px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-btn:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: var(--accent);
+}
+
+.filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0f141c;
+    font-weight: 600;
+}
+
+.welcome-section {
+    background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.03), transparent 40%), var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px;
+    margin-bottom: 32px;
+    box-shadow: var(--shadow);
+}
+
+.welcome-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.welcome-description {
+    color: var(--text-dim);
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.welcome-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.feature-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.feature-text {
+    flex: 1;
+}
+
+.feature-text strong {
+    color: var(--text);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+}
+
+.feature-text span {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+    .lexikon-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .welcome-section {
+        padding: 24px;
+    }
+
+    .welcome-features {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Willkommensbereich -->
+<section class="welcome-section">
+    <div class="welcome-title">
+        📚 Willkommen im FilamentHub Lexikon
+    </div>
+    <p class="welcome-description">
+        Deine zentrale Anlaufstelle für Fachbegriffe, Druckeigenschaften und häufige Fragen rund um den 3D-Druck.
+        Materialien und Spulen findest du in der Sidebar unter "Material-Datenbank" und "Spulen Hersteller".
+    </p>
+
+    <div class="welcome-features">
+        <div class="feature-item">
+            <span class="feature-icon">⚙️</span>
+            <div class="feature-text">
+                <strong>Fachbegriffe</strong>
+                <span>Erklärungen zu Retraction, Layer Height, Infill und anderen wichtigen Begriffen</span>
+            </div>
+        </div>
+        <div class="feature-item">
+            <span class="feature-icon">🔍</span>
+            <div class="feature-text">
+                <strong>Eigenschaften</strong>
+                <span>Lösungen für häufige Probleme wie Warping, Stringing und Betthaftung</span>
+            </div>
+        </div>
+        <div class="feature-item">
+            <span class="feature-icon">❓</span>
+            <div class="feature-text">
+                <strong>FAQ</strong>
+                <span>Häufig gestellte Fragen und Antworten rund um 3D-Druck und FilamentHub</span>
+            </div>
+        </div>
+        <div class="feature-item">
+            <span class="feature-icon">🔍</span>
+            <div class="feature-text">
+                <strong>Schnellsuche</strong>
+                <span>Nutze die Suchfunktion oder Filter um schnell das Richtige zu finden</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Such- und Filter-Bereich -->
+<section class="search-container">
+    <input
+        type="text"
+        class="search-input"
+        id="lexikonSearch"
+        placeholder="Suche nach Eigenschaften, Fachbegriffen oder FAQ..."
+    >
+</section>
+
+<section class="category-filter">
+    <button class="filter-btn" data-category="all">Alle</button>
+    <button class="filter-btn" data-category="property">Eigenschaften</button>
+    <button class="filter-btn" data-category="term">Fachbegriffe</button>
+    <button class="filter-btn" data-category="faq">FAQ</button>
+    <button class="filter-btn" data-category="filamenthub">FilamentHub FAQ</button>
+</section>
+
+<section class="lexikon-grid" id="lexikonGrid" style="display: none;">
+    <!-- Retraction -->
+    <div class="lexikon-card" data-category="term" data-keywords="retraction rückzug faden stringing">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">↩️</span>
+            Retraction (Rückzug)
+        </div>
+        <div class="lexikon-card-description">
+            Das Zurückziehen des Filaments beim Verfahren ohne Extrusion. Verhindert Fäden und unerwünschtes Material zwischen Druckteilen.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Typische Distanz:</span>
+                <span class="property-value">0.5-6mm</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Geschwindigkeit:</span>
+                <span class="property-value">25-45mm/s</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Layer Height -->
+    <div class="lexikon-card" data-category="term" data-keywords="layer height schichthöhe auflösung qualität">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">📏</span>
+            Schichthöhe (Layer Height)
+        </div>
+        <div class="lexikon-card-description">
+            Die Dicke jeder gedruckten Schicht. Kleinere Werte = höhere Qualität aber längere Druckzeit.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Fein:</span>
+                <span class="property-value">0.1-0.15mm</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Standard:</span>
+                <span class="property-value">0.2mm</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Grob:</span>
+                <span class="property-value">0.3-0.4mm</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Infill -->
+    <div class="lexikon-card" data-category="term" data-keywords="infill füllung innen struktur festigkeit">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">🔲</span>
+            Infill (Füllung)
+        </div>
+        <div class="lexikon-card-description">
+            Die innere Struktur eines Drucks. Höherer Infill = stärkeres aber schwereres Teil mit längerem Druck.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Dekorativ:</span>
+                <span class="property-value">10-20%</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Standard:</span>
+                <span class="property-value">20-30%</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Funktional:</span>
+                <span class="property-value">40-100%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Support -->
+    <div class="lexikon-card" data-category="term" data-keywords="support stützen überhang brücke">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">🏗️</span>
+            Support (Stützstrukturen)
+        </div>
+        <div class="lexikon-card-description">
+            Hilfsstrukturen für überhängende Teile, die nach dem Druck entfernt werden. Notwendig bei Winkeln > 45°.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Ab Winkel:</span>
+                <span class="property-value">&gt; 45°</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Dichte:</span>
+                <span class="property-value">10-20%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bed Adhesion -->
+    <div class="lexikon-card" data-category="property" data-keywords="adhesion haftung bett warping ablösen">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">📌</span>
+            Betthaftung
+        </div>
+        <div class="lexikon-card-description">
+            Die Haftung des ersten Layers auf dem Druckbett. Entscheidend für erfolgreiche Drucke und verhindert Warping.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Hilfsmittel:</span>
+                <span class="property-value">Brim, Raft, Skirt</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Oberflächen:</span>
+                <span class="property-value">PEI, Glas, Textil</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warping -->
+    <div class="lexikon-card" data-category="property" data-keywords="warping verziehen ablösen ecken kühlung">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">🌀</span>
+            Warping
+        </div>
+        <div class="lexikon-card-description">
+            Verziehen und Ablösen der Ecken durch ungleichmäßige Abkühlung. Besonders bei ABS problematisch.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Lösungen:</span>
+                <span class="property-value">Brim, höhere Betttemp</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Prävention:</span>
+                <span class="property-value">Kammer, weniger Kühlung</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stringing -->
+    <div class="lexikon-card" data-category="property" data-keywords="stringing fäden retraction oozing">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">🕸️</span>
+            Stringing
+        </div>
+        <div class="lexikon-card-description">
+            Unerwünschte Fäden zwischen gedruckten Teilen. Wird durch optimierte Retraction-Einstellungen verhindert.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Hauptursache:</span>
+                <span class="property-value">Zu wenig Retraction</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Lösung:</span>
+                <span class="property-value">Retraction erhöhen</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAQ Einträge -->
+    <div class="lexikon-card" data-category="faq" data-keywords="filament wechseln drucker spule tauschen">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">❓</span>
+            Wie wechsle ich das Filament?
+        </div>
+        <div class="lexikon-card-description">
+            Um das Filament zu wechseln, heize zunächst die Düse auf die Drucktemperatur des aktuellen Filaments auf. Drücke dann den Extruder-Hebel und ziehe das Filament vorsichtig heraus. Führe das neue Filament ein und drücke es durch, bis Material aus der Düse kommt.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Schwierigkeit:</span>
+                <span class="property-value">Einfach</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Dauer:</span>
+                <span class="property-value">2-5 Minuten</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="faq" data-keywords="filament lagern aufbewahren feuchtigkeit trocknen">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">❓</span>
+            Wie lagere ich Filament richtig?
+        </div>
+        <div class="lexikon-card-description">
+            Filament sollte trocken und vor UV-Licht geschützt gelagert werden. Verwende luftdichte Behälter mit Silica-Gel Beuteln. Besonders hygroskopische Materialien wie Nylon, TPU und PETG sollten nach dem Öffnen schnell verwendet oder vakuumiert werden.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Optimale Luftfeuchtigkeit:</span>
+                <span class="property-value">&lt; 20%</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Temperatur:</span>
+                <span class="property-value">15-25°C</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="faq" data-keywords="erste schicht haftet nicht bett adhesion leveling">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">❓</span>
+            Was tun wenn die erste Schicht nicht haftet?
+        </div>
+        <div class="lexikon-card-description">
+            Prüfe zuerst das Bed Leveling - die Düse sollte das Bett gerade so berühren, dass ein Blatt Papier noch durchpasst. Erhöhe die Betttemperatur und reinige das Druckbett mit Isopropanol. Bei hartnäckigen Fällen hilft Haftspray, Klebestift oder spezielles Druckbett-Klebeband.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Häufigste Ursache:</span>
+                <span class="property-value">Falsches Leveling</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Schnelle Lösung:</span>
+                <span class="property-value">Bett reinigen</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="faq" data-keywords="stringing fäden vermeiden retraction temperatur">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">❓</span>
+            Wie verhindere ich Stringing (Fäden)?
+        </div>
+        <div class="lexikon-card-description">
+            Stringing entsteht durch auslaufendes Filament während der Fahrtbewegungen. Aktiviere oder erhöhe die Retraction-Einstellungen (Rückzug des Filaments). Senke die Drucktemperatur in 5°C-Schritten. Erhöhe die Fahrgeschwindigkeit und reduziere die Anzahl der Verfahrwege im Slicer.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Retraction Distanz:</span>
+                <span class="property-value">1-6mm (Bowden 4-8mm)</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Retraction Speed:</span>
+                <span class="property-value">25-45 mm/s</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="faq" data-keywords="warping verziehen ecken lösen abs">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">❓</span>
+            Was tun gegen Warping (Verziehen)?
+        </div>
+        <div class="lexikon-card-description">
+            Warping tritt auf, wenn sich das Material beim Abkühlen zusammenzieht. Erhöhe die Betttemperatur, verwende ein beheiztes Druckbett und schalte Lüfter aus oder reduziere sie. Bei großen Drucken hilft ein Brim oder Raft. Ein geschlossener Bauraum verhindert Zugluft.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Besonders anfällig:</span>
+                <span class="property-value">ABS, Nylon, PC</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Beste Vorbeugung:</span>
+                <span class="property-value">Geschlossener Bauraum</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="faq" data-keywords="düse verstopft clog reinigen extruder problem">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">❓</span>
+            Düse verstopft - was nun?
+        </div>
+        <div class="lexikon-card-description">
+            Bei einer verstopften Düse heize sie zunächst auf 220-250°C auf und versuche manuell Filament durchzudrücken. Hilft das nicht, nutze eine Nadel oder Cold-Pull-Methode: Heize auf 90°C ab und ziehe das Filament ruckartig heraus. Als letztes Mittel: Düse ausbauen und in Aceton einlegen oder ausbrennen.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Häufigste Ursache:</span>
+                <span class="property-value">Verbranntes Filament</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Vorbeugung:</span>
+                <span class="property-value">Richtiges Temperaturprofil</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="faq" data-keywords="layer versatz schichten verschiebung riemen locker">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">❓</span>
+            Warum verschieben sich die Schichten?
+        </div>
+        <div class="lexikon-card-description">
+            Schichtverschiebung (Layer Shifting) wird meist durch mechanische Probleme verursacht. Prüfe die Riemenspannung - sie sollten straff, aber nicht überspannt sein. Kontrolliere, ob Schrauben an den Achsen lose sind. Überprüfe die Stromstärke der Schrittmotoren und reduziere zu hohe Druckgeschwindigkeiten.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Häufigste Ursache:</span>
+                <span class="property-value">Lockere Riemen</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Zweithäufigste:</span>
+                <span class="property-value">Zu hohe Geschwindigkeit</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="faq" data-keywords="supports stützen entfernen support material">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">❓</span>
+            Wie entferne ich Supports am besten?
+        </div>
+        <div class="lexikon-card-description">
+            Supports lassen sich am besten mit einer Zange oder einem Cuttermesser entfernen. Beginne an den Kontaktstellen und arbeite dich vor. Bei schwer zugänglichen Stellen helfen spezielle Support-Removal-Tools. Wasserlösliches Support-Material (PVA) lässt sich durch Einweichen in Wasser entfernen.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Werkzeug:</span>
+                <span class="property-value">Zange, Cutter, Feile</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Wasserlöslich:</span>
+                <span class="property-value">PVA, BVOH</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="faq" data-keywords="druckgeschwindigkeit speed qualität schneller drucken">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">❓</span>
+            Wie schnell kann ich drucken?
+        </div>
+        <div class="lexikon-card-description">
+            Die optimale Druckgeschwindigkeit hängt vom Drucker und Material ab. Standard ist 50-60 mm/s für gute Qualität. Schnelldrucker schaffen 100-300 mm/s. Erste Schichten sollten langsamer (20-30 mm/s) gedruckt werden. Beachte: Höhere Geschwindigkeit bedeutet oft Qualitätsverlust.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Qualität:</span>
+                <span class="property-value">40-50 mm/s</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Schnelldruck:</span>
+                <span class="property-value">100-200 mm/s</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Erste Schicht:</span>
+                <span class="property-value">20-30 mm/s</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="faq" data-keywords="infill füllung prozent dichte stabilität">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">❓</span>
+            Wie viel Infill benötige ich?
+        </div>
+        <div class="lexikon-card-description">
+            Für dekorative Objekte reichen 10-15% Infill. Funktionelle Teile benötigen 20-30%. Mechanisch belastete Teile sollten 40-60% haben. 100% Infill ist selten nötig und verschwendet Material. Wichtiger ist oft die Anzahl der Außenwände (3-4 für Stabilität) und die Infill-Struktur (Cubic, Gyroid, Honeycomb).
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Deko:</span>
+                <span class="property-value">10-15%</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Funktional:</span>
+                <span class="property-value">20-30%</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Mechanisch:</span>
+                <span class="property-value">40-60%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- FilamentHub FAQ -->
+    <div class="lexikon-card" data-category="filamenthub" data-keywords="filamenthub was ist programm software anwendung">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">🎯</span>
+            Was ist FilamentHub?
+        </div>
+        <div class="lexikon-card-description">
+            FilamentHub ist eine lokale Verwaltungssoftware für 3D-Drucker und Filament-Spulen. Die Anwendung ermöglicht es dir, mehrere Drucker zentral zu überwachen, Filament-Bestände zu verwalten, Druckaufträge zu tracken und detaillierte Statistiken über deine Druckprojekte zu erhalten. Alle Daten werden ausschließlich lokal auf deinem System gespeichert.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Typ:</span>
+                <span class="property-value">Lokale Web-Anwendung</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Datenspeicherung:</span>
+                <span class="property-value">100% Lokal</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="filamenthub" data-keywords="drucker unterstützt bambu klipper kompatibel">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">🖨️</span>
+            Welche Drucker werden unterstützt?
+        </div>
+        <div class="lexikon-card-description">
+            FilamentHub unterstützt derzeit Bambu Lab Drucker (X1C, X1E, P1P, P1S, A1, A1 Mini) und Klipper-basierte Drucker. Über die manuelle Anbindung können auch andere Drucker hinzugefügt werden, sofern sie über MQTT oder eine vergleichbare Schnittstelle kommunizieren. Der integrierte Scanner erkennt automatisch Bambu Lab Drucker im lokalen Netzwerk.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Bambu Lab:</span>
+                <span class="property-value">Vollständig</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Klipper:</span>
+                <span class="property-value">Vollständig</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Andere:</span>
+                <span class="property-value">Manuell</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="filamenthub" data-keywords="bambu verbinden drucker hinzufügen mqtt access code">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">🔗</span>
+            Wie verbinde ich meinen Bambu Lab Drucker?
+        </div>
+        <div class="lexikon-card-description">
+            Es gibt zwei Methoden: 1) Automatisch über den integrierten Scanner im Debug Center – dieser findet alle Bambu Drucker im Netzwerk. 2) Manuell über "Drucker hinzufügen" – hier gibst du IP-Adresse, Serial Number und Access Code ein. Den Access Code findest du auf dem Drucker-Display unter Einstellungen → Netzwerk → MQTT. Nach erfolgreicher Verbindung werden Live-Daten und AMS-Informationen automatisch synchronisiert.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Methode 1:</span>
+                <span class="property-value">Automatischer Scanner</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Methode 2:</span>
+                <span class="property-value">Manuelle Eingabe</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="filamenthub" data-keywords="ams automatic material system filament wechsel">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">🎨</span>
+            Was ist das AMS und wie funktioniert es?
+        </div>
+        <div class="lexikon-card-description">
+            Das AMS (Automatic Material System) ist ein Multi-Filament-System von Bambu Lab, das bis zu 4 Spulen gleichzeitig verwalten kann. FilamentHub synchronisiert automatisch alle AMS-Slots und zeigt dir in Echtzeit, welche Filamente geladen sind, wie viel verbleibendes Material vorhanden ist und welche Temperatur-/Feuchtigkeitswerte vorliegen. Die AMS-Seite bietet eine detaillierte Übersicht aller Slots über alle angeschlossenen Drucker hinweg.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Slots pro AMS:</span>
+                <span class="property-value">4 Spulen</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Sync:</span>
+                <span class="property-value">Automatisch (MQTT)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="filamenthub" data-keywords="job tracking druckaufträge statistiken verlauf">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">📊</span>
+            Wie funktioniert das Job-Tracking?
+        </div>
+        <div class="lexikon-card-description">
+            FilamentHub zeichnet automatisch alle Druckaufträge auf, sobald ein Drucker verbunden ist. Für jeden Job werden Start-/Endzeit, verbrauchtes Material, Stromkosten und der Status (erfolgreich/fehlgeschlagen) erfasst. Auf der Jobs-Seite kannst du vergangene Drucke durchsuchen, filtern und detaillierte Statistiken einsehen. Das System trackt auch aktive Drucke in Echtzeit mit Fortschrittsbalken und geschätzter Restzeit.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Erfassung:</span>
+                <span class="property-value">Vollautomatisch</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Daten:</span>
+                <span class="property-value">Material, Zeit, Kosten</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="filamenthub" data-keywords="daten speicherung privatsphäre cloud sicherheit">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">🔒</span>
+            Wo werden meine Daten gespeichert?
+        </div>
+        <div class="lexikon-card-description">
+            Alle Daten werden ausschließlich lokal auf deinem System gespeichert. FilamentHub verwendet eine SQLite-Datenbank, die sich im Installationsverzeichnis befindet. Es werden keinerlei Daten an externe Server oder Cloud-Dienste übertragen. Die Bambu Lab Login-Daten (falls angegeben) werden ebenfalls nur lokal gespeichert und ausschließlich für die direkte Kommunikation mit Bambu-Servern verwendet. Du behältst die volle Kontrolle über deine Daten.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Speicherort:</span>
+                <span class="property-value">100% Lokal</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Cloud-Sync:</span>
+                <span class="property-value">Keine</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Datenbank:</span>
+                <span class="property-value">SQLite</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="filamenthub" data-keywords="ams mode single multi unterschied einstellung">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">⚙️</span>
+            Was ist der Unterschied zwischen Single/Multi AMS-Modus?
+        </div>
+        <div class="lexikon-card-description">
+            Der AMS-Modus bestimmt, wie Spulen in der Datenbank verwaltet werden. Single Mode: Jede physische Spule wird einmal angelegt und automatisch zwischen AMS-Slots verschoben, wenn du sie umsteckst – ideal für kleine Setups mit wenigen Spulen. Multi Mode: Jeder AMS-Slot wird als separate Spule behandelt, auch wenn es physisch dieselbe ist – besser für große Setups mit vielen Spulen und häufigen Wechseln. Die Einstellung findest du im User-Menü oben rechts.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Single:</span>
+                <span class="property-value">1 Spule = 1 DB-Eintrag</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Multi:</span>
+                <span class="property-value">1 Slot = 1 DB-Eintrag</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="filamenthub" data-keywords="debug center scanner netzwerk werkzeuge entwickler">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">🔧</span>
+            Was ist das Debug Center?
+        </div>
+        <div class="lexikon-card-description">
+            Das Debug Center ist eine zentrale Toolbox für erweiterte Funktionen und Diagnose. Hier findest du: Netzwerk-Scanner zum automatischen Finden von Druckern, manuelle Drucker-Verwaltung, Live-MQTT-Logs zur Fehlersuche, Performance-Monitoring, System-Informationen und WebSocket-Debugging. Im Pro-Modus (aktivierbar in den Einstellungen) stehen zusätzliche Features wie Deep Probe Scanning, Fingerprinting und erweiterte Latenz-Analysen zur Verfügung.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Modi:</span>
+                <span class="property-value">Lite & Pro</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Features:</span>
+                <span class="property-value">Scanner, Logs, Monitoring</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="lexikon-card" data-category="filamenthub" data-keywords="probleme fehler drucker offline verbindung lösung">
+        <div class="lexikon-card-title">
+            <span class="lexikon-card-icon">❗</span>
+            Drucker wird nicht gefunden / bleibt offline?
+        </div>
+        <div class="lexikon-card-description">
+            Häufige Lösungen: 1) Prüfe, ob der Drucker und FilamentHub im gleichen Netzwerk sind. 2) Stelle sicher, dass der MQTT-Service auf dem Drucker aktiviert ist (in den Drucker-Einstellungen). 3) Überprüfe den Access Code – dieser ändert sich, wenn du ihn am Drucker neu generierst. 4) Firewall-Regeln können MQTT-Traffic (Port 8883) blockieren. 5) Im Debug Center findest du unter "Netzwerk" detaillierte Verbindungslogs und kannst die Verbindung manuell testen.
+        </div>
+        <div class="lexikon-card-properties">
+            <div class="property-row">
+                <span class="property-label">Port:</span>
+                <span class="property-value">8883 (MQTT)</span>
+            </div>
+            <div class="property-row">
+                <span class="property-label">Diagnose:</span>
+                <span class="property-value">Debug Center → Netzwerk</span>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('lexikonSearch');
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    const lexikonGrid = document.getElementById('lexikonGrid');
+
+    let currentCategory = null;
+    let currentSearch = '';
+    let isInitialLoad = true;
+
+    // Filter-Buttons
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            filterButtons.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentCategory = this.dataset.category;
+            isInitialLoad = false;
+            lexikonGrid.style.display = 'grid';
+            applyFilters();
+        });
+    });
+
+    // Suche
+    searchInput.addEventListener('input', function() {
+        currentSearch = this.value.toLowerCase().trim();
+        if (currentSearch.length > 0 && isInitialLoad) {
+            isInitialLoad = false;
+            lexikonGrid.style.display = 'grid';
+            if (!currentCategory) {
+                currentCategory = 'all';
+                filterButtons[0].classList.add('active');
+            }
+        }
+        applyFilters();
+    });
+
+    function applyFilters() {
+        if (!currentCategory && currentSearch === '') {
+            lexikonGrid.style.display = 'none';
+            return;
+        }
+        const allCards = lexikonGrid.querySelectorAll('.lexikon-card');
+
+        allCards.forEach(card => {
+            const category = card.dataset.category;
+            const keywords = card.dataset.keywords || '';
+            const titleEl = card.querySelector('.lexikon-card-title');
+            const descEl = card.querySelector('.lexikon-card-description');
+            const title = titleEl ? titleEl.textContent.toLowerCase() : '';
+            const description = descEl ? descEl.textContent.toLowerCase() : '';
+
+            const matchesCategory = !currentCategory || currentCategory === 'all' || category === currentCategory;
+            const matchesSearch = currentSearch === '' ||
+                                  title.includes(currentSearch) ||
+                                  description.includes(currentSearch) ||
+                                  keywords.includes(currentSearch);
+
+            card.style.display = (matchesCategory && matchesSearch) ? '' : 'none';
+        });
+    }
+});
+</script>
+{% endblock %}

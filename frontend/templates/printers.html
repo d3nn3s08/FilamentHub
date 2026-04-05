@@ -1,0 +1,272 @@
+{% extends "layout.html" %}
+{% set page_title = "Drucker" %}
+{% set page_subtitle = "Übersicht und Steuerung aller Drucker" %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='css/printers.css') }}">
+{% endblock %}
+
+{% block header_actions %}
+<div class="actions">
+    <button class="btn primary" id="refreshBtn">Aktualisieren</button>
+</div>
+{% endblock %}
+
+{% block content %}
+<section id="cardsContainer" class="card-grid">
+    <div class="empty">Lade Drucker ...</div>
+</section>
+
+<!-- Edit-Modal -->
+<div class="modal" id="printerEditModal" aria-hidden="true">
+    <div class="modal__dialog">
+        <div class="modal__header">
+            <h2 id="modalTitle">Drucker bearbeiten</h2>
+            <button class="modal__close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <div class="modal__body">
+            <form id="printerEditForm" onsubmit="savePrinterEdit(event)">
+                <div class="form-grid">
+                    <!-- Linke Spalte -->
+                    <div class="form-column">
+                        <label class="field">
+                            <span>Name</span>
+                            <input type="text" id="editName" required>
+                        </label>
+                        <label class="field">
+                            <span>Typ</span>
+                            <select id="editType" required>
+                                <option value="">-- wählen --</option>
+                                <option value="bambu">Bambu Lab (MQTT)</option>
+                                <option value="klipper">Klipper</option>
+                                <option value="manual">Manuell</option>
+                            </select>
+                        </label>
+                        <div class="field-row">
+                            <label class="field">
+                                <span>IP-Adresse</span>
+                                <input type="text" id="editIp" placeholder="192.168.0.10">
+                            </label>
+                            <label class="field">
+                                <span>Port</span>
+                                <input type="number" id="editPort" placeholder="6000">
+                            </label>
+                        </div>
+                        <label class="field">
+                            <span>MQTT Protokoll Version</span>
+                            <select id="editMqttVersion">
+                                <option value="" selected>🤖 Auto (Empfohlen - basierend auf Modell)</option>
+                                <option value="31">MQTT 3.1</option>
+                                <option value="311">MQTT 3.1.1</option>
+                                <option value="50">MQTT 5.0</option>
+                            </select>
+                            <small style="color: var(--text-dim); font-size: 0.875rem; display: block; margin-top: 4px; line-height: 1.4;">
+                                💡 <strong>Auto:</strong> X1C/P1S/P1P/X1E/H2D → MQTT v5 | A1/A1 Mini → MQTT v3.1.1<br>
+                                ⚙️ Manuell: Überschreibt Auto-Erkennung (nur bei Problemen verwenden)
+                            </small>
+                        </label>
+                        <div class="field-row">
+                            <label class="field">
+                                <span>Stromverbrauch (kW)</span>
+                                <input type="number" step="0.01" min="0" id="editPower" placeholder="z.B. 0.35">
+                            </label>
+                            <label class="field">
+                                <span>Wartungskosten (€ / Jahr)</span>
+                                <input type="number" step="0.01" min="0" id="editMaintenance" placeholder="z.B. 50">
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Rechte Spalte -->
+                    <div class="form-column">
+                        <label class="field">
+                            <span>Seriennummer</span>
+                            <input type="text" id="editSerial" placeholder="optional">
+                        </label>
+                        <label class="field">
+                            <span>Access Code / API Key</span>
+                            <input type="text" id="editApiKey" placeholder="optional">
+                        </label>
+                        <label class="field" id="editSeriesWrap" style="display:none;">
+                            <span>Serie (Bambu)</span>
+                            <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+                                <label style="display:flex;align-items:center;gap:8px;">
+                                    <input type="radio" name="editSeries" value="A">
+                                    A-Serie (A1 / A1 mini)
+                                </label>
+                                <label style="display:flex;align-items:center;gap:8px;">
+                                    <input type="radio" name="editSeries" value="X">
+                                    X-Serie (X1 / X1C)
+                                </label>
+                                <label style="display:flex;align-items:center;gap:8px;">
+                                    <input type="radio" name="editSeries" value="P">
+                                    P-Serie (P1 / P1S / P1P)
+                                </label>
+                                <label style="display:flex;align-items:center;gap:8px;">
+                                    <input type="radio" name="editSeries" value="H">
+                                    H-Serie
+                                </label>
+                                <label style="display:flex;align-items:center;gap:8px;">
+                                    <input type="radio" name="editSeries" value="UNKNOWN">
+                                    Unbekannt
+                                </label>
+                            </div>
+                            <small id="editSeriesHint" style="color: var(--text-dim); font-size: 0.875rem; display: block; margin-top: 6px; line-height: 1.4;">
+                                Bitte waehle die Serie dieses Druckers.
+                            </small>
+                        </label>
+                        <label class="toggle">
+                            <input type="checkbox" id="editAutoConnect">
+                            <span>Auto Connect</span>
+                        </label>
+
+                        <!-- Bild Upload -->
+                        <div class="field">
+                            <span>Drucker-Bild</span>
+                            <div class="image-upload-container">
+                                <div class="image-preview" id="imagePreview">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                        <polyline points="21 15 16 10 5 21"></polyline>
+                                    </svg>
+                                    <span class="image-preview-text">Kein Bild</span>
+                                </div>
+                                <input type="file" id="editImage" accept="image/png,image/jpeg,image/webp" style="display: none;" onchange="handleImagePreview(event)">
+                                <div class="image-upload-actions">
+                                    <button type="button" class="btn ghost small" onclick="document.getElementById('editImage').click()">Bild wählen</button>
+                                    <button type="button" class="btn ghost small" id="removeImageBtn" onclick="removeImage()" style="display: none;">Entfernen</button>
+                                </div>
+                                <small style="color: var(--text-dim); font-size: 0.875rem; display: block; margin-top: 4px;">
+                                    PNG, JPG oder WebP (max. 5MB)
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" id="editId">
+                <input type="hidden" id="editSeriesValue">
+                <input type="hidden" id="currentImageUrl">
+
+                <div class="modal__actions">
+                    <button type="button" class="btn ghost" onclick="closeEditModal()">Abbrechen</button>
+                    <button type="submit" class="btn success">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- [BETA] Klipper-Support: Detail-Modal für Klipper Live-Daten (2-Spalten, Modern) -->
+<div class="modal" id="klipperDetailModal" onclick="if(event.target===this)closeKlipperDetailModal()">
+    <div class="modal__dialog kdm-dialog">
+
+        <!-- KDM Header: Druckername + IP + Status-Badge + Schließen -->
+        <div class="kdm-hdr">
+            <div class="kdm-hdr__info">
+                <svg class="kdm-printer-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                    <rect x="6" y="14" width="12" height="8"></rect>
+                </svg>
+                <div>
+                    <div class="kdm-hdr__name" id="kdm-name">—</div>
+                    <div class="kdm-hdr__ip" id="kdm-ip">—</div>
+                </div>
+            </div>
+            <div class="kdm-hdr__right">
+                <span class="kdm-badge" id="kdm-status">—</span>
+                <button class="kdm-close-btn" onclick="closeKlipperDetailModal()">×</button>
+            </div>
+        </div>
+
+        <!-- [BETA] Klipper-Support: Temperatur-Verlaufschart (volle Breite) -->
+        <div class="kdm-chart-wrap">
+            <div class="kdm-label">Temperaturverlauf</div>
+            <div style="position:relative;height:120px;">
+                <canvas id="kdm-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- 2-Spalten Body-Grid -->
+        <div class="kdm-body-grid">
+
+            <!-- Linke Spalte: Temperatur-Karten + Heizleistung + Verbindung -->
+            <div class="kdm-col">
+                <div class="kdm-temp-row">
+                    <!-- Nozzle-Karte -->
+                    <div class="kdm-temp-card kdm-nozzle-card">
+                        <svg class="kdm-temp-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+                        </svg>
+                        <div class="kdm-temp-val" id="kdm-nozzle">—</div>
+                        <div class="kdm-temp-lbl">Nozzle</div>
+                    </div>
+                    <!-- Bett-Karte -->
+                    <div class="kdm-temp-card kdm-bed-card">
+                        <svg class="kdm-temp-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M2 9h20M2 15h20M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"></path>
+                        </svg>
+                        <div class="kdm-temp-val" id="kdm-bed">—</div>
+                        <div class="kdm-temp-lbl">Bett</div>
+                    </div>
+                </div>
+                <!-- [BETA] Klipper-Support: Heizleistung als separate Sektion unterhalb der Temp-Karten -->
+                <div class="kdm-section kdm-power-section">
+                    <div class="kdm-section-title">Heizleistung</div>
+                    <div class="kdm-power-item">
+                        <span class="kdm-power-label">Nozzle</span>
+                        <div class="kdm-power-track">
+                            <div class="kdm-power-fill kdm-power-fill--nozzle" id="kdm-nozzle-power-bar"></div>
+                        </div>
+                        <span class="kdm-power-pct" id="kdm-nozzle-power-pct">—</span>
+                    </div>
+                    <div class="kdm-power-item">
+                        <span class="kdm-power-label">Bett</span>
+                        <div class="kdm-power-track">
+                            <div class="kdm-power-fill kdm-power-fill--bed" id="kdm-bed-power-bar"></div>
+                        </div>
+                        <span class="kdm-power-pct" id="kdm-bed-power-pct">—</span>
+                    </div>
+                </div>
+                <!-- Verbindung -->
+                <div class="kdm-section">
+                    <div class="kdm-section-title">Verbindung</div>
+                    <div class="kdm-row"><span>Letzter Kontakt</span><span id="kdm-last">—</span></div>
+                </div>
+            </div>
+
+            <!-- Rechte Spalte: Druckstatus -->
+            <div class="kdm-col">
+                <div class="kdm-section kdm-section--full">
+                    <div class="kdm-section-title">Druckstatus</div>
+                    <div class="kdm-row"><span>Zustand</span><span id="kdm-state">—</span></div>
+                    <div class="kdm-row"><span>Datei</span><span id="kdm-file" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;">—</span></div>
+                    <div class="kdm-row kdm-progress-row">
+                        <span>Fortschritt</span>
+                        <span class="kdm-progress-pct" id="kdm-progress">—</span>
+                    </div>
+                    <!-- [BETA] Klipper-Support: Visueller Fortschrittsbalken -->
+                    <div class="kdm-progress-track">
+                        <div class="kdm-progress-fill" id="kdm-progress-bar" style="width:0%"></div>
+                    </div>
+                    <div class="kdm-row" style="margin-top:4px;"><span>Filament</span><span id="kdm-filament">—</span></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="kdm-footer">
+            <button class="kdm-close-action" onclick="closeKlipperDetailModal()">Schließen</button>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- [BETA] Klipper-Support: Chart.js für Temperatur-Verlaufschart im Detail-Modal -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('frontend_static', path='js/printers.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+{% set page_title = "Settings" %}
+{% set page_subtitle = "Theme, Sprache und weitere Optionen" %}
+
+{% block content %}
+<section class="card-grid">
+    <div class="panel">
+        <p class="eyebrow">Theme</p>
+        <p class="subtitle">Dark Theme ist aktiv. Theme-Toggle folgt.</p>
+    </div>
+    <div class="panel">
+        <p class="eyebrow">Sprache</p>
+        <p class="subtitle">Später: Sprachumschaltung und Lokalisierung.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='js/settings.js') }}"></script>
+{% endblock %}

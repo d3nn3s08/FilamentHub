@@ -1,0 +1,526 @@
+{% extends "layout.html" %}
+{% set page_title = "Jobs" %}
+{% set page_subtitle = "Verwalte laufende und vergangene Druckaufträge" %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='jobs.css') }}">
+{% endblock %}
+
+{% block header_actions %}
+<div class="actions">
+    <button class="btn" onclick="openCloudJobsModal()" style="background: linear-gradient(135deg, #3498db, #2980b9); margin-right: 8px;">
+        ☁️ Aus Cloud importieren
+    </button>
+    <button class="btn btn-primary" onclick="openAddModal()">
+        ➕ Neuer Job
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+
+<!-- Statistiken -->
+<section class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-content">
+            <div class="stat-label">Gesamt Jobs</div>
+            <div class="stat-value" id="totalJobs">0</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-content">
+            <div class="stat-label">Abgeschlossen</div>
+            <div class="stat-value" id="completedJobs">0</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">🔄</div>
+        <div class="stat-content">
+            <div class="stat-label">Aktiv</div>
+            <div class="stat-value" id="activeJobs">0</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon">🧵</div>
+        <div class="stat-content">
+            <div class="stat-label">Filament (g)</div>
+            <div class="stat-value" id="totalFilament">0g</div>
+        </div>
+    </div>
+</section>
+
+<!-- Filter & Search -->
+<section class="filter-section">
+    <div class="filter-group">
+        <input type="text" id="searchInput" placeholder="🔍 Suchen..." class="search-input">
+        
+        <select id="filterPrinter" class="filter-select">
+            <option value="">Alle Drucker</option>
+        </select>
+        
+        <select id="filterStatus" class="filter-select">
+            <option value="">Alle Status</option>
+            <option value="active">Aktiv</option>
+            <option value="completed">Abgeschlossen</option>
+            <option value="no-tracking">⚠️ Ohne Tracking</option>
+        </select>
+
+        <select id="sortSelect" class="filter-select" onchange="applySortFromSelect()">
+            <option value="started_at-desc">📅 Neueste zuerst</option>
+            <option value="started_at-asc">📅 Älteste zuerst</option>
+            <option value="name-asc">🔤 Name A-Z</option>
+            <option value="name-desc">🔤 Name Z-A</option>
+            <option value="filament-desc">🧵 Verbrauch ↓</option>
+            <option value="filament-asc">🧵 Verbrauch ↑</option>
+            <option value="duration-desc">⏱️ Dauer ↓</option>
+            <option value="duration-asc">⏱️ Dauer ↑</option>
+        </select>
+
+        <button class="btn btn-secondary" onclick="clearFilters()">
+            🔄 Filter zurücksetzen
+        </button>
+    </div>
+    
+    <div class="result-count">
+        <span id="jobCount">0</span> Jobs
+    </div>
+</section>
+
+<!-- Jobs Tabelle -->
+<section class="table-section">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th data-sort="name" onclick="setSortField('name')" style="cursor: pointer;">Job Name <span class="sort-icon"></span></th>
+                    <th>Drucker</th>
+                    <th>Spule(n)</th>
+                    <th data-sort="filament" onclick="setSortField('filament')" style="cursor: pointer;">Verbrauch <span class="sort-icon"></span></th>
+                    <th>Status</th>
+                    <th data-sort="started_at" onclick="setSortField('started_at')" style="cursor: pointer;">Datum <span class="sort-icon"></span></th>
+                    <th data-sort="duration" onclick="setSortField('duration')" style="cursor: pointer;">Dauer <span class="sort-icon"></span></th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody id="jobsTable">
+                <!-- Wird von JavaScript gefüllt -->
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Add/Edit Modal -->
+<div id="jobModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Neuer Job</h2>
+            <button class="modal-close" onclick="closeAddModal()">✕</button>
+        </div>
+        <form id="jobForm" onsubmit="saveJob(event)">
+            <!-- 2-Spalten Layout -->
+            <div class="form-columns">
+                <!-- Linke Spalte -->
+                <div class="form-column">
+                    <div class="form-group">
+                        <label for="jobName">Job Name*</label>
+                        <input type="text" id="jobName" required placeholder="z.B. Benchy" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="jobPrinter">Drucker*</label>
+                        <select id="jobPrinter" required class="form-control">
+                            <option value="">-- Drucker wählen --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="jobSpool">Spule</label>
+                        <input type="text" id="spoolSearch" class="form-control" placeholder="🔍 Spule suchen..." autocomplete="off">
+                        <select id="jobSpool" class="form-control" size="5" style="margin-top: 8px;">
+                            <option value="">-- Keine Spule --</option>
+                        </select>
+                        <small style="color: var(--text-dim); font-size: 0.875rem;">
+                            💡 Suche nach Material, Nummer oder Farbe
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="filamentUsedG">Filament (g)</label>
+                        <input type="number" id="filamentUsedG" step="0.1" placeholder="0.0" class="form-control" style="background: rgba(0,0,0,0.3); color: white;">
+                    </div>
+                </div>
+
+                <!-- Rechte Spalte -->
+                <div class="form-column">
+                    <div class="form-group">
+                        <label for="startedAt">Startzeit*</label>
+                        <input type="datetime-local" id="startedAt" required class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="finishedAt">Endzeit</label>
+                        <input type="datetime-local" id="finishedAt" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="filamentUsedMm">Filament (mm)</label>
+                        <input type="number" id="filamentUsedMm" step="0.1" placeholder="0.0" class="form-control" style="background: rgba(0,0,0,0.3); color: white;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Speichern</button>
+                <button type="button" class="btn btn-success" onclick="markJobAsCompleted()">✓ Als abgeschlossen markieren</button>
+                <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Abbrechen</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal" style="display: none;">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>Job löschen?</h2>
+            <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+        </div>
+        <p>Möchtest du diesen Job wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</p>
+        <div class="form-actions">
+            <button class="btn btn-primary btn-danger" onclick="confirmDelete()">Löschen</button>
+            <button class="btn btn-secondary" onclick="closeDeleteModal()">Abbrechen</button>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Usage Modal -->
+<div id="manualUsageModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Verbrauch nachtragen</h2>
+            <button class="modal-close" onclick="closeManualUsageModal()">✕</button>
+        </div>
+        <form id="manualUsageForm" onsubmit="saveManualUsage(event)">
+            <div class="info-box">
+                <strong>ℹ️ Hinweis:</strong> Job <span id="usageJobName" style="font-weight: bold;">-</span> hat keinen automatischen Verbrauch erfasst.
+            </div>
+
+            <div class="form-group">
+                <label for="usageSpool">Spule* (Pflicht)</label>
+                <input type="text" id="usageSpoolSearch" class="form-control" placeholder="🔍 Spule suchen..." autocomplete="off">
+                <select id="usageSpool" required class="form-control" size="5" style="margin-top: 8px;">
+                    <option value="">-- Spule wählen --</option>
+                </select>
+                <small style="color: var(--text-dim);">💡 Suche nach Material, Nummer oder Farbe</small>
+            </div>
+
+            <div class="form-group">
+                <label for="usageGrams">Verbrauch (Gramm)*</label>
+                <input type="number" id="usageGrams" step="0.1" min="0" placeholder="z.B. 42.5" required>
+                <small style="color: var(--text-dim);">Du kannst den Verbrauch mit einer Waage messen.</small>
+            </div>
+
+            <div class="form-group">
+                <label for="usageMm">Verbrauch (Meter)</label>
+                <input type="number" id="usageMm" step="0.1" min="0" placeholder="Optional">
+                <small style="color: var(--text-dim);">Optional: Länge in Metern (wird automatisch in mm umgerechnet).</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Speichern</button>
+                <button type="button" class="btn btn-secondary" onclick="closeManualUsageModal()">Abbrechen</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- G-Code File Selection Modal -->
+<div id="gcodeSelectionModal" class="modal" style="display: none;">
+    <div class="modal-content modal-content-gcode">
+        <div class="modal-header" style="align-items: flex-start;">
+            <div>
+                <h2 style="margin: 0 0 2px 0;">G-Code Datei wählen</h2>
+                <div id="gcodeConnStatus" style="font-size: 11px; color: var(--text-dim);"></div>
+            </div>
+            <button class="modal-close" onclick="closeGcodeSelectionModal()">✕</button>
+        </div>
+
+        <!-- Kompakte Info-Zeile -->
+        <div class="info-box" id="gcodeInfoBox" style="margin-bottom: 12px; padding: 9px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <strong id="gcodeInfoTitle">ℹ️ G-Code Datei wählen</strong>
+            <span style="color: var(--text-dim); font-size: 13px;">Job: <span id="gcodeJobName" style="font-weight: 600; color: var(--text);">-</span></span>
+        </div>
+
+        <!-- Fehler-Panel (bei Verbindungsproblemen) -->
+        <div id="gcodeErrorPanel" style="display: none;">
+            <div class="error-icon">❌</div>
+            <div class="error-title" id="gcodeErrorTitle">Verbindung fehlgeschlagen</div>
+            <div class="error-detail" id="gcodeErrorDetail"></div>
+            <div class="error-actions">
+                <button type="button" class="btn btn-secondary" onclick="retryGcodeConnection()" style="padding: 7px 14px; font-size: 13px;">🔄 Erneut versuchen</button>
+                <button type="button" class="btn" onclick="gcodeShowManualEntry()" style="padding: 7px 14px; font-size: 13px; background: rgba(255,255,255,0.08);">✏️ Manuell eingeben</button>
+            </div>
+        </div>
+
+        <!-- 2-Spalten-Body -->
+        <div id="gcodeModalBody" style="display: flex; gap: 16px; align-items: flex-start;">
+
+            <!-- Linke Spalte: Dateiliste -->
+            <div id="gcodeFilePanel" style="flex: 1; min-width: 0;">
+                <input type="text" id="gcodeFileSearch" class="form-control" placeholder="🔍 Filtern..." style="margin-bottom: 8px; padding: 7px 10px; font-size: 13px;">
+                <div id="gcodeFilesTable" style="border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; max-height: 440px; overflow-y: auto; background: rgba(0,0,0,0.2);">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead style="position: sticky; top: 0; background: rgba(15,15,25,0.97); border-bottom: 1px solid rgba(255,255,255,0.15);">
+                            <tr>
+                                <th style="padding: 7px 8px; text-align: left; width: 44px; color: var(--text-dim); font-weight: 500; font-size: 11px;">Typ</th>
+                                <th style="padding: 7px 8px; text-align: left; cursor: pointer; user-select: none; color: var(--text-dim); font-weight: 500; font-size: 11px;" onclick="sortGcodeFiles('name')">Name <span id="sortIndicatorName"></span></th>
+                                <th style="padding: 7px 8px; text-align: right; width: 70px; color: var(--text-dim); font-weight: 500; font-size: 11px;">Gewicht</th>
+                                <th style="padding: 7px 8px; text-align: right; width: 86px; cursor: pointer; user-select: none; color: var(--text-dim); font-weight: 500; font-size: 11px;" onclick="sortGcodeFiles('date')">Datum <span id="sortIndicatorDate"></span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="gcodeFilesBody"></tbody>
+                    </table>
+                </div>
+                <input type="hidden" id="gcodeFileSelect" value="">
+            </div>
+
+            <!-- Rechte Spalte: Spinner / Gewicht-Preview / Actions -->
+            <div id="gcodePreviewPanel" style="width: 270px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+
+                <!-- Loading Spinner -->
+                <div id="gcodeLoadingSpinner" style="display: none; text-align: center; padding: 30px 10px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: rgba(0,0,0,0.15);">
+                    <div style="font-size: 26px; margin-bottom: 8px;">⏳</div>
+                    <div style="font-weight: 500; font-size: 13px; margin-bottom: 4px;" id="gcodeLoadingText">Scanning...</div>
+                    <div style="font-size: 11px; color: var(--text-dim);" id="gcodeLoadingStatus">Verbindung zum Drucker...</div>
+                </div>
+
+                <!-- Gewicht-Vorschau -->
+                <div id="gcodeWeightPreview" style="display: none;">
+                    <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 12px; text-align: center; margin-bottom: 10px;">
+                        <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.08em;">Gewicht</div>
+                        <div id="gcodePreviewWeightDisplay" style="font-size: 28px; font-weight: 700;">—</div>
+                    </div>
+                    <label style="font-size: 11px; color: var(--text-dim); display: block; margin-bottom: 4px;">Übernehmen mit (g):</label>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px;">
+                        <input type="number" id="gcodePreviewWeight" class="form-control"
+                            step="0.1" min="0.1"
+                            style="flex: 1; font-size: 16px; font-weight: 600; padding: 6px 8px; text-align: center;">
+                        <button type="button" title="Zurücksetzen"
+                            style="background: transparent; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: var(--text-dim); cursor: pointer; padding: 5px 8px; font-size: 12px;"
+                            onclick="gcodeResetPreviewWeight()">↺</button>
+                    </div>
+                    <div id="gcodePreviewRecommendation" style="border-radius: 6px; padding: 8px 10px; font-size: 12px; margin-bottom: 10px;"></div>
+                </div>
+
+                <!-- Aktions-Buttons -->
+                <div id="gcodeFormActions" style="display: flex; flex-direction: column; gap: 8px;">
+                    <button type="button" id="gcodeConfirmBtn" class="btn btn-primary" onclick="confirmGcodeSelection()" style="width: 100%;">✓ Gewicht laden</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeGcodeSelectionModal()" style="width: 100%;">Abbrechen</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- G-Code Weight Confirmation Modal (fehlgeschlagene/abgebrochene Jobs) -->
+<div id="gcodeConfirmModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2>📋 G-Code Auswertung</h2>
+            <button class="modal-close" onclick="closeGcodeConfirmModal()">✕</button>
+        </div>
+
+        <!-- Daten-Tabelle -->
+        <div style="display: grid; grid-template-columns: 130px 1fr; gap: 8px 12px; padding: 4px 0 16px 0; font-size: 14px;">
+            <span style="color: var(--text-dim); align-self: start; padding-top: 2px;">Job</span>
+            <span id="gcodeConfirmJobName" style="font-weight: 600; word-break: break-word;"></span>
+
+            <span style="color: var(--text-dim); align-self: start; padding-top: 2px;">Datei</span>
+            <span id="gcodeConfirmFilename" style="font-family: monospace; font-size: 12px; word-break: break-all; color: var(--text-dim);"></span>
+
+            <span style="color: var(--text-dim);">Druckdauer</span>
+            <span id="gcodeConfirmDuration"></span>
+
+            <span style="color: var(--text-dim);">Status</span>
+            <span id="gcodeConfirmStatus" style="font-weight: 500;"></span>
+        </div>
+
+        <!-- Gewicht aus G-Code – groß und prominent -->
+        <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 16px; margin-bottom: 14px; text-align: center;">
+            <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 6px; letter-spacing: 0.08em; text-transform: uppercase;">Gewicht aus G-Code</div>
+            <div style="font-size: 36px; font-weight: 700; letter-spacing: -1px;" id="gcodeConfirmWeightDisplay">—</div>
+        </div>
+
+        <!-- Empfehlung -->
+        <div id="gcodeConfirmRecommendation" style="border-radius: 6px; padding: 10px 14px; margin-bottom: 18px; font-size: 13px; display: none;"></div>
+
+        <!-- Anpassbares Gewicht -->
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+            <label style="font-size: 13px; color: var(--text-dim); white-space: nowrap;">Übernehmen mit:</label>
+            <input type="number" id="gcodeConfirmWeight" class="form-control"
+                step="0.1" min="0.1"
+                style="width: 110px; font-size: 18px; font-weight: 600; padding: 6px 10px; text-align: center;">
+            <span style="font-size: 16px; color: var(--text-dim);">g</span>
+            <button type="button" style="font-size: 11px; padding: 4px 8px; background: transparent; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: var(--text-dim); cursor: pointer;" onclick="document.getElementById('gcodeConfirmWeight').value = gcodeConfirmData && gcodeConfirmData.originalWeight ? gcodeConfirmData.originalWeight.toFixed(2) : document.getElementById('gcodeConfirmWeight').value">↺ Reset</button>
+        </div>
+        <p style="font-size: 11px; color: var(--text-dim); margin: 4px 0 18px 0;">Gewicht kann vor dem Übernehmen manuell angepasst werden.</p>
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-primary" onclick="applyGcodeConfirmedWeight()">✓ Übernehmen</button>
+            <button type="button" class="btn btn-secondary" onclick="closeGcodeConfirmModal()">Abbrechen</button>
+        </div>
+    </div>
+</div>
+
+<!-- Cloud Jobs Import Modal -->
+<div id="cloudJobsModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2>☁️ Jobs aus Bambu Cloud importieren</h2>
+            <button class="modal-close" onclick="closeCloudJobsModal()">✕</button>
+        </div>
+
+        <div id="cloudJobsContent">
+            <!-- Loading State -->
+            <div id="cloudJobsLoading" style="text-align: center; padding: 40px;">
+                <div style="font-size: 32px; margin-bottom: 12px;">⏳</div>
+                <div style="color: var(--text-dim);">Lade Jobs aus der Bambu Cloud...</div>
+            </div>
+
+            <!-- Error State -->
+            <div id="cloudJobsError" style="display: none; text-align: center; padding: 40px;">
+                <div style="font-size: 32px; margin-bottom: 12px;">❌</div>
+                <div style="color: #e74c3c; margin-bottom: 12px;" id="cloudJobsErrorText">Fehler beim Laden</div>
+                <button class="btn btn-secondary" onclick="loadCloudJobs()">🔄 Erneut versuchen</button>
+            </div>
+
+            <!-- Jobs List -->
+            <div id="cloudJobsList" style="display: none;">
+                <!-- Filter -->
+                <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center;">
+                    <input type="text" id="cloudJobSearch" placeholder="🔍 Suchen..."
+                           style="flex: 1; padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: white;"
+                           oninput="filterCloudJobs()">
+                    <select id="cloudJobPrinterFilter" style="padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: white;"
+                            onchange="filterCloudJobs()">
+                        <option value="">Alle Drucker</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="loadCloudJobs()" style="padding: 10px 16px;">
+                        🔄 Aktualisieren
+                    </button>
+                </div>
+
+                <!-- Jobs Table -->
+                <div style="max-height: 400px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead style="position: sticky; top: 0; background: rgba(0,0,0,0.5);">
+                            <tr>
+                                <th style="padding: 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">Job Name</th>
+                                <th style="padding: 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">Drucker</th>
+                                <th style="padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">Filament</th>
+                                <th style="padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">Dauer</th>
+                                <th style="padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">Status</th>
+                                <th style="padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">Datum</th>
+                                <th style="padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cloudJobsTableBody">
+                            <!-- Wird dynamisch gefüllt -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 12px; font-size: 12px; color: var(--text-dim);">
+                    💡 Klicke auf "Importieren" um den Job mit Filament-Verbrauch zu übernehmen.
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions" style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+            <button type="button" class="btn btn-secondary" onclick="closeCloudJobsModal()">Schließen</button>
+        </div>
+    </div>
+</div>
+
+<!-- Cloud Job Import Detail Modal (Spulen-Zuordnung) -->
+<div id="cloudJobImportModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2>📦 Job importieren</h2>
+            <button class="modal-close" onclick="closeCloudJobImportModal()">✕</button>
+        </div>
+
+        <div id="cloudJobImportContent">
+            <!-- Job Info -->
+            <div style="background: rgba(52,152,219,0.1); border: 1px solid rgba(52,152,219,0.3); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;" id="importJobTitle">-</div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 13px; color: var(--text-dim);">
+                    <div>🖨️ Drucker: <span id="importJobPrinter" style="color: white;">-</span></div>
+                    <div>📅 Datum: <span id="importJobDate" style="color: white;">-</span></div>
+                    <div>⏱️ Dauer: <span id="importJobDuration" style="color: white;">-</span></div>
+                    <div>📊 Status: <span id="importJobStatus" style="color: white;">-</span></div>
+                </div>
+            </div>
+
+            <!-- Filament Info aus Cloud -->
+            <div style="background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.3); border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <div style="font-weight: 600; margin-bottom: 8px;">🧵 Filament-Verbrauch (aus Cloud)</div>
+                <div style="display: flex; gap: 20px; font-size: 24px; font-weight: bold;">
+                    <div><span id="importJobWeight">0</span> <span style="font-size: 14px; color: var(--text-dim);">Gramm</span></div>
+                    <div style="color: var(--text-dim);">|</div>
+                    <div><span id="importJobLength">0</span> <span style="font-size: 14px; color: var(--text-dim);">Meter</span></div>
+                </div>
+            </div>
+
+            <!-- Spulen-Zuordnung -->
+            <div class="form-group">
+                <label style="font-weight: 600;">🎯 Spule zuordnen (für Gewichtsabzug)</label>
+                <input type="text" id="importSpoolSearch" class="form-control" placeholder="🔍 Spule suchen..." autocomplete="off" style="margin-bottom: 8px;">
+                <select id="importSpoolSelect" class="form-control" size="5">
+                    <option value="">-- Spule wählen --</option>
+                </select>
+                <small style="color: var(--text-dim);">💡 Wähle die Spule, von der das Filament verbraucht wurde.</small>
+            </div>
+
+            <!-- Drucker-Zuordnung -->
+            <div class="form-group">
+                <label style="font-weight: 600;">🖨️ Lokaler Drucker</label>
+                <select id="importPrinterSelect" class="form-control">
+                    <option value="">-- Drucker wählen --</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-primary" onclick="confirmCloudJobImport()">✓ Importieren & Gewicht abziehen</button>
+            <button type="button" class="btn btn-secondary" onclick="closeCloudJobImportModal()">Abbrechen</button>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Toast -->
+<div id="notification" class="notification"></div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='jobs.js') }}?v={{ build_ts }}"></script>
+<script>
+// Notification System
+function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.className = `notification notification-${type} show`;
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+    }, 3000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,65 @@
+document.addEventListener("DOMContentLoaded", () => {
+    highlightActiveNav();
+    initUserMenu();
+});
+
+function highlightActiveNav() {
+    const active = document.body.dataset.activePage;
+    document.querySelectorAll(".sidebar__nav .nav__item").forEach(link => {
+        if (!active) return;
+        if (active === "dashboard" && link.getAttribute("href") === "/") {
+            link.classList.add("nav__item--active");
+        } else if (link.getAttribute("href")?.includes(`/${active}`)) {
+            link.classList.add("nav__item--active");
+        }
+    });
+}
+
+function initUserMenu() {
+    const menu = document.querySelector(".user-menu");
+    if (!menu) return;
+    const trigger = menu.querySelector(".user-menu__trigger");
+    const dropdown = menu.querySelector(".user-menu__dropdown");
+    const themeToggle = menu.querySelector('[data-action="theme-toggle"]');
+    const about = menu.querySelector('[data-action="about"]');
+
+    // Restore theme on load
+    const stored = localStorage.getItem("fh_theme");
+    if (stored === "light") {
+        document.body.classList.add("theme-light");
+    }
+
+    const closeAll = () => dropdown.classList.remove("open");
+
+    const toggleMenu = (evt) => {
+        evt.stopPropagation();
+        dropdown.classList.toggle("open");
+        trigger.setAttribute("aria-expanded", dropdown.classList.contains("open"));
+    };
+
+    trigger?.addEventListener("click", toggleMenu);
+    trigger?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toggleMenu(e);
+        } else if (e.key === "Escape") {
+            closeAll();
+            trigger.focus();
+        }
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!menu.contains(e.target)) closeAll();
+    });
+
+    about?.addEventListener("click", () => {
+        alert("FilamentHub – lokale Instance. Weitere Infos folgen.");
+        closeAll();
+    });
+
+    themeToggle?.addEventListener("click", () => {
+        const isLight = document.body.classList.toggle("theme-light");
+        localStorage.setItem("fh_theme", isLight ? "light" : "dark");
+        closeAll();
+    });
+}

@@ -1,0 +1,487 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>API Hilfeseite</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --bg-0: #07090b;
+            --bg-1: #0f1416;
+            --card: rgba(255,255,255,0.03);
+            --accent: #39e0d6;
+            --muted: #9aa0a6;
+            --glass: rgba(18,23,25,0.55);
+            --glass-2: rgba(12,18,20,0.7);
+            --success: #7be7db;
+            --danger: #ff8b8b;
+        }
+        /* Global */
+        html,body{height:100%;}
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background: linear-gradient(180deg,var(--bg-0),#0b1012 60%);
+            margin: 0; padding: 24px; color: #e6eef3; -webkit-font-smoothing:antialiased;
+        }
+        .container {
+            max-width: 1200px; margin: 28px auto; padding: 34px; border-radius: 16px;
+            background: linear-gradient(180deg, rgba(10,14,15,0.55), rgba(8,11,12,0.6));
+            box-shadow: 0 10px 30px rgba(2,6,8,0.6);
+            border: 1px solid rgba(255,255,255,0.02);
+            backdrop-filter: blur(6px) saturate(120%);
+        }
+
+        /* Header */
+        h1 { text-align:center; color:var(--accent); font-weight:800; margin:6px 0 6px; font-size:2.1rem; letter-spacing:0.6px }
+        p { text-align:center; color:var(--muted); margin:0 0 18px; }
+
+        /* Layout */
+        .flex-row { display:flex; gap:26px; align-items:flex-start; }
+        /* left column fixed width to keep routes readable */
+        .routes-list { flex:0 0 650px; min-width:600px; max-width:900px; }
+        .route-search{ width:100%; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,0.02); background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01)); color:#e6eef3 }
+        .route-search::placeholder{ color: #93a0a6 }
+
+        /* Selected header */
+        .selected-info{ display:flex; gap:12px; align-items:center; justify-content:center; margin-bottom:12px }
+        .selected-info .box{ background:transparent; padding:8px 12px; border-radius:10px; color:var(--muted); border:1px solid rgba(255,255,255,0.02) }
+
+        /* list */
+        .list-panel{ max-height:calc(75vh - 130px); overflow-y:auto; padding-right:12px }
+        ul{ list-style:none; margin:0; padding:0 }
+        /* ensure no bullets and no extra left padding */
+        #routes-ul { list-style:none; margin:0; padding:0; padding-left:0; }
+        li{ display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:24px; background: rgba(255,255,255,0.01); padding:12px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.02); transition:transform .12s ease, box-shadow .12s ease; }
+        li:hover{ transform:translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.45) }
+
+        .route-left{ display:flex; gap:12px; align-items:center; min-width:0; flex:1 1 auto }
+        .method-badge{ display:inline-flex; align-items:center; justify-content:center; padding:6px 8px; border-radius:8px; font-weight:800; color:#042; background:var(--success); min-width:36px }
+        .method-POST{ background:#ffd47b }
+        .method-PUT{ background:#9bd47b }
+        .method-DELETE{ background: #ff8b8b }
+        .method-PATCH{ background:#b48bff }
+        .method-OPTIONS{ background:#9fb3ff }
+
+        .route-title{ color:var(--accent); font-weight:700; font-size:1rem; white-space:normal; overflow:visible; text-overflow:unset; flex:1 1 auto; min-width:0; max-width:none; }
+
+        /* actions column fixed but narrower so route path has space */
+        .route-actions{ display:flex; gap:8px; align-items:center; justify-content:flex-end; flex:0 0 570px }
+        .route-actions button{ padding:8px 12px; border-radius:10px; background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.03); color:#e6eef3; cursor:pointer; font-size:0.9rem; }
+
+        .json-error{ background:#2b0d0d; color:#ffd6d6; padding:8px; border-radius:8px; margin-top:8px; border:1px solid #5a1f1f }
+
+        /* response */
+        #response{ flex:1 1 auto; min-width:420px; background:linear-gradient(180deg,#071518,#041014); border-radius:14px; padding:22px; color:#cfeff0; font-family: 'Fira Mono', Consolas, monospace; font-size:0.98rem; border:1px solid rgba(255,255,255,0.02); display:none; overflow:auto }
+        #response.active{ display:block }
+        #response pre.json { max-height: calc(75vh - 160px); overflow:auto; white-space:pre; }
+
+        /* scrollbars */
+        .list-panel::-webkit-scrollbar, body::-webkit-scrollbar{ width:10px }
+        .list-panel::-webkit-scrollbar-track{ background:transparent }
+        .list-panel::-webkit-scrollbar-thumb{ background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); border-radius:10px }
+
+        @media(max-width:900px){ .flex-row{ flex-direction:column } }
+        @media(max-width:520px){ .container{ padding:18px } li{ padding:12px } .route-actions{ justify-content:flex-start } }
+    </style>
+    <p>Alle verfügbaren API-Routen. Klicke auf eine Route, um die Live-Daten zu sehen.</p>
+    <div id="dev-banner" style="text-align:center;margin-bottom:12px;color:#8fb6b0;font-weight:700;">DEV: Template geladen</div>
+    <div class="flex-row">
+        <div class="routes-list">
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+                <input id="route-search" class="route-search" placeholder="Suche Route..." oninput="filterRoutes()" autocomplete="off" style="flex:1">
+                <select id="method-filter" class="method-filter" onchange="filterRoutes()">
+                    <option value="ALL">Alle</option>
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="PATCH">PATCH</option>
+                    <option value="DELETE">DELETE</option>
+                    <option value="OPTIONS">OPTIONS</option>
+                </select>
+                <button id="copy-visible" class="small-btn" onclick="copyVisibleRoutes()">Kopiere Liste</button>
+                <label style="color:#9aa0a6;font-size:0.9rem"><input type="checkbox" id="show-raw" onchange="toggleRaw()"> Raw</label>
+            </div>
+            <div id="selected-info" class="selected-info" style="display:none;">
+                <div class="box">Ausgewählte Route: <span id="selected-route-text">—</span></div>
+                <div class="box"><button onclick="copySelectedRoute()">Kopieren</button></div>
+                <div class="box"><button onclick="openSelectedRoute()">Öffnen</button></div>
+            </div>
+            <div class="list-panel">
+                <ul id="routes-ul">
+                    {% for route in api_routes %}
+                    <li data-route="{{ route.path }}" data-methods="{{ route.methods|join(',') }}">
+                        <div class="route-left">
+                            <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:0 0 auto;">
+                                {% for m in route.methods %}
+                                    <span class="method-badge method-{{ m }}">{{ m }}</span>
+                                {% endfor %}
+                                {% if route.methods|length > 1 %}
+                                    <select class="method-select" onchange="onMethodChange(this)">
+                                        {% for m in route.methods %}
+                                            <option value="{{ m }}">{{ m }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% else %}
+                                    <span class="method-selected" data-method="{{ route.methods[0] }}"></span>
+                                {% endif %}
+                            </div>
+                            <span class="route-title" title="{{ route.path }}">{{ route.path }}</span>
+                            <span class="route-raw" style="display:none;color:#7c8b8a;margin-left:8px;font-size:0.9rem;overflow:visible;text-overflow:unset;white-space:normal;word-break:break-word">{{ route.path }}</span>
+                        </div>
+                        <div class="route-actions">
+                            <span class="route-status"></span>
+                            <button onclick="fetchApiDataFromLI(this.closest('li'))">Live-Daten anzeigen</button>
+                            <button onclick="copyRoute('{{ route.path }}')">Kopieren</button>
+                        </div>
+                        <div style="width:100%;margin-top:8px;">
+                            <textarea class="route-body" placeholder="Request body (JSON)" style="display:none;width:100%;min-height:70px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:rgba(255,255,255,0.02);color:#e6eef3;font-family:inherit;font-size:0.95rem"></textarea>
+                            <div class="json-error" style="display:none">
+                                <div class="msg"></div>
+                                <div style="display:flex;gap:8px;justify-content:flex-end">
+                                    <button class="small-btn" onclick="sendInvalidJSONFromBtn(this)">Trotzdem senden</button>
+                                    <button class="small-btn" onclick="hideJsonError(this)">Abbrechen</button>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div id="response" class="response" style="display:none;"></div>
+    </div>
+</div>
+<script>
+// Click on row (except buttons) to fetch that route's data
+document.addEventListener('DOMContentLoaded', function(){
+    const ul = document.getElementById('routes-ul');
+    if (!ul) return;
+    ul.addEventListener('click', function(e){
+        // ignore clicks on buttons
+        if (e.target.closest('button')) return;
+        const li = e.target.closest('li');
+        if (!li) return;
+        const route = li.getAttribute('data-route');
+        if (route) fetchApiData(route);
+    });
+});
+
+function fetchApiData(route) {
+    // legacy: accept route string
+    selectRouteLI(route);
+    const responseDiv = document.getElementById('response');
+    responseDiv.style.display = 'block';
+    responseDiv.classList.remove('error');
+    responseDiv.innerHTML = '<div style="margin-bottom:8px;color:#9aa0a6">Lade Daten...</div>';
+    const started = performance.now();
+    fetch(route)
+        .then(response => {
+            const duration = Math.round(performance.now() - started);
+            return response.text().then(text => ({ status: response.status, ok: response.ok, text, duration }));
+        })
+        .then(res => {
+            let parsed;
+            try { parsed = JSON.parse(res.text); } catch (e) { parsed = res.text; }
+            const statusLine = `<div style="margin-bottom:8px;color:#9aa0a6">Status: ${res.status} — ${res.duration} ms</div>`;
+            if (typeof parsed === 'object') {
+                responseDiv.innerHTML = statusLine + '<pre class="json">' + syntaxHighlight(parsed) + '</pre>' + '<div style="margin-top:12px"><button onclick="copyResponse()">Antwort kopieren</button></div>';
+                updateRouteStatus(route, `${res.status} — ${res.duration}ms`, res.ok);
+            } else {
+                responseDiv.innerHTML = statusLine + '<pre class="json">' + escapeHtml(parsed) + '</pre>' + '<div style="margin-top:12px"><button onclick="copyResponse()">Antwort kopieren</button></div>';
+                updateRouteStatus(route, `${res.status} — ${res.duration}ms`, res.ok);
+            }
+        })
+        .catch(err => {
+            responseDiv.classList.add('error');
+            responseDiv.textContent = 'Fehler beim Laden der Daten: ' + err;
+            updateRouteStatus(route, 'Error', false);
+        });
+}
+
+function copyRoute(route) {
+    navigator.clipboard.writeText(window.location.origin + route).then(()=>{
+        alert('Route kopiert: ' + route);
+    }).catch(()=>alert('Kopieren fehlgeschlagen'));
+}
+
+function copyResponse() {
+    const pre = document.querySelector('#response pre.json');
+    if (!pre) return alert('Keine Antwort zum Kopieren');
+    // extract plain text by removing spans
+    const text = pre.textContent || pre.innerText;
+    navigator.clipboard.writeText(text).then(()=>alert('Antwort kopiert')).catch(()=>alert('Kopieren fehlgeschlagen'));
+}
+
+function escapeHtml(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function syntaxHighlight(json) {
+    if (typeof json != 'string') json = JSON.stringify(json, undefined, 2);
+    json = escapeHtml(json);
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        var cls = 'number';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+                cls = 'key';
+            } else {
+                cls = 'string';
+            }
+        } else if (/true|false/.test(match)) {
+            cls = 'boolean';
+        } else if (/null/.test(match)) {
+            cls = 'null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+    });
+}
+
+function filterRoutes() {
+    const q = document.getElementById('route-search').value.toLowerCase();
+    const methodFilter = (document.getElementById('method-filter')||{}).value || 'ALL';
+    const ul = document.getElementById('routes-ul');
+    const items = ul.querySelectorAll('li');
+    let firstVisible = null;
+    items.forEach(li => {
+        const route = li.getAttribute('data-route') || '';
+        const methods = (li.getAttribute('data-methods')||'').toUpperCase();
+        const methodMatch = (methodFilter === 'ALL') || (methods.indexOf(methodFilter) !== -1);
+        if (route.toLowerCase().includes(q) && methodMatch) {
+            li.style.display = '';
+            if (!firstVisible) firstVisible = li;
+        } else {
+            li.style.display = 'none';
+        }
+    });
+    if (firstVisible) {
+        const panel = document.querySelector('.list-panel');
+        const rect = firstVisible.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+        panel.scrollTop += rect.top - panelRect.top - 8;
+        // select first visible but don't fetch
+        selectRouteLI(firstVisible.getAttribute('data-route'));
+    }
+}
+</script>
+<script>
+function copySelectedRoute(){
+    const t = document.getElementById('selected-route-text').textContent || '';
+    if (!t || t === '—') return alert('Keine Route ausgewählt');
+    navigator.clipboard.writeText(window.location.origin + t).then(()=>alert('Route kopiert'));
+}
+function openSelectedRoute(){
+    const t = document.getElementById('selected-route-text').textContent || '';
+    if (!t || t === '—') return alert('Keine Route ausgewählt');
+    window.open(window.location.origin + t, '_blank');
+}
+
+function copyVisibleRoutes(){
+    const ul = document.getElementById('routes-ul');
+    const items = Array.from(ul.querySelectorAll('li')).filter(li => li.style.display !== 'none');
+    if (!items.length) return alert('Keine Routen sichtbar');
+    const routes = items.map(li => li.getAttribute('data-route'));
+    const text = routes.map(r => window.location.origin + r).join('\n');
+    navigator.clipboard.writeText(text).then(()=>alert('Gefilterte Routen kopiert ('+routes.length+')'));
+}
+
+function sendInvalidJSONFromBtn(btn){
+    const li = btn.closest('li');
+    if (!li) return;
+    const route = li.dataset.pendingRoute || li.getAttribute('data-route');
+    const method = li.dataset.pendingMethod || (li.querySelector('.method-select') && li.querySelector('.method-select').value) || (li.querySelector('.method-selected') && li.querySelector('.method-selected').dataset.method) || 'POST';
+    const body = li.dataset.pendingBody || (li.querySelector('.route-body') && li.querySelector('.route-body').value) || '';
+    // clear pending markers and hide error
+    delete li.dataset.pendingBody; delete li.dataset.pendingMethod; delete li.dataset.pendingRoute;
+    const errBox = li.querySelector('.json-error'); if (errBox) errBox.style.display = 'none';
+    // send as raw (without setting Content-Type)
+    fetchApiDataWithOptions(route, { method, body, li, forceRaw: true });
+}
+
+function hideJsonError(btn){
+    const li = btn.closest('li'); if (!li) return;
+    delete li.dataset.pendingBody; delete li.dataset.pendingMethod; delete li.dataset.pendingRoute;
+    const errBox = li.querySelector('.json-error'); if (errBox) errBox.style.display = 'none';
+}
+
+// Keyboard navigation: up/down to move selection, Enter to fetch
+document.addEventListener('keydown', function(e){
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')) return;
+    const ul = document.getElementById('routes-ul');
+    if (!ul) return;
+    const visible = Array.from(ul.querySelectorAll('li')).filter(li => li.style.display !== 'none');
+    if (!visible.length) return;
+    const current = ul.querySelector('li.selected');
+    let idx = visible.indexOf(current);
+    if (e.key === 'ArrowDown'){
+        e.preventDefault();
+        idx = Math.min(visible.length-1, (idx<0 ? 0 : idx+1));
+        const r = visible[idx]; if (r) selectRouteLI(r.getAttribute('data-route'));
+    } else if (e.key === 'ArrowUp'){
+        e.preventDefault();
+        idx = Math.max(0, (idx<=0 ? 0 : idx-1));
+        const r = visible[idx]; if (r) selectRouteLI(r.getAttribute('data-route'));
+    } else if (e.key === 'Enter'){
+        if (current){ e.preventDefault(); fetchApiData(current.getAttribute('data-route')); }
+    }
+});
+</script>
+<script>
+// Keyboard shortcuts: '/' focuses search, Enter on search jumps to first match
+document.addEventListener('keydown', function(e){
+    const active = document.activeElement;
+    if (e.key === '/' && active && active.tagName.toLowerCase() !== 'input' && active.tagName.toLowerCase() !== 'textarea'){
+        e.preventDefault();
+        const s = document.getElementById('route-search');
+        if (s) { s.focus(); s.select(); }
+    }
+});
+
+document.getElementById('route-search').addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){
+        e.preventDefault();
+        const ul = document.getElementById('routes-ul');
+        const first = Array.from(ul.querySelectorAll('li')).find(li => li.style.display !== 'none');
+        if (first){
+            const route = first.getAttribute('data-route');
+            if (route) fetchApiData(route);
+        }
+    }
+});
+
+// Update list item status after fetch
+function updateRouteStatus(route, statusText, ok){
+    const ul = document.getElementById('routes-ul');
+    const li = ul.querySelector(`li[data-route="${route}"]`);
+    if (!li) return;
+    const statusEl = li.querySelector('.route-status');
+    if (!statusEl) return;
+    statusEl.textContent = statusText;
+    statusEl.style.color = ok ? '#9ff7d9' : '#ff9fa8';
+}
+
+// Patch fetchApiData to call updateRouteStatus
+const _origFetch = window.fetch;
+</script>
+<script>
+// Set dev banner timestamp and toggle raw path display
+document.addEventListener('DOMContentLoaded', function(){
+    const b = document.getElementById('dev-banner');
+    if (b) b.textContent = 'DEV: Template geladen — ' + new Date().toLocaleString();
+});
+
+function onMethodChange(sel){
+    const li = sel.closest('li');
+    if (!li) return;
+    const method = sel.value;
+    const bodyEl = li.querySelector('.route-body');
+    if (!bodyEl) return;
+    if (['POST','PUT','PATCH'].indexOf(method) !== -1){ bodyEl.style.display = ''; }
+    else { bodyEl.style.display = 'none'; }
+}
+
+function fetchApiDataFromLI(li){
+    if (!li) return;
+    const route = li.getAttribute('data-route');
+    const method = (li.querySelector('.method-select') && li.querySelector('.method-select').value) || (li.querySelector('.method-selected') && li.querySelector('.method-selected').dataset.method) || 'GET';
+    const bodyEl = li.querySelector('.route-body');
+    const body = (bodyEl && bodyEl.style.display !== 'none') ? bodyEl.value : null;
+    fetchApiDataWithOptions(route, { method, body, li });
+}
+
+function fetchApiDataWithOptions(route, opts){
+    // opts: {method, body, li}
+    const responseDiv = document.getElementById('response');
+    responseDiv.style.display = 'block';
+    responseDiv.classList.remove('error');
+    responseDiv.innerHTML = '<div style="margin-bottom:8px;color:#9aa0a6">Lade Daten...</div>';
+    const started = performance.now();
+    const fetchOpts = { method: (opts && opts.method) || 'GET', headers: {} };
+    if (fetchOpts.method !== 'GET' && opts && opts.body){
+        // Validate JSON body before sending
+        let isValid = true;
+        try {
+            JSON.parse(opts.body);
+        } catch (e){
+            isValid = false;
+            // If we have a reference to the list item, show inline UI instead of confirm()
+            if (opts && opts.li){
+                const li = opts.li;
+                // store pending payload on the li element
+                try { li.dataset.pendingBody = opts.body; } catch(_){}
+                try { li.dataset.pendingMethod = fetchOpts.method; } catch(_){}
+                try { li.dataset.pendingRoute = route; } catch(_){}
+                const errBox = li.querySelector('.json-error');
+                if (errBox){
+                    errBox.style.display = '';
+                    const msg = errBox.querySelector('.msg');
+                    if (msg) msg.textContent = 'Request-Body ist kein gültiges JSON: ' + (e && e.message ? e.message : '');
+                }
+                return;
+            } else {
+                const proceed = confirm('Request-Body ist kein gültiges JSON:\n' + (e && e.message ? e.message : '') + '\n\nTrotzdem senden?');
+                if (!proceed){
+                    responseDiv.innerHTML = '<div style="color:#ffd2d2">Senden abgebrochen: Ungültiges JSON.</div>';
+                    return;
+                }
+            }
+        }
+        // If user chose to proceed with invalid JSON, send as raw text; otherwise send as JSON
+        if (isValid) fetchOpts.headers['Content-Type'] = 'application/json';
+        fetchOpts.body = opts.body;
+    }
+    // highlight selected route
+    if (opts && opts.li) selectRouteLI(route);
+    fetch(route, fetchOpts)
+        .then(response => {
+            const duration = Math.round(performance.now() - started);
+            return response.text().then(text => ({ status: response.status, ok: response.ok, text, duration }));
+        })
+        .then(res => {
+            let parsed;
+            try { parsed = JSON.parse(res.text); } catch (e) { parsed = res.text; }
+            const statusLine = `<div style="margin-bottom:8px;color:#9aa0a6">Status: ${res.status} — ${res.duration} ms</div>`;
+            if (typeof parsed === 'object') {
+                responseDiv.innerHTML = statusLine + '<pre class="json">' + syntaxHighlight(parsed) + '</pre>' + '<div style="margin-top:12px"><button onclick="copyResponse()">Antwort kopieren</button> <button onclick="closeResponse()">Schließen</button></div>';
+                updateRouteStatus(route, `${res.status} — ${res.duration}ms`, res.ok);
+            } else {
+                responseDiv.innerHTML = statusLine + '<pre class="json">' + escapeHtml(parsed) + '</pre>' + '<div style="margin-top:12px"><button onclick="copyResponse()">Antwort kopieren</button> <button onclick="closeResponse()">Schließen</button></div>';
+                updateRouteStatus(route, `${res.status} — ${res.duration}ms`, res.ok);
+            }
+        })
+        .catch(err => {
+            responseDiv.classList.add('error');
+            responseDiv.textContent = 'Fehler beim Laden der Daten: ' + err;
+            updateRouteStatus(route, 'Error', false);
+        });
+}
+
+function closeResponse(){ const r=document.getElementById('response'); if(r) r.style.display='none'; }
+
+function toggleRaw(){
+    const checked = document.getElementById('show-raw').checked;
+    document.querySelectorAll('.route-raw').forEach(el=> el.style.display = checked ? '' : 'none');
+}
+
+function selectRouteLI(route){
+    const ul = document.getElementById('routes-ul');
+    if (!ul) return;
+    // remove previous
+    ul.querySelectorAll('li.selected').forEach(x=> x.classList.remove('selected'));
+    const li = ul.querySelector(`li[data-route="${route}"]`);
+    if (!li) return;
+    li.classList.add('selected');
+    // ensure visible within panel
+    const panel = document.querySelector('.list-panel');
+    if (panel){
+        const liRect = li.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+        if (liRect.top < panelRect.top || liRect.bottom > panelRect.bottom){
+            li.scrollIntoView({behavior:'smooth', block:'nearest'});
+        }
+    }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>FilamentHub Log Dashboard</title>
+    <link rel="stylesheet" href="/static/logs.css">
+</head>
+<body>
+
+<div id="container">
+
+    <header>
+        <h1>FilamentHub – Log Dashboard</h1>
+    </header>
+
+    <section id="controls">
+        <label>Modul:</label>
+        <select id="moduleSelect">
+            <option value="app">App</option>
+            <option value="bambu">Bambu</option>
+            <option value="klipper">Klipper</option>
+            <option value="errors">Errors</option>
+            <option value="mqtt">MQTT</option>
+        </select>
+
+        <label>Datum:</label>
+        <input type="date" id="dateSelect">
+
+        <button id="loadBtn">Log Laden</button>
+        <button id="liveBtn">Live Stream</button>
+
+        <label>Filter:</label>
+        <select id="filterSelect">
+            <option value="ALL">ALLE</option>
+            <option value="INFO">INFO</option>
+            <option value="WARNING">WARNING</option>
+            <option value="ERROR">ERROR</option>
+        </select>
+
+        <label>Zoom:</label>
+        <input type="range" id="zoomSlider" min="10" max="24" value="14">
+    </section>
+
+    <section id="logOutput"></section>
+
+</div>
+
+
+<script src="/static/logs.js"></script>
+</body>
+</html>

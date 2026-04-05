@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FilamentHub — Handbuch</title>
+<style>
+  :root {
+    --bg: #0e1116; --sidebar-bg: #13181f; --card-bg: #1a2030; --border: #2a3448;
+    --accent: #3b82f6; --accent-hover: #60a5fa; --text: #e2e8f0; --text-muted: #94a3b8;
+    --text-dim: #64748b; --success: #22c55e; --warning: #f59e0b; --danger: #ef4444;
+    --code-bg: #0d1117; --sidebar-w: 280px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; font-size: 15px; }
+
+  #sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  #sidebar-header h1 { font-size: 16px; font-weight: 700; }
+  #sidebar-header span { font-size: 11px; color: var(--text-dim); display: block; margin-top: 3px; }
+  #search-wrap { padding: 10px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  #search { width: 100%; padding: 7px 10px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; outline: none; }
+  #search:focus { border-color: var(--accent); }
+  #search::placeholder { color: var(--text-dim); }
+  #nav { overflow-y: auto; flex: 1; padding: 8px 0; }
+  .nav-section { padding: 6px 12px 2px; font-size: 10px; font-weight: 700; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-top: 6px; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 16px; cursor: pointer; color: var(--text-muted); font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; }
+  .nav-item:hover { background: var(--card-bg); color: var(--text); }
+  .nav-item.active { background: rgba(59,130,246,0.12); color: var(--accent-hover); border-left-color: var(--accent); font-weight: 600; }
+  .nav-item .icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+
+  #main { flex: 1; overflow-y: auto; }
+  #content { max-width: 860px; margin: 0 auto; padding: 40px 48px 80px; }
+  #topbar { position: sticky; top: 0; background: rgba(14,17,22,0.92); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; gap: 12px; z-index: 10; }
+  #topbar-title { font-size: 14px; color: var(--text-muted); }
+  #topbar-title span { color: var(--text); font-weight: 600; }
+  #hamburger { display: none; cursor: pointer; color: var(--text-muted); font-size: 20px; background: none; border: none; padding: 4px; }
+
+  h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; line-height: 1.25; }
+  h2 { font-size: 20px; font-weight: 700; margin: 36px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; font-weight: 600; margin: 24px 0 10px; }
+  p { line-height: 1.7; color: var(--text-muted); margin-bottom: 12px; }
+  a { color: var(--accent); text-decoration: none; cursor: pointer; }
+  a:hover { color: var(--accent-hover); text-decoration: underline; }
+  ul, ol { padding-left: 20px; margin-bottom: 12px; }
+  li { line-height: 1.7; color: var(--text-muted); margin-bottom: 3px; }
+  strong { color: var(--text); font-weight: 600; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+  .page-header { margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .page-header .subtitle { color: var(--text-dim); font-size: 14px; margin-top: 6px; }
+
+  code { background: var(--code-bg); color: #7dd3fc; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-family: 'Consolas','Monaco',monospace; border: 1px solid var(--border); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; overflow-x: auto; margin: 14px 0 18px; position: relative; }
+  pre code { background: none; border: none; padding: 0; color: #a5f3fc; font-size: 13px; line-height: 1.6; }
+  .copy-btn { position: absolute; top: 8px; right: 10px; background: var(--border); border: none; color: var(--text-muted); padding: 3px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+  .copy-btn:hover { background: var(--accent); color: white; }
+
+  .table-wrap { overflow-x: auto; margin: 14px 0 18px; border-radius: 8px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { background: var(--card-bg); padding: 10px 14px; text-align: left; color: var(--text); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 14px; border-bottom: 1px solid rgba(42,52,72,0.5); color: var(--text-muted); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .callout { border-radius: 8px; padding: 14px 16px; margin: 16px 0; border-left: 4px solid; font-size: 14px; line-height: 1.6; }
+  .callout-info { background: rgba(59,130,246,0.08); border-color: var(--accent); color: #93c5fd; }
+  .callout-warn { background: rgba(245,158,11,0.08); border-color: var(--warning); color: #fcd34d; }
+  .callout-danger { background: rgba(239,68,68,0.08); border-color: var(--danger); color: #fca5a5; }
+  .callout strong { color: inherit; }
+
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin: 16px 0; }
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.2s; }
+  .card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .card .card-icon { font-size: 22px; margin-bottom: 8px; }
+  .card .card-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .card .card-desc { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: rgba(34,197,94,0.15); color: var(--success); }
+  .badge-yellow { background: rgba(245,158,11,0.15); color: var(--warning); }
+  .badge-red { background: rgba(239,68,68,0.15); color: var(--danger); }
+  .badge-blue { background: rgba(59,130,246,0.15); color: var(--accent); }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  #search-results { display: none; padding: 4px 0; }
+  .sr-item { padding: 10px 16px; cursor: pointer; border-bottom: 1px solid var(--border); }
+  .sr-item:hover { background: var(--card-bg); }
+  .sr-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .sr-preview { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .sr-empty { padding: 12px 16px; color: var(--text-dim); font-size: 13px; }
+
+  .diagram { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 20px; font-family: monospace; font-size: 13px; color: #7dd3fc; line-height: 1.6; overflow-x: auto; margin: 14px 0; white-space: pre; }
+
+  .steps { counter-reset: step; list-style: none; padding: 0; }
+  .steps li { counter-increment: step; padding: 10px 0 10px 48px; position: relative; border-bottom: 1px solid rgba(42,52,72,0.4); color: var(--text-muted); line-height: 1.6; }
+  .steps li:last-child { border-bottom: none; }
+  .steps li::before { content: counter(step); position: absolute; left: 0; top: 10px; width: 28px; height: 28px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 768px) {
+    #sidebar { position: fixed; left: -100%; z-index: 100; transition: left 0.25s; }
+    #sidebar.open { left: 0; }
+    #hamburger { display: block; }
+    #content { padding: 24px 20px 60px; }
+    #overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; }
+    #overlay.show { display: block; }
+  }
+</style>
+</head>
+<body>
+
+<div id="overlay"></div>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h1>🧵 FilamentHub</h1>
+    <span>Handbuch · Beta v1.6</span>
+  </div>
+  <div id="search-wrap">
+    <input id="search" type="text" placeholder="Suchen… ( / )" autocomplete="off">
+  </div>
+  <div id="nav">
+    <div id="search-results"></div>
+    <div id="nav-main">
+      <div class="nav-section">Start</div>
+      <div class="nav-item active" data-page="home"><span class="icon">🏠</span>Übersicht</div>
+      <div class="nav-item" data-page="install"><span class="icon">📦</span>Installation</div>
+      <div class="nav-item" data-page="start"><span class="icon">🚀</span>Erste Schritte</div>
+      <div class="nav-section">Verwaltung</div>
+      <div class="nav-item" data-page="drucker"><span class="icon">🖨️</span>Drucker</div>
+      <div class="nav-item" data-page="spulen"><span class="icon">🧵</span>Spulen</div>
+      <div class="nav-item" data-page="materialien"><span class="icon">🎨</span>Materialien</div>
+      <div class="nav-item" data-page="ams"><span class="icon">📦</span>AMS</div>
+      <div class="nav-item" data-page="jobs"><span class="icon">📋</span>Druckaufträge</div>
+      <div class="nav-item" data-page="statistiken"><span class="icon">📊</span>Statistiken</div>
+      <div class="nav-item" data-page="gewicht"><span class="icon">⚖️</span>Gewichts-Management</div>
+      <div class="nav-section">Integrationen</div>
+      <div class="nav-item" data-page="cloud"><span class="icon">☁️</span>Bambu Cloud</div>
+      <div class="nav-item" data-page="klipper"><span class="icon">🔧</span>Klipper &amp; MMU</div>
+      <div class="nav-section">System</div>
+      <div class="nav-item" data-page="konfiguration"><span class="icon">⚙️</span>Konfiguration</div>
+      <div class="nav-item" data-page="sicherheit"><span class="icon">🔒</span>Sicherheit</div>
+      <div class="nav-item" data-page="update"><span class="icon">🔄</span>Update &amp; Backup</div>
+      <div class="nav-item" data-page="debug"><span class="icon">🔍</span>Debug Center</div>
+      <div class="nav-section">Referenz</div>
+      <div class="nav-item" data-page="api"><span class="icon">🔌</span>API-Referenz</div>
+      <div class="nav-item" data-page="architektur"><span class="icon">🏗️</span>Architektur</div>
+      <div class="nav-item" data-page="fehler"><span class="icon">🛠️</span>Fehlerbehandlung</div>
+      <div class="nav-item" data-page="faq"><span class="icon">❓</span>FAQ</div>
+    </div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="topbar">
+    <button id="hamburger" onclick="toggleSidebar()">☰</button>
+    <div id="topbar-title">FilamentHub · <span id="current-page-title">Übersicht</span></div>
+  </div>
+  <div id="content">
+
+    <!-- HOME -->
+    <div class="section active" id="page-home">
+      <div class="page-header">
+        <h1>🧵 FilamentHub — Handbuch</h1>
+        <div class="subtitle">Beta v1.6 · Vollständige Dokumentation auf Deutsch</div>
+      </div>
+      <p>FilamentHub ist ein zentrales Verwaltungssystem für 3D-Drucker-Filament. Es verbindet sich mit Bambu Lab Druckern (MQTT + Cloud), Klipper/Moonraker und Happy Hare MMU und verfolgt automatisch Spulen, Verbrauch und Druckjobs.</p>
+      <h2>Schnellnavigation</h2>
+      <div class="card-grid">
+        <div class="card" onclick="showPage('install')"><div class="card-icon">📦</div><div class="card-title">Installation</div><div class="card-desc">Docker, Unraid, NAS, Windows</div></div>
+        <div class="card" onclick="showPage('start')"><div class="card-icon">🚀</div><div class="card-title">Erste Schritte</div><div class="card-desc">Drucker &amp; erste Spule einrichten</div></div>
+        <div class="card" onclick="showPage('drucker')"><div class="card-icon">🖨️</div><div class="card-title">Drucker</div><div class="card-desc">Scanner, MQTT, Verbindung</div></div>
+        <div class="card" onclick="showPage('spulen')"><div class="card-icon">🧵</div><div class="card-title">Spulen</div><div class="card-desc">Anlegen, Gewicht, Nummern</div></div>
+        <div class="card" onclick="showPage('ams')"><div class="card-icon">📦</div><div class="card-title">AMS</div><div class="card-desc">Live-Tracking, Slots, Konflikte</div></div>
+        <div class="card" onclick="showPage('fehler')"><div class="card-icon">🛠️</div><div class="card-title">Fehlerbehandlung</div><div class="card-desc">Scanner, MQTT, AMS-Probleme</div></div>
+        <div class="card" onclick="showPage('faq')"><div class="card-icon">❓</div><div class="card-title">FAQ</div><div class="card-desc">Häufige Fragen</div></div>
+        <div class="card" onclick="showPage('api')"><div class="card-icon">🔌</div><div class="card-title">API</div><div class="card-desc">REST Endpunkte, Swagger</div></div>
+      </div>
+      <h2>Unterstützte Drucker</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Drucker</th><th>Verbindung</th><th>AMS</th><th>Cloud</th></tr>
+        <tr><td>Bambu X1C / X1E</td><td><code>MQTT v5</code></td><td><span class="badge badge-green">✓ Full AMS</span></td><td><span class="badge badge-green">✓</span></td></tr>
+        <tr><td>Bambu P1S / P1P</td><td><code>MQTT v5</code></td><td><span class="badge badge-green">✓ Full AMS</span></td><td><span class="badge badge-green">✓</span></td></tr>
+        <tr><td>Bambu H2D</td><td><code>MQTT v5</code></td><td><span class="badge badge-green">✓ Full AMS</span></td><td><span class="badge badge-green">✓</span></td></tr>
+        <tr><td>Bambu A1 / A1 Mini</td><td><code>MQTT v3.1.1</code></td><td><span class="badge badge-yellow">AMS Lite</span></td><td><span class="badge badge-green">✓</span></td></tr>
+        <tr><td>Klipper / Moonraker</td><td><code>HTTP :7125</code></td><td><span class="badge badge-red">–</span></td><td><span class="badge badge-red">–</span></td></tr>
+        <tr><td>Manuell</td><td>Keine</td><td><span class="badge badge-red">–</span></td><td><span class="badge badge-red">–</span></td></tr>
+      </table></div>
+      <h2>Systemanforderungen</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Komponente</th><th>Minimum</th><th>Empfohlen</th></tr>
+        <tr><td>Python</td><td>3.10</td><td>3.12</td></tr>
+        <tr><td>RAM</td><td>256 MB</td><td>512 MB</td></tr>
+        <tr><td>Speicher</td><td>500 MB</td><td>2 GB</td></tr>
+        <tr><td>Port</td><td>8085</td><td>konfigurierbar</td></tr>
+        <tr><td>Netzwerk (Docker)</td><td>—</td><td>Host-Netzwerk (Pflicht für Scanner)</td></tr>
+      </table></div>
+    </div>
+
+    <!-- INSTALLATION -->
+    <div class="section" id="page-install">
+      <div class="page-header"><h1>📦 Installation</h1><div class="subtitle">Docker (Unraid / NAS) · Windows lokal</div></div>
+      <h2>Docker auf Unraid</h2>
+      <div class="callout callout-warn"><strong>⚠️ Pflicht:</strong> <code>network_mode: host</code> muss gesetzt sein — sonst findet der Drucker-Scanner das LAN nicht!</div>
+      <ol class="steps">
+        <li>Datei <code>docker-compose.yml</code> auf Unraid: <code>/mnt/user/appdata/filamenthub/</code></li>
+        <li><code>cp .env.example .env</code> — Admin-Passwort-Hash generieren und eintragen</li>
+        <li>Image bauen: <code>docker build -t filamenthub:latest .</code></li>
+        <li>Starten: <code>docker compose up -d</code></li>
+        <li>Öffnen: <strong>http://UNRAID-IP:8085</strong></li>
+      </ol>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code># Admin-Passwort Hash generieren:
+python3 -c "import bcrypt; print(bcrypt.hashpw(b'DEIN_PASSWORT', bcrypt.gensalt()).decode())"</code></pre>
+
+      <h2>Docker auf NAS (QNAP)</h2>
+      <p>Die Datei <code>nas-stable/docker-compose.yml</code> ist speziell für QNAP vorbereitet.</p>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code># Via SSH auf dem NAS:
+cd "/share/backup-archive/Denis Programme/FilamentHub/nas-stable"
+docker build -t filamenthub:latest .
+docker compose up -d
+
+# Nach einem Update:
+bash rebuild.sh</code></pre>
+      <div class="callout callout-warn"><strong>Synology DSM:</strong> Container Manager GUI unterstützt <code>network_mode: host</code> nicht. Muss per SSH gesetzt werden. Ohne host-Modus findet der Scanner keine Drucker — Drucker können aber manuell per IP hinzugefügt werden.</div>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code># Netzwerk-Modus prüfen:
+docker inspect filamenthub | grep NetworkMode
+# Muss sein: "NetworkMode": "host"</code></pre>
+
+      <h2>Windows — Lokal</h2>
+      <ol class="steps">
+        <li>Python 3.10+ installieren (python.org)</li>
+        <li>Repository klonen: <code>git clone https://github.com/d3nn3s08/FilamentHub.git</code></li>
+        <li>Virtuelle Umgebung: <code>python -m venv venv</code> dann <code>venv\Scripts\activate</code></li>
+        <li>Pakete: <code>pip install -r requirements.txt</code></li>
+        <li><code>.env</code> erstellen: <code>copy .env.example .env</code></li>
+        <li>Datenbank: <code>python -m alembic upgrade head</code></li>
+        <li>Starten: <code>python run.py</code> → http://localhost:8085</li>
+      </ol>
+
+      <h2>Erste Konfiguration (.env)</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code>ADMIN_PASSWORD_HASH=$2b$12$...   # bcrypt Hash (optional)
+ADMIN_COOKIE_SECURE=false         # true nur für HTTPS
+APP_VERSION=Beta v1.6 · FilamentHub
+FILAMENTHUB_DB_PATH=/app/data/filamenthub.db</code></pre>
+
+      <h2>Zugriff nach Installation</h2>
+      <div class="table-wrap"><table>
+        <tr><th>URL</th><th>Beschreibung</th></tr>
+        <tr><td><code>http://IP:8085</code></td><td>Hauptanwendung</td></tr>
+        <tr><td><code>http://IP:8085/docs</code></td><td>Swagger API-Doku (interaktiv)</td></tr>
+        <tr><td><code>http://IP:8085/health</code></td><td>Health-Check</td></tr>
+        <tr><td><code>http://IP:8085/debug</code></td><td>Debug Center</td></tr>
+      </table></div>
+
+      <h2>Optional: Reverse Proxy (HTTPS)</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code>server {
+    listen 443 ssl;
+    server_name filamenthub.deine-domain.de;
+    ssl_certificate     /etc/letsencrypt/live/deine-domain.de/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/deine-domain.de/privkey.pem;
+    location / {
+        proxy_pass http://localhost:8085;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}</code></pre>
+    </div>
+
+    <!-- ERSTE SCHRITTE -->
+    <div class="section" id="page-start">
+      <div class="page-header"><h1>🚀 Erste Schritte</h1><div class="subtitle">In ~10 Minuten startklar</div></div>
+      <ol class="steps">
+        <li><strong>Drucker hinzufügen</strong> — Druckerverwaltung → "Drucker suchen" (Scanner) oder manuell mit IP + Seriennummer + Zugangscode</li>
+        <li><strong>Verbindung prüfen</strong> — Grüner Punkt = verbunden. Rot = <a onclick="showPage('fehler')">Fehlerbehandlung</a></li>
+        <li><strong>Material anlegen</strong> — Spulen Hersteller → "Material hinzufügen" (Typ, Farbe, Leergewicht)</li>
+        <li><strong>Erste Spule anlegen</strong> — Spulen Verwaltung → "Neue Spule" → Material wählen, Gewicht eintragen</li>
+        <li><strong>AMS-Slot zuweisen</strong> (falls vorhanden) — AMS Übersicht → Slot anklicken → Spule wählen</li>
+        <li><strong>Druck starten</strong> — FilamentHub erkennt automatisch: Job wird angelegt, Verbrauch getrackt</li>
+      </ol>
+      <h2>Zugangscode und Seriennummer finden</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Info</th><th>Wo zu finden</th></tr>
+        <tr><td>Seriennummer</td><td>Aufkleber unten am Drucker oder Bambu App → Geräteinformationen</td></tr>
+        <tr><td>Zugangscode</td><td>Drucker-Display → Einstellungen → WLAN → Zugangscode</td></tr>
+      </table></div>
+      <h2>Status-Symbole</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Symbol</th><th>Bedeutung</th></tr>
+        <tr><td>🟢 Grün</td><td>Verbunden, empfängt Live-Daten</td></tr>
+        <tr><td>🟡 Gelb</td><td>Verbindung wird aufgebaut</td></tr>
+        <tr><td>🔴 Rot</td><td>Nicht erreichbar</td></tr>
+        <tr><td>⚪ Grau</td><td>Manueller Drucker (keine Verbindung)</td></tr>
+      </table></div>
+    </div>
+
+    <!-- DRUCKER -->
+    <div class="section" id="page-drucker">
+      <div class="page-header"><h1>🖨️ Druckerverwaltung</h1></div>
+      <h2>Drucker-Scanner</h2>
+      <p>FilamentHub scannt das LAN per TCP-Port-Scanning — kein mDNS, kein Broadcast. Bambu Ports: <code>6000</code>, <code>8883</code>, <code>990</code>. Klipper: <code>7125</code>.</p>
+      <div class="callout callout-warn"><strong>Docker:</strong> Scanner braucht <code>network_mode: host</code>. Im Bridge-Modus sieht der Container nur 172.17.x.x statt dein LAN.</div>
+      <div class="table-wrap"><table>
+        <tr><th>Scan-Typ</th><th>Beschreibung</th><th>Dauer</th></tr>
+        <tr><td>Quick Scan</td><td>Bekannte IPs + ±5 Nachbarn</td><td>~2s</td></tr>
+        <tr><td>Network Scan</td><td>Vollständiger CIDR-Sweep (z.B. /24)</td><td>~30s</td></tr>
+        <tr><td>Bambu Detect</td><td>Nur Bambu-Ports</td><td>~5s</td></tr>
+        <tr><td>Klipper Detect</td><td>Nur Port 7125</td><td>~3s</td></tr>
+      </table></div>
+      <h2>Verbindungsarten</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Methode</th><th>Port</th><th>Protokoll</th><th>Beschreibung</th></tr>
+        <tr><td>MQTT lokal (TLS)</td><td>8883</td><td>TLS</td><td>Empfohlen — geringer Latenz, kein Internet</td></tr>
+        <tr><td>MQTT lokal</td><td>6000</td><td>Klartext</td><td>Fallback</td></tr>
+        <tr><td>Bambu Cloud</td><td>443</td><td>HTTPS</td><td>Ergänzend</td></tr>
+        <tr><td>Klipper API</td><td>7125</td><td>HTTP</td><td>Moonraker REST</td></tr>
+      </table></div>
+      <h2>MQTT-Version nach Modell</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Modell</th><th>MQTT Version</th></tr>
+        <tr><td>X1C, X1E, P1S, P1P, H2D</td><td>v5</td></tr>
+        <tr><td>A1, A1 Mini</td><td>v3.1.1</td></tr>
+      </table></div>
+    </div>
+
+    <!-- SPULEN -->
+    <div class="section" id="page-spulen">
+      <div class="page-header"><h1>🧵 Spulenverwaltung</h1></div>
+      <h2>Spule anlegen</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Feld</th><th>Beispiel</th><th>Pflicht</th></tr>
+        <tr><td>Material</td><td>Bambu PLA Basic Schwarz</td><td>✓</td></tr>
+        <tr><td>Gesamtgewicht</td><td>1000g</td><td>✓</td></tr>
+        <tr><td>Aktuelles Gewicht</td><td>750g (gewogen)</td><td>✓</td></tr>
+        <tr><td>Leeres Spulengewicht</td><td>250g (Kern)</td><td>✓</td></tr>
+        <tr><td>Preis</td><td>19,99€</td><td>optional</td></tr>
+      </table></div>
+      <div class="callout callout-info"><strong>Formel:</strong> Filament verbleibend = Aktuelles Gewicht − Leergewicht. Beispiel: 750g − 250g = <strong>500g Filament</strong>.</div>
+      <h2>Spulen-Nummern</h2>
+      <p>Jede Spule bekommt automatisch eine aufsteigende Nummer <code>#1</code>, <code>#2</code>, ... Diese ist dauerhaft und wird nicht wiederverwendet.</p>
+      <h2>Typische Leergewichte</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Hersteller</th><th>Leergewicht</th></tr>
+        <tr><td>Bambu Lab</td><td>~250g</td></tr>
+        <tr><td>eSUN</td><td>~210g</td></tr>
+        <tr><td>Polymaker</td><td>~220g</td></tr>
+        <tr><td>Generic</td><td>180–280g</td></tr>
+      </table></div>
+    </div>
+
+    <!-- MATERIALIEN -->
+    <div class="section" id="page-materialien">
+      <div class="page-header"><h1>🎨 Materialverwaltung</h1></div>
+      <h2>Material-Typen</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Kürzel</th><th>Material</th><th>Typische Verwendung</th></tr>
+        <tr><td>PLA</td><td>Polylactic Acid</td><td>Allgemein, Einsteiger</td></tr>
+        <tr><td>PETG</td><td>Polyethylene Terephthalate Glycol</td><td>Funktionsteile, lebensmittelecht</td></tr>
+        <tr><td>ABS</td><td>Acrylonitrile Butadiene Styrene</td><td>Technische Teile, hitzefest</td></tr>
+        <tr><td>ASA</td><td>Acrylonitrile Styrene Acrylate</td><td>Außenbereich, UV-beständig</td></tr>
+        <tr><td>TPU</td><td>Thermoplastic Polyurethane</td><td>Flexibel, gummiartig</td></tr>
+        <tr><td>PA / Nylon</td><td>Polyamide</td><td>Hochbelastung, gleitfähig</td></tr>
+        <tr><td>PLA-CF</td><td>PLA + Kohlefaser</td><td>Steif, leicht</td></tr>
+        <tr><td>PVA</td><td>Polyvinyl Alcohol</td><td>Stützmaterial, wasserlöslich</td></tr>
+      </table></div>
+      <p>Bambu Lab Materialien werden automatisch synchronisiert wenn Bambu Cloud konfiguriert ist.</p>
+    </div>
+
+    <!-- AMS -->
+    <div class="section" id="page-ams">
+      <div class="page-header"><h1>📦 AMS (Automatic Material System)</h1></div>
+      <h2>AMS-Typen</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Typ</th><th>Drucker</th><th>Slots</th></tr>
+        <tr><td>AMS Full</td><td>X1C, P1S, P1P, X1E, H2D</td><td>4 pro Einheit, max. 16</td></tr>
+        <tr><td>AMS Lite</td><td>A1, A1 Mini</td><td>4 Slots</td></tr>
+        <tr><td>Extern</td><td>Alle</td><td>1 (virtuell)</td></tr>
+      </table></div>
+      <h2>Spule zuweisen</h2>
+      <p><strong>Automatisch:</strong> Bei Einlegen einer bekannten Spule erscheint ein Dialog. Spule wählen → Zuweisen.</p>
+      <p><strong>Manuell:</strong> AMS Übersicht → Slot anklicken → "Spule zuweisen" → Bestätigen.</p>
+      <h2>AMS-Konflikte</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Option</th><th>Wirkung</th></tr>
+        <tr><td>AMS-Daten übernehmen</td><td>FilamentHub passt sich ans AMS an</td></tr>
+        <tr><td>FilamentHub beibehalten</td><td>AMS-Infos werden ignoriert</td></tr>
+        <tr><td>Neue Spule zuweisen</td><td>Andere Spule aus der Liste wählen</td></tr>
+      </table></div>
+      <h2>AMS-Klima</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Messwert</th><th>Optimal</th><th>Warnung</th><th>Kritisch</th></tr>
+        <tr><td>Temperatur</td><td>15–30°C</td><td>&gt;35°C</td><td>&gt;40°C</td></tr>
+        <tr><td>Luftfeuchtigkeit</td><td>&lt;30%</td><td>30–50%</td><td>&gt;50%</td></tr>
+      </table></div>
+      <div class="callout callout-info"><strong>Tipp:</strong> Silica-Gel ins AMS-Gehäuse legen und bei Feuchtigkeit &gt;40% wechseln.</div>
+      <h2>Feuchtigkeitsempfindlichkeit nach Material</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Material</th><th>Empfindlichkeit</th><th>Folgen bei zu viel Feuchtigkeit</th></tr>
+        <tr><td>PVA</td><td><span class="badge badge-red">Extrem</span></td><td>Löst sich auf, druckt nicht</td></tr>
+        <tr><td>Nylon (PA)</td><td><span class="badge badge-red">Sehr hoch</span></td><td>Blasen, schlechte Schichtung</td></tr>
+        <tr><td>TPU</td><td><span class="badge badge-yellow">Hoch</span></td><td>Blasen, Fäden</td></tr>
+        <tr><td>PETG</td><td><span class="badge badge-yellow">Mittel</span></td><td>Stringing, Blasen</td></tr>
+        <tr><td>PLA</td><td><span class="badge badge-yellow">Mittel</span></td><td>Leichte Qualitätsminderung</td></tr>
+        <tr><td>ABS / ASA</td><td><span class="badge badge-green">Gering</span></td><td>Kaum Auswirkung</td></tr>
+      </table></div>
+    </div>
+
+    <!-- JOBS -->
+    <div class="section" id="page-jobs">
+      <div class="page-header"><h1>📋 Druckaufträge</h1></div>
+      <h2>Job-Status</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Status</th><th>Bedeutung</th></tr>
+        <tr><td><span class="badge badge-blue">Läuft</span></td><td>Druck ist aktiv</td></tr>
+        <tr><td><span class="badge badge-green">Fertig</span></td><td>Erfolgreich abgeschlossen</td></tr>
+        <tr><td><span class="badge badge-red">Fehler</span></td><td>Druck fehlgeschlagen</td></tr>
+        <tr><td><span class="badge badge-yellow">Abgebrochen</span></td><td>Manuell gestoppt</td></tr>
+      </table></div>
+      <h2>Verbrauch nachtragen</h2>
+      <ol class="steps">
+        <li>Druckaufträge → Job anklicken</li>
+        <li>"Verbrauch eintragen"</li>
+        <li>Spule(n) auswählen und Gramm eingeben</li>
+        <li>"Speichern"</li>
+      </ol>
+      <h2>Verbrauchsberechnung</h2>
+      <pre><code>Verbrauch [g] = Gewicht vor Druck − Gewicht nach Druck
+Kosten        = (Verbrauch / Spulengewicht) × Spulenpreis
+Beispiel:       (50g / 1000g) × 20€ = 1,00€</code></pre>
+    </div>
+
+    <!-- STATISTIKEN -->
+    <div class="section" id="page-statistiken">
+      <div class="page-header"><h1>📊 Statistiken &amp; Verbrauch</h1></div>
+      <h2>Verfügbare Auswertungen</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Auswertung</th><th>Beschreibung</th></tr>
+        <tr><td>Verbrauch gesamt</td><td>Filament in Gramm gesamt</td></tr>
+        <tr><td>Nach Material</td><td>Tortendiagramm: PLA, PETG, ABS…</td></tr>
+        <tr><td>Nach Drucker</td><td>Welcher Drucker verbraucht wie viel</td></tr>
+        <tr><td>Nach Zeitraum</td><td>Täglich / Wöchentlich / Monatlich</td></tr>
+        <tr><td>Top-Spulen</td><td>Meist verwendete Spulen mit Verbrauch</td></tr>
+        <tr><td>Druckerauslastung</td><td>Druckzeit + Fehlerquote pro Drucker</td></tr>
+        <tr><td>Kosten-Analyse</td><td>Verbrauch × Preis pro Spule</td></tr>
+      </table></div>
+      <div class="callout callout-info">Statistiken werden erst nach dem ersten abgeschlossenen Job mit Spulenzuweisung befüllt.</div>
+      <h2>Daten exportieren</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code>curl http://localhost:8085/api/statistics/overview
+curl http://localhost:8085/api/statistics/consumption?days=30</code></pre>
+    </div>
+
+    <!-- GEWICHT -->
+    <div class="section" id="page-gewicht">
+      <div class="page-header"><h1>⚖️ Gewichts-Management</h1></div>
+      <h2>Gewicht berechnen</h2>
+      <pre><code>Filament verbleibend = Aktuelles Gewicht − Leergewicht
+Verbrauch pro Job   = Gewicht vorher − Gewicht nachher</code></pre>
+      <h2>Weight History — Eintragstypen</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Typ</th><th>Wann erstellt</th></tr>
+        <tr><td><code>job_start</code></td><td>Beim Start eines Drucks</td></tr>
+        <tr><td><code>job_end</code></td><td>Bei Abschluss</td></tr>
+        <tr><td><code>manual</code></td><td>Bei manueller Korrektur</td></tr>
+        <tr><td><code>ams_sync</code></td><td>AMS-Gewichts-Update</td></tr>
+        <tr><td><code>cloud_sync</code></td><td>Bambu Cloud Sync</td></tr>
+        <tr><td><code>backfill</code></td><td>Nachträglicher Cloud-Import</td></tr>
+      </table></div>
+      <h2>AMS-Genauigkeit</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Füllstand</th><th>Genauigkeit</th></tr>
+        <tr><td>Frisch (100%)</td><td>±5% (~50g bei 1kg)</td></tr>
+        <tr><td>Halbvoll (50%)</td><td>±10%</td></tr>
+        <tr><td>Fast leer (&lt;20%)</td><td>±20%</td></tr>
+      </table></div>
+      <div class="callout callout-info">Für präzise Werte: Spule nach dem Druck wiegen und manuell eintragen.</div>
+      <h2>Gewichts-Konflikt auflösen</h2>
+      <p>Admin → Gewichtskonflikte → Konflikt anklicken → "Cloud übernehmen" oder "Lokal beibehalten".</p>
+    </div>
+
+    <!-- CLOUD -->
+    <div class="section" id="page-cloud">
+      <div class="page-header"><h1>☁️ Bambu Cloud Integration</h1></div>
+      <div class="callout callout-info"><strong>Optional:</strong> MQTT funktioniert ohne Cloud vollständig. Cloud verbessert Datenvollständigkeit (Tray-Mapping, Gewichts-Backfill).</div>
+      <h2>Cloud einrichten</h2>
+      <ol class="steps">
+        <li>Auf bambulab.com einloggen → Konto → Developer → API Key erstellen</li>
+        <li>Admin Panel → "Bambu Cloud" → E-Mail und API-Key eingeben</li>
+        <li>"Verbindung testen" → Häkchen → "Speichern"</li>
+      </ol>
+      <h2>Cloud-Sync-Status</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Status</th><th>Bedeutung</th></tr>
+        <tr><td><span class="badge badge-green">Synchronisiert</span></td><td>Letzte Cloud-Daten erfolgreich</td></tr>
+        <tr><td><span class="badge badge-yellow">Ausstehend</span></td><td>Sync ist geplant</td></tr>
+        <tr><td><span class="badge badge-red">Konflikt</span></td><td>Cloud weicht von lokal ab</td></tr>
+        <tr><td><span class="badge badge-red">Fehler</span></td><td>API-Verbindung fehlgeschlagen</td></tr>
+      </table></div>
+      <p>Der API-Key wird <strong>AES-verschlüsselt</strong> in der Datenbank gespeichert — nie im Klartext in Logs.</p>
+    </div>
+
+    <!-- KLIPPER -->
+    <div class="section" id="page-klipper">
+      <div class="page-header"><h1>🔧 Klipper &amp; MMU (Happy Hare)</h1></div>
+      <h2>Klipper / Moonraker einrichten</h2>
+      <ol class="steps">
+        <li>Druckerverwaltung → "Drucker hinzufügen" → Typ: Klipper</li>
+        <li>IP-Adresse + Port <code>7125</code> eingeben</li>
+        <li>API-Token eingeben falls Moonraker Auth aktiv ist</li>
+        <li>"Verbindung testen" → "Speichern"</li>
+      </ol>
+      <h2>Happy Hare MMU einrichten</h2>
+      <ol class="steps">
+        <li>MMU-Klipper (Seitenleiste) öffnen</li>
+        <li>Klipper-Drucker auswählen</li>
+        <li>Anzahl Gates eingeben</li>
+        <li>Jeden Gate: Spule aus Datenbank zuweisen</li>
+        <li>"Speichern"</li>
+      </ol>
+    </div>
+
+    <!-- KONFIGURATION -->
+    <div class="section" id="page-konfiguration">
+      <div class="page-header"><h1>⚙️ Konfiguration</h1></div>
+      <h2>.env Datei</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code>ADMIN_PASSWORD_HASH=$2b$12$...     # bcrypt Hash (optional)
+ADMIN_COOKIE_SECURE=false           # true = nur HTTPS
+APP_VERSION=Beta v1.6 · FilamentHub
+FILAMENTHUB_DB_PATH=/app/data/filamenthub.db
+FILAMENTHUB_DEV_FEATURES=0          # 1 = experimentelle Features</code></pre>
+      <h2>config.yaml</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code>server:
+  host: 0.0.0.0
+  port: 8085        # Port ändern falls belegt
+
+integrations:
+  mode: bambu       # bambu | klipper | dual | standalone
+
+logging:
+  level: INFO       # DEBUG | INFO | WARNING | ERROR
+  keep_days: 14
+  max_size_mb: 10</code></pre>
+      <h2>Integration-Modi</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Modus</th><th>Beschreibung</th></tr>
+        <tr><td><code>bambu</code></td><td>Nur Bambu Lab (MQTT)</td></tr>
+        <tr><td><code>klipper</code></td><td>Nur Klipper/Moonraker</td></tr>
+        <tr><td><code>dual</code></td><td>Bambu + Klipper gleichzeitig</td></tr>
+        <tr><td><code>standalone</code></td><td>Keine automatische Verbindung</td></tr>
+      </table></div>
+    </div>
+
+    <!-- SICHERHEIT -->
+    <div class="section" id="page-sicherheit">
+      <div class="page-header"><h1>🔒 Sicherheit</h1></div>
+      <div class="callout callout-info">Im Heimnetz reicht die Standardkonfiguration. HTTPS ist nur nötig wenn FilamentHub von außen erreichbar sein soll.</div>
+      <h2>nginx Reverse Proxy (HTTPS)</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code>server {
+    listen 443 ssl;
+    server_name filamenthub.deine-domain.de;
+    ssl_certificate     /etc/letsencrypt/live/deine-domain.de/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/deine-domain.de/privkey.pem;
+    location / {
+        proxy_pass http://localhost:8085;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+# Danach in .env: ADMIN_COOKIE_SECURE=true</code></pre>
+      <h2>Empfohlene Netzwerkstruktur</h2>
+      <div class="diagram">Heimnetz (192.168.1.x)
+  FilamentHub-Server ──────────────────── TCP Port 8883/6000 ──►
+  Dein PC / Handy                                               │
+                                                                ▼
+IoT-VLAN (192.168.10.x)                              Bambu Drucker
+  Sonstige Smart-Home-Geräte
+
+Router-Regel: Heimnetz → IoT: ERLAUBT
+              IoT → Heimnetz: BLOCKIERT</div>
+      <div class="callout callout-warn">FilamentHub hat keine API-Auth für normale Endpunkte. Bei öffentlichem Zugriff: Reverse Proxy mit HTTP-Basisauth vorschalten.</div>
+    </div>
+
+    <!-- UPDATE -->
+    <div class="section" id="page-update">
+      <div class="page-header"><h1>🔄 Update &amp; Backup</h1></div>
+      <h2>Backup erstellen</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code># Datenbank sichern (kein Stopp nötig)
+docker exec filamenthub sqlite3 /app/data/filamenthub.db \
+  ".backup /app/data/backup_$(date +%Y%m%d).db"</code></pre>
+      <h2>Update einspielen (Docker)</h2>
+      <ol class="steps">
+        <li>Backup erstellen (siehe oben)</li>
+        <li><code>git pull origin main</code></li>
+        <li><code>docker compose down &amp;&amp; docker compose up -d --build</code></li>
+        <li><code>docker exec filamenthub python -m alembic upgrade head</code></li>
+        <li>Prüfen: <code>curl http://localhost:8085/health</code></li>
+      </ol>
+      <h2>Update auf NAS (QNAP)</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code>bash "/share/backup-archive/Denis Programme/FilamentHub/nas-stable/rebuild.sh"</code></pre>
+      <h2>Update Windows lokal</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code>git pull
+venv\Scripts\activate
+pip install -r requirements.txt
+python -m alembic upgrade head
+python run.py</code></pre>
+      <h2>Backup wiederherstellen</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code>docker stop filamenthub
+cp /app/data/backup_DATUM.db /app/data/filamenthub.db
+docker start filamenthub</code></pre>
+    </div>
+
+    <!-- DEBUG -->
+    <div class="section" id="page-debug">
+      <div class="page-header"><h1>🔍 Debug Center</h1><div class="subtitle">Erreichbar unter: http://IP:8085/debug</div></div>
+      <h2>Debug-URLs</h2>
+      <div class="table-wrap"><table>
+        <tr><th>URL</th><th>Beschreibung</th></tr>
+        <tr><td><code>/debug</code></td><td>Debug-Zentrale (UI) mit Live-Log und MQTT-Inspector</td></tr>
+        <tr><td><code>/docs</code></td><td>Swagger API (interaktiv)</td></tr>
+        <tr><td><code>/health</code></td><td>Health-Check</td></tr>
+        <tr><td><code>/api/scanner/network/info</code></td><td>Eigene IP + erkanntes Subnetz</td></tr>
+        <tr><td><code>/api/system/info</code></td><td>System-Status (Version, DB-Größe, Uptime)</td></tr>
+        <tr><td><code>/api/debug/printer/fingerprint</code></td><td>Alle Drucker-Ports auf einmal testen</td></tr>
+        <tr><td><code>/api/performance/</code></td><td>Langsame Anfragen, DB-Queries</td></tr>
+      </table></div>
+      <h2>Docker Logs</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code># Live-Log
+docker logs -f filamenthub
+
+# Nur Fehler
+docker logs filamenthub 2>&1 | grep -iE "error|exception|critical"
+
+# AMS / MQTT Aktivität
+docker logs -f filamenthub 2>&1 | grep -i "ams\|mqtt\|spool"
+
+# Container-IP prüfen (host-Modus Diagnose)
+docker exec filamenthub python3 -c "
+import socket; s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+s.connect(('8.8.8.8',80)); print('IP:', s.getsockname()[0])"</code></pre>
+    </div>
+
+    <!-- API -->
+    <div class="section" id="page-api">
+      <div class="page-header"><h1>🔌 API-Referenz</h1><div class="subtitle">Swagger UI: http://IP:8085/docs</div></div>
+      <div class="callout callout-info">Die vollständige interaktive API-Dokumentation ist unter <code>/docs</code> direkt in FilamentHub verfügbar.</div>
+      <h2>Wichtige Endpunkte</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Methode</th><th>Endpunkt</th><th>Beschreibung</th></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/health</code></td><td>Health-Check</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/api/spools</code></td><td>Alle Spulen</td></tr>
+        <tr><td><span class="badge badge-blue">POST</span></td><td><code>/api/spools</code></td><td>Neue Spule</td></tr>
+        <tr><td><span class="badge badge-yellow">PATCH</span></td><td><code>/api/spools/{id}/weight</code></td><td>Gewicht aktualisieren</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/api/jobs/active</code></td><td>Aktive Jobs</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/api/scanner/scan/quick</code></td><td>Quick Scan</td></tr>
+        <tr><td><span class="badge badge-blue">POST</span></td><td><code>/api/scanner/scan/network</code></td><td>Netzwerk-Scan (CIDR)</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/api/statistics/overview</code></td><td>Statistik-Übersicht</td></tr>
+        <tr><td><span class="badge badge-green">GET</span></td><td><code>/api/ams/overview</code></td><td>AMS-Status aller Drucker</td></tr>
+      </table></div>
+      <h2>Beispiele</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code># Alle Spulen abrufen
+curl http://localhost:8085/api/spools
+
+# Quick Scan
+curl http://localhost:8085/api/scanner/scan/quick
+
+# Netzwerk-Scan mit CIDR
+curl -X POST http://localhost:8085/api/scanner/scan/network \
+  -H "Content-Type: application/json" \
+  -d '{"ip_range": "192.168.1.0/24"}'
+
+# Gewicht aktualisieren
+curl -X PATCH http://localhost:8085/api/spools/1/weight \
+  -H "Content-Type: application/json" \
+  -d '{"current_weight_g": 500}'</code></pre>
+      <h2>Python Beispiel</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code>import requests
+BASE = "http://localhost:8085"
+
+spools = requests.get(f"{BASE}/api/spools").json()
+requests.patch(f"{BASE}/api/spools/1/weight", json={"current_weight_g": 500})</code></pre>
+    </div>
+
+    <!-- ARCHITEKTUR -->
+    <div class="section" id="page-architektur">
+      <div class="page-header"><h1>🏗️ Architektur</h1></div>
+      <h2>Systemübersicht</h2>
+      <div class="diagram">┌──────────────────────────────────────────────────────┐
+│                     FilamentHub                      │
+│                                                      │
+│  ┌──────────┐  ┌────────────────┐  ┌─────────────┐  │
+│  │ Frontend │  │  FastAPI       │  │   SQLite    │  │
+│  │  HTML/JS │◄─│  Backend       │◄─│  Datenbank  │  │
+│  │  Jinja2  │  │  Port 8085     │  │             │  │
+│  └──────────┘  └──────┬─────────┘  └─────────────┘  │
+└─────────────────────────│────────────────────────────┘
+                          │ LAN
+         ┌────────────────┼─────────────────┐
+         │                │                 │
+   ┌─────▼──────┐  ┌──────▼─────┐  ┌───────▼──────┐
+   │ Bambu Lab  │  │  Klipper   │  │ Bambu Cloud  │
+   │  Drucker   │  │ Moonraker  │  │    API       │
+   │ MQTT :8883 │  │ HTTP :7125 │  │  (Internet)  │
+   └────────────┘  └────────────┘  └──────────────┘</div>
+      <h2>Datenfluss: Bambu-Druck</h2>
+      <div class="diagram">Drucker startet Druck
+  → MQTT: device/{serial}/report → mqtt_payload_processor.py
+      ├── Job erstellen (falls neu)
+      ├── AMS-Slot-Status aktualisieren
+      └── Gewichts-Snapshot speichern
+  → Druck fertig: status="finish"
+  → Verbrauch = Snapshot Start − Snapshot Ende
+  → Weight History Eintrag angelegt</div>
+      <h2>Datenbankmodell</h2>
+      <div class="diagram">Material (1) ──── (N) Spool
+                          │
+                   (N) AMS Tray ── (1) AMS Unit ── (1) Printer
+                          │
+                   (N) JobSpoolUsage
+                          │
+                    (1) Job ─────────── (1) Printer
+                          │
+                   (N) WeightHistory</div>
+    </div>
+
+    <!-- FEHLER -->
+    <div class="section" id="page-fehler">
+      <div class="page-header"><h1>🛠️ Fehlerbehandlung</h1></div>
+      <h2>Drucker-Scanner findet nichts</h2>
+      <div class="callout callout-warn"><strong>Häufigste Ursache bei Docker:</strong> Container läuft im Bridge-Modus (172.17.x.x) statt host-Netzwerk.</div>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code># Netzwerk-Modus prüfen
+docker inspect filamenthub | grep NetworkMode
+# Muss sein: "NetworkMode": "host"
+
+# Korrigieren und neu starten:
+docker compose down && docker compose up -d</code></pre>
+      <p>Weitere Ursachen:</p>
+      <ul>
+        <li>Drucker in anderem Subnetz → Network Scan mit manuellem CIDR starten</li>
+        <li>Bambu "Privacy Mode" → Drucker-Display → Einstellungen → Lokales MQTT aktivieren</li>
+        <li>Firewall blockiert Port 8883/6000 → <code>nc -zv DRUCKER_IP 8883</code> testen</li>
+      </ul>
+      <h2>Drucker verbindet nicht (bleibt rot)</h2>
+      <ul>
+        <li>IP-Adresse korrekt?</li>
+        <li>Zugangscode korrekt? (Drucker-Display → Einstellungen → WLAN)</li>
+        <li>Seriennummer korrekt? (Aufkleber unten am Gerät)</li>
+        <li>Drucker und FilamentHub im gleichen Netzwerk?</li>
+      </ul>
+      <h2>AMS-Probleme</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Problem</th><th>Lösung</th></tr>
+        <tr><td>Neue Spule — Dialog-Fehler</td><td>F5 drücken, dann manuell in AMS Übersicht zuweisen</td></tr>
+        <tr><td>AMS Lite zeigt nur 1 von 2 Spulen</td><td><code>docker restart filamenthub</code>, dann AMS Lite neu laden</td></tr>
+        <tr><td>Slot zeigt "null"</td><td>Slot manuell in AMS Übersicht korrigieren</td></tr>
+      </table></div>
+      <h2>Job-Probleme</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Problem</th><th>Lösung</th></tr>
+        <tr><td>Job ohne Verbrauch</td><td>Druckaufträge → Job → "Verbrauch eintragen"</td></tr>
+        <tr><td>Dashboard zeigt "Unbekannt" bei 2 Drucken</td><td>Bekannter Bug — Druckaufträge-Seite zeigt korrekten Namen</td></tr>
+      </table></div>
+      <h2>Fehlermeldungen</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Meldung</th><th>Lösung</th></tr>
+        <tr><td><code>Connection refused :8883</code></td><td>IP oder Firewall prüfen</td></tr>
+        <tr><td><code>MQTT auth failed</code></td><td>Zugangscode am Drucker prüfen</td></tr>
+        <tr><td><code>Database is locked</code></td><td><code>docker restart filamenthub</code></td></tr>
+        <tr><td><code>network_mode: bridge</code></td><td><code>network_mode: host</code> setzen</td></tr>
+        <tr><td><code>Alembic version mismatch</code></td><td><code>docker exec filamenthub python -m alembic upgrade head</code></td></tr>
+      </table></div>
+      <h2>Schnelldiagnose</h2>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code>curl http://localhost:8085/health
+docker logs filamenthub --tail 50
+docker logs filamenthub 2>&1 | grep -iE "error|exception|critical"</code></pre>
+    </div>
+
+    <!-- FAQ -->
+    <div class="section" id="page-faq">
+      <div class="page-header"><h1>❓ FAQ — Häufige Fragen</h1></div>
+      <h3>Funktioniert FilamentHub ohne Internet?</h3>
+      <p>Ja. MQTT läuft lokal im LAN. Bambu Cloud ist optional.</p><hr>
+      <h3>Kann ich mehrere Drucker gleichzeitig nutzen?</h3>
+      <p>Ja. Beliebig viele — Bambu, Klipper und manuelle Drucker können gemischt werden.</p><hr>
+      <h3>Muss ich für jeden Druck manuell eintragen?</h3>
+      <p>Nein. Bei MQTT-Verbindung wird alles automatisch getrackt.</p><hr>
+      <h3>Warum muss <code>network_mode: host</code> gesetzt sein?</h3>
+      <p>Im Bridge-Modus sieht der Container nur das Docker-interne Netz (172.17.x.x), nicht dein Heimnetz. Mit host-Modus teilt er den Netzwerk-Stack des Hosts.</p><hr>
+      <h3>Geht FilamentHub auf Synology ohne SSH?</h3>
+      <p>Eingeschränkt. Der Scanner funktioniert nicht (kein host-Mode im GUI). Drucker können aber manuell per IP hinzugefügt werden.</p><hr>
+      <h3>Kann ich FilamentHub auf Raspberry Pi betreiben?</h3>
+      <p>Ja. Das Docker-Image ist ARM-kompatibel (python:3.12-slim-bookworm).</p><hr>
+      <h3>Wie genau ist die AMS-Gewichtsmessung?</h3>
+      <p>Frische Spulen: ±5%. Fast leere Spulen: ±20%. Für präzise Werte: Spule wiegen und manuell eintragen.</p><hr>
+      <h3>Warum zeigt ein Job "0g Verbrauch"?</h3>
+      <p>MQTT war unterbrochen oder Spule war nicht zugewiesen. Lösung: Druckaufträge → Job → "Verbrauch eintragen".</p><hr>
+      <h3>Ist Bambu Cloud Pflicht?</h3>
+      <p>Nein. FilamentHub funktioniert vollständig ohne Cloud.</p><hr>
+      <h3>Unterschied AMS und AMS Lite?</h3>
+      <p><strong>AMS Full:</strong> X1C, P1S, P1P — bis zu 16 Slots. <strong>AMS Lite:</strong> A1, A1 Mini — 4 Slots, vereinfachte Hardware.</p><hr>
+      <h3>Wo liegt die Datenbank?</h3>
+      <p>Docker: <code>/app/data/filamenthub.db</code> (im gemappten Volume). Windows: Pfad aus <code>FILAMENTHUB_DB_PATH</code> in <code>.env</code>.</p><hr>
+      <h3>Backup ohne Unterbrechung?</h3>
+      <pre><button class="copy-btn" onclick="copyCode(this)">Kopieren</button><code>docker exec filamenthub sqlite3 /app/data/filamenthub.db ".backup /app/data/backup.db"</code></pre>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const pageNames = {
+  home:'Übersicht', install:'Installation', start:'Erste Schritte',
+  drucker:'Drucker', spulen:'Spulen', materialien:'Materialien',
+  ams:'AMS', jobs:'Druckaufträge', statistiken:'Statistiken',
+  gewicht:'Gewichts-Management', cloud:'Bambu Cloud', klipper:'Klipper & MMU',
+  konfiguration:'Konfiguration', sicherheit:'Sicherheit', update:'Update & Backup',
+  debug:'Debug Center', api:'API-Referenz', architektur:'Architektur',
+  fehler:'Fehlerbehandlung', faq:'FAQ'
+};
+
+function showPage(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const p = document.getElementById('page-' + id);
+  if (p) { p.classList.add('active'); document.getElementById('main').scrollTop = 0; }
+  const n = document.querySelector('.nav-item[data-page="' + id + '"]');
+  if (n) n.classList.add('active');
+  document.getElementById('current-page-title').textContent = pageNames[id] || id;
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('show');
+  }
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => showPage(item.dataset.page));
+});
+
+// Search — all DOM, no innerHTML for user content
+const searchIndex = [];
+document.querySelectorAll('.section').forEach(sec => {
+  const id = sec.id.replace('page-', '');
+  searchIndex.push({ id, title: pageNames[id] || id, text: sec.innerText });
+});
+
+const searchEl = document.getElementById('search');
+const resultsEl = document.getElementById('search-results');
+const navMain = document.getElementById('nav-main');
+
+searchEl.addEventListener('input', function () {
+  const q = this.value.trim().toLowerCase();
+  resultsEl.textContent = '';
+  if (!q) { resultsEl.style.display = 'none'; navMain.style.display = 'block'; return; }
+  navMain.style.display = 'none';
+  resultsEl.style.display = 'block';
+  const hits = searchIndex.filter(p => p.text.toLowerCase().includes(q) || p.title.toLowerCase().includes(q)).slice(0, 8);
+  if (!hits.length) {
+    const e = document.createElement('div');
+    e.className = 'sr-empty';
+    e.textContent = 'Keine Ergebnisse für "' + q + '"';
+    resultsEl.appendChild(e);
+    return;
+  }
+  hits.forEach(m => {
+    const idx = m.text.toLowerCase().indexOf(q);
+    const raw = idx >= 0 ? m.text.slice(Math.max(0, idx - 30), idx + 70).replace(/\n/g, ' ') : '';
+    const item = document.createElement('div');
+    item.className = 'sr-item';
+    item.addEventListener('click', () => {
+      showPage(m.id);
+      searchEl.value = '';
+      resultsEl.style.display = 'none';
+      navMain.style.display = 'block';
+    });
+    const title = document.createElement('div');
+    title.className = 'sr-title';
+    title.textContent = m.title;
+    const preview = document.createElement('div');
+    preview.className = 'sr-preview';
+    preview.textContent = raw ? '…' + raw + '…' : '';
+    item.appendChild(title);
+    item.appendChild(preview);
+    resultsEl.appendChild(item);
+  });
+});
+
+function copyCode(btn) {
+  const code = btn.nextElementSibling;
+  navigator.clipboard.writeText(code.innerText).then(() => {
+    btn.textContent = 'Kopiert!';
+    setTimeout(() => { btn.textContent = 'Kopieren'; }, 1500);
+  });
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+document.getElementById('overlay').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+});
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement !== searchEl) { e.preventDefault(); searchEl.focus(); }
+  if (e.key === 'Escape') { searchEl.value = ''; resultsEl.style.display = 'none'; navMain.style.display = 'block'; searchEl.blur(); }
+});
+</script>
+</body>
+</html>

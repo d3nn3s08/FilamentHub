@@ -1,0 +1,82 @@
+{% extends "layout.html" %}
+
+{% block title %}Weight History - FilamentHub{% endblock %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='css/weight_history.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="weight-history-page">
+    <!-- Top: Spulen-Grid -->
+    <div class="spools-grid-container">
+        <div class="grid-header">
+            <div class="grid-title-section">
+                <h3 class="grid-title">🧵 Spulen-Auswahl</h3>
+                <div class="status-legend">
+                    <div class="legend-item">
+                        <div class="legend-dot active"></div>
+                        <span>Aktiv</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot low"></div>
+                        <span>Niedrig (&lt;200g)</span>
+                    </div>
+                </div>
+            </div>
+            <div class="search-box">
+                <input type="text" id="spool-search" placeholder="Suchen..." />
+            </div>
+        </div>
+
+        <!-- Grid -->
+        <div class="spools-grid" id="spools-grid">
+            <!-- Dynamically populated by JS -->
+        </div>
+    </div>
+
+    <!-- Bottom: Weight History Timeline -->
+    <div class="history-section">
+        <!-- Header -->
+        <div class="history-header">
+            <div class="header-left">
+                <h2 class="history-title">📊 Weight History</h2>
+                <p class="history-subtitle" id="history-subtitle">
+                    <!-- Populated by JS -->
+                </p>
+            </div>
+            <div class="header-right">
+                <div class="current-weight-large" id="current-weight-display">-</div>
+                <div class="current-weight-label">Aktuell</div>
+            </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-buttons" id="filter-buttons">
+            <!-- Dynamically populated by JS -->
+        </div>
+
+        <!-- Archive Info Box (hidden by default) -->
+        <div class="archive-info-box" id="archive-info-box" style="display: none;">
+            <div class="archive-title">📜 Archivierte Spulen mit Nummer <span id="archive-number"></span>:</div>
+            <div id="archive-list"></div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="history-timeline" id="history-timeline">
+            <!-- Dynamically populated by JS -->
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="empty-state" style="display: none;">
+            <div class="empty-icon">📭</div>
+            <div class="empty-title">Keine Einträge gefunden</div>
+            <div class="empty-text">Für diese Spule gibt es noch keine History</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='js/weight_history.js') }}"></script>
+{% endblock %}

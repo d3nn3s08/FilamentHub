@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            background: #111;
+            color: #f5f5f5;
+            font-family: system-ui, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            margin-top: 0;
+        }
+        a {
+            color: #4fc3f7;
+        }
+        .card {
+            background: #1b1b1b;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>FilamentHub</h1>
+    <p>Backend läuft. Dies ist das minimale Dashboard.</p>
+
+    <div class="card">
+        <h2>API testen</h2>
+        <ul>
+            <li><a href="/api/hello" target="_blank">/api/hello</a></li>
+            <li><a href="/docs" target="_blank">Swagger UI /docs</a></li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>Material-API (CRUD)</h2>
+        <p>Basisendpunkte:</p>
+        <ul>
+            <li>GET /api/materials/</li>
+            <li>POST /api/materials/</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <h2>Spulen-API (CRUD)</h2>
+        <ul>
+            <li>GET /api/spools/</li>
+            <li>POST /api/spools/</li>
+        </ul>
+    </div>
+</body>
+</html>

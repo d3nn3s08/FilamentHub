@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LCARS - ADMIN ACCESS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            font-family: 'Antonio', sans-serif;
+            overflow: hidden;
+            position: relative;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Starfield Background */
+        .starfield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: #fff;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        /* LCARS Container */
+        .lcars-container {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 800px;
+            height: 500px;
+            display: flex;
+        }
+
+        /* Left Panel */
+        .lcars-left {
+            width: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .lcars-bar {
+            background: #ff9966;
+            border-radius: 0 30px 30px 0;
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .lcars-bar:hover {
+            filter: brightness(1.2);
+            transform: translateX(5px);
+        }
+
+        .lcars-bar.orange { background: #ff9966; }
+        .lcars-bar.blue { background: #9999ff; }
+        .lcars-bar.purple { background: #cc99cc; }
+        .lcars-bar.yellow { background: #ffcc99; }
+        .lcars-bar.pink { background: #ff99cc; }
+
+        /* Main Panel */
+        .lcars-main {
+            flex: 1;
+            margin-left: 20px;
+            background: linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(20,20,40,0.9) 100%);
+            border: 3px solid #9999ff;
+            border-radius: 20px;
+            padding: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .lcars-main::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #ff9966, #9999ff, #cc99cc, #ffcc99);
+        }
+
+        /* Header */
+        .lcars-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .lcars-title {
+            font-size: 48px;
+            font-weight: 700;
+            color: #ff9966;
+            text-transform: uppercase;
+            letter-spacing: 8px;
+            text-shadow: 0 0 20px rgba(255, 153, 102, 0.8);
+            margin-bottom: 10px;
+        }
+
+        .lcars-subtitle {
+            font-size: 18px;
+            color: #9999ff;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        /* Form */
+        .lcars-form {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            color: #ffcc99;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #9999ff;
+            border-radius: 30px;
+            color: #fff;
+            font-family: 'Antonio', sans-serif;
+            font-size: 18px;
+            letter-spacing: 2px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #ff9966;
+            box-shadow: 0 0 20px rgba(255, 153, 102, 0.5);
+        }
+
+        .lcars-button {
+            width: 100%;
+            padding: 15px;
+            background: #ff9966;
+            border: none;
+            border-radius: 30px;
+            color: #000;
+            font-family: 'Antonio', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .lcars-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .lcars-button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .lcars-button:hover {
+            filter: brightness(1.2);
+            transform: scale(1.02);
+        }
+
+        .lcars-button:active {
+            transform: scale(0.98);
+        }
+
+        /* Error Display */
+        .lcars-error {
+            display: none;
+            background: rgba(255, 0, 0, 0.2);
+            border: 2px solid #ff0000;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 25px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .lcars-error.active {
+            display: block;
+            animation: errorPulse 0.5s ease-in-out;
+        }
+
+        @keyframes errorPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .error-text {
+            color: #ff0000;
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+        }
+
+        /* Fractal Encryption Code */
+        .fractal-encryption {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .fractal-encryption.active {
+            display: flex;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .fractal-container {
+            text-align: center;
+        }
+
+        .fractal-title {
+            font-size: 32px;
+            color: #ff0000;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+            animation: glitchText 0.3s infinite;
+        }
+
+        @keyframes glitchText {
+            0%, 100% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(2px, -2px); }
+            60% { transform: translate(-2px, -2px); }
+            80% { transform: translate(2px, 2px); }
+        }
+
+        .fractal-code {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #ff0000;
+            line-height: 1.4;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+            animation: codeScroll 2s linear infinite;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        @keyframes codeScroll {
+            0% { opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { opacity: 0.3; }
+        }
+
+        /* Status Indicators */
+        .status-indicators {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .status-light {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink {
+            0%, 49%, 100% { opacity: 1; }
+            50%, 99% { opacity: 0.3; }
+        }
+
+        .status-light.orange { background: #ff9966; box-shadow: 0 0 10px #ff9966; }
+        .status-light.blue { background: #9999ff; box-shadow: 0 0 10px #9999ff; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .lcars-left { display: none; }
+            .lcars-main { margin-left: 0; }
+            .lcars-title { font-size: 32px; letter-spacing: 4px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Starfield Background -->
+    <div class="starfield" id="starfield"></div>
+
+    <!-- Fractal Encryption Overlay -->
+    <div class="fractal-encryption" id="fractalEncryption">
+        <div class="fractal-container">
+            <div class="fractal-title">⚠ ACCESS DENIED ⚠</div>
+            <div class="fractal-code" id="fractalCode">
+                INITIATING FRACTAL ENCRYPTION SEQUENCE...<br>
+                0xF4A7C3E9 0x8B2D1F56 0xE932A7C4 0x7D4E8F21<br>
+                0x3C9B6A45 0xA18F5E73 0x6E4D2B89 0xF7C3A194<br>
+                0x2E8A5D67 0xB94F1C32 0x5A7E3D91 0xC6B2F458<br>
+                ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯<br>
+                ENCRYPTION MATRIX: ROTATING PRIME ALGORITHM<br>
+                SECURITY PROTOCOL: OMEGA-7<br>
+                ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯<br>
+                TERMINAL LOCKED: RETRY IN 3 SECONDS...
+            </div>
+        </div>
+    </div>
+
+    <!-- LCARS Login Interface -->
+    <div class="lcars-container">
+        <!-- Left Panel -->
+        <div class="lcars-left">
+            <div class="lcars-bar orange">SYSTEM</div>
+            <div class="lcars-bar blue">ACCESS</div>
+            <div class="lcars-bar purple">CONTROL</div>
+            <div class="lcars-bar yellow">STATUS</div>
+            <div class="lcars-bar pink">SECURE</div>
+        </div>
+
+        <!-- Main Panel -->
+        <div class="lcars-main">
+            <div class="lcars-header">
+                <div class="lcars-title">LCARS</div>
+                <div class="lcars-subtitle">Library Computer Access/Retrieval System</div>
+            </div>
+
+            <form class="lcars-form" id="adminLoginForm">
+                <div class="lcars-error" id="loginError">
+                    <div class="error-text">ACCESS DENIED - INVALID CREDENTIALS</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Enter Authorization Code</label>
+                    <input type="password" class="form-input" name="password" placeholder="••••••••" required autocomplete="off">
+                </div>
+
+                <button type="submit" class="lcars-button">
+                    <span style="position: relative; z-index: 1;">ACCESS SYSTEM</span>
+                </button>
+            </form>
+
+            <div class="status-indicators">
+                <div class="status-light"></div>
+                <div class="status-light orange"></div>
+                <div class="status-light blue"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate Starfield
+        function createStarfield() {
+            const starfield = document.getElementById('starfield');
+            for (let i = 0; i < 100; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                starfield.appendChild(star);
+            }
+        }
+        createStarfield();
+
+        // Login Form Handler
+        document.getElementById('adminLoginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const form = new FormData(this);
+            const errorDiv = document.getElementById('loginError');
+            const fractal = document.getElementById('fractalEncryption');
+
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    body: form
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    // Success - redirect
+                    window.location.href = '/admin';
+                } else {
+                    // Show fractal encryption error
+                    errorDiv.classList.add('active');
+                    fractal.classList.add('active');
+
+                    // Hide fractal after 3 seconds
+                    setTimeout(() => {
+                        fractal.classList.remove('active');
+                    }, 3000);
+
+                    // Hide error after 5 seconds
+                    setTimeout(() => {
+                        errorDiv.classList.remove('active');
+                    }, 5000);
+                }
+            } catch (error) {
+                errorDiv.classList.add('active');
+                setTimeout(() => {
+                    errorDiv.classList.remove('active');
+                }, 5000);
+            }
+        });
+
+        // Animated Fractal Code
+        function animateFractalCode() {
+            const codes = [
+                '0xF4A7C3E9 0x8B2D1F56 0xE932A7C4 0x7D4E8F21',
+                '0x3C9B6A45 0xA18F5E73 0x6E4D2B89 0xF7C3A194',
+                '0x2E8A5D67 0xB94F1C32 0x5A7E3D91 0xC6B2F458',
+                '0x9F3E7A21 0x4D8C1B65 0xE7A3F294 0x5B6D8C17'
+            ];
+
+            setInterval(() => {
+                const fractalCode = document.getElementById('fractalCode');
+                if (fractalCode && document.getElementById('fractalEncryption').classList.contains('active')) {
+                    const randomCodes = codes.sort(() => Math.random() - 0.5);
+                    fractalCode.innerHTML = `
+                        INITIATING FRACTAL ENCRYPTION SEQUENCE...<br>
+                        ${randomCodes[0]}<br>
+                        ${randomCodes[1]}<br>
+                        ${randomCodes[2]}<br>
+                        ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯<br>
+                        ENCRYPTION MATRIX: ROTATING PRIME ALGORITHM<br>
+                        SECURITY PROTOCOL: OMEGA-7<br>
+                        ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯<br>
+                        TERMINAL LOCKED: RETRY IN 3 SECONDS...
+                    `;
+                }
+            }, 300);
+        }
+        animateFractalCode();
+    </script>
+</body>
+</html>

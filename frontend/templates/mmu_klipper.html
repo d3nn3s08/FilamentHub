@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+{% set page_title = "MMU-Klipper" %}
+{% set page_subtitle = "Happy Hare / Moonraker Integration" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='css/mmu_klipper.css') }}">
+
+<div id="hhMmuRoot" class="hh-mmu-root"></div>
+
+<script src="{{ url_for('frontend_static', path='mmu_klipper.js') }}"></script>
+{% endblock %}

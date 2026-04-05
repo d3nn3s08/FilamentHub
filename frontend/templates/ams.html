@@ -1,0 +1,348 @@
+{% extends "layout.html" %}
+{% set page_title = "AMS Uebersicht" %}
+{% set page_subtitle = "Live-Monitoring der Automatic Material System Einheiten" %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='ams.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="loading-spinner"></div>
+    <p>Lade AMS-Daten...</p>
+</div>
+
+<!-- AMS Status Cards -->
+<section class="ams-stats requires-ams">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <!-- AMS / Spulenhalter Icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="3"/>
+                <line x1="12" y1="2" x2="12" y2="9"/>
+                <line x1="12" y1="15" x2="12" y2="22"/>
+                <line x1="2" y1="12" x2="9" y2="12"/>
+                <line x1="15" y1="12" x2="22" y2="12"/>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-label">Online AMS</div>
+            <div class="stat-value" id="amsOnlineCount">0</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">
+            <!-- Spule / Thread Icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/>
+                <path d="M12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4z"/>
+                <path d="M4.93 4.93l4.24 4.24"/>
+                <path d="M14.83 14.83l4.24 4.24"/>
+                <path d="M4.93 19.07l4.24-4.24"/>
+                <path d="M14.83 9.17l4.24-4.24"/>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-label">Aktive Slots</div>
+            <div class="stat-value" id="amsActiveSlots">0</div>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">
+            <!-- Paket / Filament-Gewicht Icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16.5 9.4l-9-5.19"/>
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-label">AMS Restfilament</div>
+            <div class="stat-value" id="amsAvailableFilament">0kg</div>
+        </div>
+    </div>
+
+    <div class="stat-card stat-card-alerts">
+        <div class="stat-icon">
+            <!-- Warnung Icon -->
+            <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+        </div>
+        <div class="stat-content">
+            <div class="stat-label">Warnungen</div>
+            <div class="stat-value" id="amsWarningCount">0</div>
+        </div>
+    </div>
+</section>
+
+<!-- AMS Units Grid -->
+<section class="ams-grid requires-ams">
+    <div class="ams-single-view">
+        <!-- AMS Unit 1 -->
+        <div class="ams-unit" data-ams="1">
+        <div class="ams-header">
+            <div class="ams-title">
+                <span class="ams-icon">AMS</span>
+                <div>
+                    <h3>AMS #1</h3>
+                    <div class="ams-meta">
+                        <span class="ams-serial" id="amsSerial1">SN: -</span>
+                    </div>
+                </div>
+            </div>
+            <div class="ams-status-group">
+                <div class="ams-status" id="amsStatus1">
+                    <span class="status-badge status-offline">Offline</span>
+                </div>
+                <div class="ams-printer" id="amsPrinter1">
+                    <span class="printer-badge">Kein Drucker</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="ams-slots" id="amsSlots1">
+            <!-- Slots werden von JavaScript gefuellt -->
+            <div class="slot-empty ams-slot" data-slot="1">
+                <div class="slot-number">Slot 1</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty ams-slot" data-slot="2">
+                <div class="slot-number">Slot 2</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty ams-slot" data-slot="3">
+                <div class="slot-number">Slot 3</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty ams-slot" data-slot="4">
+                <div class="slot-number">Slot 4</div>
+                <div class="slot-label">Leer</div>
+            </div>
+        </div>
+        </div>
+
+        <!-- AMS Unit 2 -->
+        <div class="ams-unit" data-ams="2">
+        <div class="ams-header">
+            <div class="ams-title">
+                <span class="ams-icon">AMS</span>
+                <div>
+                    <h3>AMS #2</h3>
+                    <div class="ams-meta">
+                        <span class="ams-serial" id="amsSerial2">SN: -</span>
+                    </div>
+                </div>
+            </div>
+            <div class="ams-status-group">
+                <div class="ams-status" id="amsStatus2">
+                    <span class="status-badge status-offline">Offline</span>
+                </div>
+                <div class="ams-printer" id="amsPrinter2">
+                    <span class="printer-badge">Kein Drucker</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="ams-slots" id="amsSlots2">
+            <div class="slot-empty ams-slot" data-slot="1">
+                <div class="slot-number">Slot 1</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty ams-slot" data-slot="2">
+                <div class="slot-number">Slot 2</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty ams-slot" data-slot="3">
+                <div class="slot-number">Slot 3</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty ams-slot" data-slot="4">
+                <div class="slot-number">Slot 4</div>
+                <div class="slot-label">Leer</div>
+            </div>
+        </div>
+        </div>
+
+        <!-- AMS Unit 3 -->
+        <div class="ams-unit" data-ams="3">
+        <div class="ams-header">
+            <div class="ams-title">
+                <span class="ams-icon">AMS</span>
+                <div>
+                    <h3>AMS #3</h3>
+                    <div class="ams-meta">
+                        <span class="ams-serial" id="amsSerial3">SN: -</span>
+                    </div>
+                </div>
+            </div>
+            <div class="ams-status-group">
+                <div class="ams-status" id="amsStatus3">
+                    <span class="status-badge status-offline">Offline</span>
+                </div>
+                <div class="ams-printer" id="amsPrinter3">
+                    <span class="printer-badge">Kein Drucker</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="ams-slots" id="amsSlots3">
+            <div class="slot-empty ams-slot" data-slot="1">
+                <div class="slot-number">Slot 1</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty ams-slot" data-slot="2">
+                <div class="slot-number">Slot 2</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty ams-slot" data-slot="3">
+                <div class="slot-number">Slot 3</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty ams-slot" data-slot="4">
+                <div class="slot-number">Slot 4</div>
+                <div class="slot-label">Leer</div>
+            </div>
+        </div>
+        </div>
+
+        <!-- AMS Unit 4 -->
+        <div class="ams-unit" data-ams="4">
+        <div class="ams-header">
+            <div class="ams-title">
+                <span class="ams-icon">AMS</span>
+                <div>
+                    <h3>AMS #4</h3>
+                    <div class="ams-meta">
+                        <span class="ams-serial" id="amsSerial4">SN: -</span>
+                    </div>
+                </div>
+            </div>
+            <div class="ams-status-group">
+                <div class="ams-status" id="amsStatus4">
+                    <span class="status-badge status-offline">Offline</span>
+                </div>
+                <div class="ams-printer" id="amsPrinter4">
+                    <span class="printer-badge">Kein Drucker</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="ams-slots" id="amsSlots4">
+            <div class="slot-empty ams-slot" data-slot="1">
+                <div class="slot-number">Slot 1</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty ams-slot" data-slot="2">
+                <div class="slot-number">Slot 2</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty ams-slot" data-slot="3">
+                <div class="slot-number">Slot 3</div>
+                <div class="slot-label">Leer</div>
+            </div>
+            <div class="slot-empty ams-slot" data-slot="4">
+                <div class="slot-number">Slot 4</div>
+                <div class="slot-label">Leer</div>
+            </div>
+        </div>
+        </div>
+    </div>
+    <div class="ams-multi-view" style="display: none;">
+        <!-- Multi AMS Slots -->
+    </div>
+</section>
+
+<!-- Notification Toast -->
+<div id="notification" class="notification"></div>
+
+<!-- Quick-Assign Modal -->
+<div id="assignModal" class="modal requires-ams">
+    <div class="modal-content" style="max-width: 650px;">
+        <div class="modal-header">
+            <h2 id="assignModalTitle">Spule zuweisen</h2>
+            <button class="modal-close" onclick="closeAssignModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="spoolSearch" style="font-weight: 600; margin-bottom: 8px; display: block; color: var(--text);">
+                    Spule suchen
+                </label>
+                <input
+                    type="text"
+                    id="spoolSearch"
+                    class="form-control"
+                    placeholder="Nummer (#5) oder Name eingeben..."
+                    autofocus
+                    style="font-size: 1rem; padding: 12px; background: var(--panel-2); border: 2px solid var(--border); color: var(--text);">
+                <small style="color: var(--text-dim); font-size: 0.875rem; margin-top: 6px; display: block;">
+                    Suche nach Nummer, Name, Hersteller oder Farbe
+                </small>
+            </div>
+
+            <div id="spoolSearchResults" style="margin-top: 20px; max-height: 450px; overflow-y: auto;">
+                <!-- Wird dynamisch gefuellt -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Unassign Modal -->
+<div id="confirmUnassignModal" class="modal requires-ams">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header">
+            <h2>Spule entfernen?</h2>
+            <button class="modal-close" onclick="closeConfirmUnassignModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="margin: 0; color: var(--text); font-size: 1rem;">
+                Moechtest du die Spule <strong id="confirmSpoolName">wirklich aus dem Slot entfernen</strong>?
+            </p>
+            <p style="margin: 12px 0 0 0; color: var(--text-dim); font-size: 0.9rem;">
+                Die Spule wird wieder als verfuegbar markiert.
+            </p>
+        </div>
+        <div style="padding: 0 24px 24px 24px; display: flex; gap: 12px; justify-content: flex-end;">
+            <button onclick="closeConfirmUnassignModal()" class="btn" style="background: var(--panel-2); color: var(--text);">
+                Abbrechen
+            </button>
+            <button onclick="confirmUnassignSpool()" class="btn btn-danger" style="background: var(--error); color: white;">
+                Entfernen
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- AMS Conflict Modal -->
+<div id="amsConflictModal" class="modal requires-ams" style="display: none;">
+    <div class="modal-content" style="max-width:520px;">
+        <div class="modal-header">
+            <h2 id="ams-conflict-title">AMS Konflikt</h2>
+            <button class="modal-close" onclick="closeAmsConflictModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="ams-conflict-text">Im AMS wurde eine neue Spule mit RFID erkannt. Der Slot ist aktuell manuell belegt.</p>
+        </div>
+        <div style="padding: 0 24px 24px 24px; display: flex; gap: 12px; justify-content: flex-end;">
+            <button id="ams-conflict-cancel-btn" class="btn" onclick="onAmsConflictCancel()">Abbrechen</button>
+            <button id="ams-conflict-confirm-btn" class="btn" style="background:var(--accent); color:white;" onclick="onAmsConflictConfirm()">RFID-Spule uebernehmen</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- AMS Lite Modul (A1/A1 Mini - externer Slot) - muss VOR ams.js geladen werden -->
+<script src="{{ url_for('frontend_static', path='ams_lite.js') }}"></script>
+<!-- AMS Haupt-Modul (regulaeres AMS mit 4 Slots) -->
+<script src="{{ url_for('frontend_static', path='ams.js') }}"></script>
+{% endblock %}

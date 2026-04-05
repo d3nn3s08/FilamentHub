@@ -1,0 +1,372 @@
+{% extends "layout.html" %}
+
+{% block title %}Performance Monitoring{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>
+                <i class="bi bi-speedometer2"></i> Performance Monitoring
+            </h2>
+            <p class="text-muted">Real-time system health and API performance metrics</p>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary" onclick="refreshDashboard()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+            <button class="btn btn-outline-danger" onclick="resetStats()" id="resetBtn">
+                <i class="bi bi-trash"></i> Reset Stats
+            </button>
+        </div>
+    </div>
+
+    <!-- Health Status Card -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card" id="healthCard">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-heart-pulse"></i> System Health
+                    </h5>
+                    <span class="badge" id="healthBadge">Loading...</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6 class="text-muted">Total Requests</h6>
+                                <h3 id="totalRequests">-</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6 class="text-muted">Error Rate</h6>
+                                <h3 id="errorRate">-</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6 class="text-muted">Avg Response (5min)</h6>
+                                <h3 id="recentAvg">-</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h6 class="text-muted">Uptime</h6>
+                                <h3 id="uptime">-</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts Card -->
+    <div class="row mb-4" id="alertsSection" style="display: none;">
+        <div class="col-md-12">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-triangle"></i> Active Alerts
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="alertsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Endpoint Performance Card -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bar-chart"></i> Endpoint Performance
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Endpoint</th>
+                                    <th>Requests</th>
+                                    <th>Avg (ms)</th>
+                                    <th>Min (ms)</th>
+                                    <th>Max (ms)</th>
+                                    <th>Errors</th>
+                                    <th>Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody id="endpointsTable">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Requests Card -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history"></i> Recent Requests (Last 5 Minutes)
+                    </h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="loadSlowRequests()">
+                            Show Slow Requests (>1s)
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm table-striped">
+                            <thead style="position: sticky; top: 0; background: white; z-index: 10;">
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Method</th>
+                                    <th>Endpoint</th>
+                                    <th>Duration</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentRequestsTable">
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.badge-excellent { background-color: #28a745; }
+.badge-good { background-color: #17a2b8; }
+.badge-acceptable { background-color: #ffc107; color: #000; }
+.badge-poor { background-color: #dc3545; }
+.badge-healthy { background-color: #28a745; }
+.badge-degraded { background-color: #ffc107; color: #000; }
+.badge-unhealthy { background-color: #dc3545; }
+
+.alert-item {
+    padding: 10px;
+    margin-bottom: 10px;
+    border-left: 4px solid;
+}
+.alert-critical { border-color: #dc3545; background-color: #f8d7da; }
+.alert-error { border-color: #fd7e14; background-color: #fff3cd; }
+.alert-warning { border-color: #ffc107; background-color: #fff3cd; }
+</style>
+
+<script>
+let refreshInterval = null;
+
+async function loadHealthReport() {
+    try {
+        const response = await fetch('/api/monitoring/health');
+        const data = await response.json();
+
+        // Update health badge
+        const healthBadge = document.getElementById('healthBadge');
+        healthBadge.textContent = data.status;
+        healthBadge.className = 'badge badge-' + data.status.toLowerCase();
+
+        // Update metrics
+        document.getElementById('totalRequests').textContent = data.metrics.total_requests.toLocaleString();
+        document.getElementById('errorRate').textContent = (data.metrics.error_rate * 100).toFixed(2) + '%';
+        document.getElementById('recentAvg').textContent = data.metrics.recent_avg_ms.toFixed(1) + 'ms';
+
+        // Uptime
+        const uptimeSeconds = data.metrics.uptime_seconds || data.uptime_seconds;
+        const hours = Math.floor(uptimeSeconds / 3600);
+        const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+        document.getElementById('uptime').textContent = `${hours}h ${minutes}m`;
+
+    } catch (error) {
+        console.error('Failed to load health report:', error);
+    }
+}
+
+async function loadAlerts() {
+    try {
+        const response = await fetch('/api/monitoring/alerts');
+        const data = await response.json();
+
+        const alertsSection = document.getElementById('alertsSection');
+        const alertsList = document.getElementById('alertsList');
+
+        if (data.alert_count === 0) {
+            alertsSection.style.display = 'none';
+            return;
+        }
+
+        alertsSection.style.display = 'block';
+        alertsList.innerHTML = data.alerts.map(alert => `
+            <div class="alert-item alert-${alert.severity.toLowerCase()}">
+                <strong>${alert.severity}:</strong> ${alert.message}
+                <small class="text-muted">(${alert.type})</small>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Failed to load alerts:', error);
+    }
+}
+
+async function loadEndpoints() {
+    try {
+        const response = await fetch('/api/monitoring/endpoints?top_n=20');
+        const data = await response.json();
+
+        const table = document.getElementById('endpointsTable');
+
+        if (data.length === 0) {
+            table.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No data yet</td></tr>';
+            return;
+        }
+
+        table.innerHTML = data.map(ep => {
+            const ratingClass = ep.rating.toLowerCase();
+            return `
+                <tr>
+                    <td><code>${ep.endpoint}</code></td>
+                    <td>${ep.requests}</td>
+                    <td>${ep.avg_ms}</td>
+                    <td>${ep.min_ms}</td>
+                    <td>${ep.max_ms}</td>
+                    <td>${ep.errors > 0 ? `<span class="text-danger">${ep.errors}</span>` : ep.errors}</td>
+                    <td><span class="badge badge-${ratingClass}">${ep.rating}</span></td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Failed to load endpoints:', error);
+    }
+}
+
+async function loadRecentRequests() {
+    try {
+        const response = await fetch('/api/monitoring/recent?minutes=5&limit=100');
+        const data = await response.json();
+
+        const table = document.getElementById('recentRequestsTable');
+
+        if (data.length === 0) {
+            table.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No recent requests</td></tr>';
+            return;
+        }
+
+        table.innerHTML = data.slice().reverse().map(req => {
+            const time = new Date(req.timestamp).toLocaleTimeString();
+            const statusClass = req.status_code >= 400 ? 'text-danger' : 'text-success';
+            const durationClass = req.duration_ms > 1000 ? 'text-danger fw-bold' : req.duration_ms > 500 ? 'text-warning' : '';
+
+            return `
+                <tr>
+                    <td><small>${time}</small></td>
+                    <td><span class="badge bg-secondary">${req.method}</span></td>
+                    <td><code>${req.endpoint}</code></td>
+                    <td class="${durationClass}">${req.duration_ms}ms</td>
+                    <td class="${statusClass}">${req.status_code}</td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Failed to load recent requests:', error);
+    }
+}
+
+async function loadSlowRequests() {
+    try {
+        const response = await fetch('/api/monitoring/slow-requests?threshold_ms=1000');
+        const data = await response.json();
+
+        const table = document.getElementById('recentRequestsTable');
+
+        if (data.requests.length === 0) {
+            table.innerHTML = '<tr><td colspan="5" class="text-center text-success">No slow requests! 🎉</td></tr>';
+            return;
+        }
+
+        table.innerHTML = data.requests.slice().reverse().map(req => {
+            const time = new Date(req.timestamp).toLocaleTimeString();
+            const statusClass = req.status_code >= 400 ? 'text-danger' : 'text-warning';
+
+            return `
+                <tr>
+                    <td><small>${time}</small></td>
+                    <td><span class="badge bg-secondary">${req.method}</span></td>
+                    <td><code>${req.endpoint}</code></td>
+                    <td class="text-danger fw-bold">${req.duration_ms}ms</td>
+                    <td class="${statusClass}">${req.status_code}</td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Failed to load slow requests:', error);
+    }
+}
+
+async function resetStats() {
+    if (!confirm('Are you sure you want to reset all monitoring statistics? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/monitoring/reset', { method: 'POST' });
+        const data = await response.json();
+
+        if (response.ok) {
+            alert('Statistics reset successfully');
+            refreshDashboard();
+        } else {
+            alert('Failed to reset statistics');
+        }
+    } catch (error) {
+        console.error('Failed to reset stats:', error);
+        alert('Error resetting statistics');
+    }
+}
+
+function refreshDashboard() {
+    loadHealthReport();
+    loadAlerts();
+    loadEndpoints();
+    loadRecentRequests();
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    refreshDashboard();
+
+    // Auto-refresh every 5 seconds
+    refreshInterval = setInterval(() => {
+        refreshDashboard();
+    }, 5000);
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+});
+</script>
+{% endblock %}

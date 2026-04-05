@@ -1,0 +1,66 @@
+/* Modernes, dunkles Tabellen-Design wie im Screenshot */
+.admin-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: #181a20;
+    color: #e0e0e0;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    font-size: 1.05rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 16px #000a;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.admin-table th {
+    background: #23242a;
+    color: #4fc3f7;
+    font-weight: 600;
+    padding: 0.85rem 0.7rem;
+    border-bottom: 2px solid #23242a;
+    text-align: left;
+    font-size: 1.07rem;
+}
+.admin-table td {
+    padding: 0.7rem 0.7rem;
+    border-bottom: 1px solid #23242a;
+    vertical-align: middle;
+    font-size: 1.05rem;
+}
+.admin-table tr:last-child td {
+    border-bottom: none;
+}
+.admin-table tr:hover td {
+    background: #22232b;
+}
+.admin-table th:first-child,
+.admin-table td:first-child {
+    border-left: none;
+}
+.admin-table th:last-child,
+.admin-table td:last-child {
+    border-right: none;
+}
+/* Scrollbar für große Tabellen */
+.admin-table-wrapper {
+    max-width: 100%;
+    overflow-x: auto;
+}
+/* Farben für Status, Prozent, etc. */
+.status-badge {
+    display: inline-block;
+    padding: 0.2em 0.7em;
+    border-radius: 8px;
+    font-size: 0.98em;
+    font-weight: 500;
+    background: #23242a;
+    color: #ffb300;
+    margin-right: 0.3em;
+}
+.percent-bar {
+    display: inline-block;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(90deg,#4fc3f7,#ffb300);
+    margin-right: 0.5em;
+}

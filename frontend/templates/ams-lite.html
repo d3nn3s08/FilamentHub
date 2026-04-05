@@ -1,0 +1,711 @@
+{% extends "layout.html" %}
+{% set page_title = "AMS Lite" %}
+{% set page_subtitle = "Kompakte AMS-Übersicht für schnellen Überblick" %}
+
+{% block extra_styles %}
+<style>
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
+
+    @keyframes slideIn {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .ams-lite-wrapper {
+        min-height: calc(100vh - 200px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+    }
+
+    .ams-lite-container {
+        background: var(--panel);
+        border-radius: 16px;
+        padding: 32px;
+        max-width: 600px;
+        width: 100%;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        animation: slideIn 0.5s ease-out;
+    }
+
+    .ams-header-section {
+        margin-bottom: 28px;
+    }
+
+    .ams-header-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+
+    .ams-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .ams-icon-box {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #ff9800 0%, #ff6f00 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        box-shadow: 0 6px 16px rgba(255, 152, 0, 0.3);
+    }
+
+    .ams-title-box h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -0.5px;
+    }
+
+    .ams-subtitle {
+        font-size: 13px;
+        color: #7a8199;
+        margin-top: 2px;
+        font-weight: 500;
+    }
+
+    .ams-badge {
+        background: rgba(255, 152, 0, 0.15);
+        padding: 6px 14px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 152, 0, 0.3);
+        font-size: 11px;
+        color: #ff9800;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .ams-status-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        font-size: 13px;
+    }
+
+    .status-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #7a8199;
+    }
+
+    .status-chip.online {
+        background: rgba(76, 175, 80, 0.12);
+        border: 1px solid rgba(76, 175, 80, 0.25);
+        color: #4caf50;
+    }
+
+    .status-chip.mqtt {
+        background: rgba(33, 150, 243, 0.12);
+        border: 1px solid rgba(33, 150, 243, 0.25);
+        color: #2196f3;
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 8px currentColor;
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    .active-card {
+        background: rgba(255, 152, 0, 0.08);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(255, 152, 0, 0.2);
+        box-shadow: 0 4px 16px rgba(255, 152, 0, 0.1);
+    }
+
+    .active-label {
+        font-size: 11px;
+        color: #ff9800;
+        margin-bottom: 8px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    .active-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .active-info h3 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #fff;
+        margin: 0 0 4px 0;
+    }
+
+    .active-details {
+        font-size: 15px;
+        color: #b0b7c3;
+        font-weight: 500;
+    }
+
+    .active-percent {
+        font-size: 38px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+    }
+
+    .slots-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .slot-card {
+        text-align: center;
+        cursor: pointer;
+        padding: 14px 10px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 2px solid rgba(255, 255, 255, 0.08);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+    }
+
+    .slot-card:hover {
+        background: rgba(255, 255, 255, 0.06);
+        transform: translateY(-3px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .slot-card.active {
+        background: rgba(255, 152, 0, 0.12);
+        border: 2px solid rgba(255, 152, 0, 0.5);
+        transform: translateY(-3px);
+    }
+
+    .slot-checkmark {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #ff9800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: bold;
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    .slot-number {
+        font-size: 16px;
+        font-weight: 700;
+        color: #7a8199;
+        margin-bottom: 8px;
+        letter-spacing: 0.5px;
+    }
+
+    .slot-card.active .slot-number {
+        color: #ff9800;
+    }
+
+    .slot-bar-bg {
+        height: 6px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 8px;
+    }
+
+    .slot-bar-fill {
+        height: 100%;
+        transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .slot-card.active .slot-bar-fill {
+        background: linear-gradient(90deg, #ff9800, #ffb74d);
+        box-shadow: 0 0 8px rgba(255, 152, 0, 0.5);
+    }
+
+    .slot-percent {
+        font-size: 14px;
+        font-weight: 700;
+        color: #b0b7c3;
+    }
+
+    .slot-card.active .slot-percent {
+        color: #ff9800;
+    }
+
+    .climate-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+
+    .climate-card {
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .climate-card.temp {
+        background: rgba(255, 152, 0, 0.08);
+        border: 1px solid rgba(255, 152, 0, 0.15);
+    }
+
+    .climate-card.humidity {
+        background: rgba(33, 150, 243, 0.08);
+        border: 1px solid rgba(33, 150, 243, 0.15);
+    }
+
+    .climate-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+    }
+
+    .climate-card.temp .climate-icon {
+        background: linear-gradient(135deg, #ff9800 0%, #ff6f00 100%);
+        box-shadow: 0 4px 12px rgba(255, 152, 0, 0.25);
+    }
+
+    .climate-card.humidity .climate-icon {
+        background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+        box-shadow: 0 4px 12px rgba(33, 150, 243, 0.25);
+    }
+
+    .climate-label {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        margin-bottom: 3px;
+    }
+
+    .climate-card.temp .climate-label {
+        color: #ff9800;
+    }
+
+    .climate-card.humidity .climate-label {
+        color: #2196f3;
+    }
+
+    .climate-value {
+        font-size: 22px;
+        font-weight: 800;
+        color: #fff;
+        letter-spacing: -0.5px;
+    }
+
+    .cta-button {
+        width: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, #ff9800 0%, #ff6f00 100%);
+        border: none;
+        border-radius: 12px;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 6px 20px rgba(255, 152, 0, 0.3);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .cta-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 28px rgba(255, 152, 0, 0.4);
+    }
+
+    .footer-info {
+        margin-top: 20px;
+        padding: 14px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        font-size: 11px;
+        color: #7a8199;
+        text-align: center;
+        line-height: 1.6;
+    }
+
+    .footer-info strong {
+        color: #b0b7c3;
+    }
+
+    .warning-banner {
+        background: rgba(255, 193, 7, 0.1);
+        border: 1px solid rgba(255, 193, 7, 0.3);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 24px;
+        text-align: center;
+    }
+
+    .warning-banner-icon {
+        font-size: 2rem;
+        margin-bottom: 8px;
+    }
+
+    .warning-banner h4 {
+        margin: 0 0 4px 0;
+        color: #ffc107;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .warning-banner p {
+        margin: 0;
+        font-size: 12px;
+        color: #b0b7c3;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ams-lite-wrapper">
+    <div class="ams-lite-container">
+        <!-- Warning Banner -->
+        <div class="warning-banner">
+            <div class="warning-banner-icon">🚧</div>
+            <h4>AMS Lite - In Entwicklung</h4>
+            <p>Diese Seite verwendet separate API-Routen, die später implementiert werden.</p>
+        </div>
+
+        <!-- Header -->
+        <div class="ams-header-section">
+            <div class="ams-header-top">
+                <div class="ams-header-left">
+                    <div class="ams-icon-box">🔧</div>
+                    <div class="ams-title-box">
+                        <h2>AMS Lite</h2>
+                        <div class="ams-subtitle">Automatic Material System</div>
+                    </div>
+                </div>
+                <div class="ams-badge">MODERN</div>
+            </div>
+
+            <div class="ams-status-row">
+                <div class="status-chip">
+                    <span>bambu-A1-Mini</span>
+                </div>
+                <div class="status-chip online" id="statusOnline">
+                    <span class="status-dot"></span>
+                    <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">ONLINE</span>
+                </div>
+                <div class="status-chip mqtt" id="statusMqtt">
+                    <span class="status-dot"></span>
+                    <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">MQTT</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Filament Card -->
+        <div class="active-card">
+            <div class="active-label">Currently Active</div>
+            <div class="active-content">
+                <div class="active-info">
+                    <h3 id="activeSlotTitle">Slot 0</h3>
+                    <div class="active-details" id="activeSlotDetails">Lade Daten...</div>
+                </div>
+                <div class="active-percent" id="activeSlotPercent">61%</div>
+            </div>
+        </div>
+
+        <!-- Slots Grid -->
+        <div class="slots-grid" id="slotsGrid">
+            <!-- Dynamically filled by JavaScript -->
+        </div>
+
+        <!-- CTA Button -->
+        <button class="cta-button" onclick="window.location.href='/all-slots'">
+            Alle Slots anzeigen →
+        </button>
+
+        <!-- Footer Info -->
+        <div class="footer-info">
+            <div style="margin-bottom: 3px;">💡 <strong>Live-Monitor</strong></div>
+            <div>Klicke auf einen Slot • Echtzeit MQTT-Updates</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- AMS Lite Modul für gemeinsame Funktionen -->
+<script src="{{ url_for('frontend_static', path='ams_lite.js') }}"></script>
+<script>
+(function() {
+    let activeSlot = 0;
+    let slots = [];
+    let amsData = null;
+    let spools = [];
+    let materials = [];
+
+    // Lade Spulen und Materialien (wie normales AMS)
+    async function loadSpools() {
+        try {
+            const response = await fetch('/api/spools/');
+            if (response.ok) {
+                spools = await response.json();
+            }
+        } catch (error) {
+            console.error('Fehler beim Laden der Spulen:', error);
+        }
+    }
+
+    async function loadMaterials() {
+        try {
+            const response = await fetch('/api/materials/');
+            if (response.ok) {
+                materials = await response.json();
+            }
+        } catch (error) {
+            console.error('Fehler beim Laden der Materialien:', error);
+        }
+    }
+
+    // Lade AMS Lite Daten von API
+    async function loadAmsLiteData() {
+        try {
+            // Lade Spulen und Materialien zuerst
+            await Promise.all([loadSpools(), loadMaterials()]);
+            
+            const response = await fetch('/api/ams/lite');
+            const data = await response.json();
+            
+            // Initialisiere 4 leere Slots
+            slots = [
+                { id: 1, slotId: 1, type: '', weight: 0, percent: 0, color: '#999999' },
+                { id: 2, slotId: 2, type: '', weight: 0, percent: 0, color: '#999999' },
+                { id: 3, slotId: 3, type: '', weight: 0, percent: 0, color: '#999999' },
+                { id: 4, slotId: 4, type: '', weight: 0, percent: 0, color: '#999999' }
+            ];
+            
+            if (data.devices && data.devices.length > 0) {
+                const device = data.devices[0];
+                amsData = device;
+                
+                // Extrahiere Slots von erstem AMS Lite Unit
+                if (device.ams_units && device.ams_units.length > 0) {
+                    const amsUnit = device.ams_units[0];
+                    
+                    // Get printer_id from device to filter spools by printer
+                    const devicePrinterId = device.printer_id || device.device_serial;
+                    
+                    // Konvertiere Trays zu Slots
+                    // A1 Mini AMS Lite hat 4 Slots (0-3) wie normales AMS, aber kompakter
+                    (amsUnit.trays || []).forEach((tray, index) => {
+                        if (index < 4) {
+                            const slotNumber = tray.slot !== undefined ? tray.slot : index;
+                            
+                            console.log(`[AMS LITE] Slot ${slotNumber}: tray.tag_uid=${tray.tag_uid}, tray.tray_uuid=${tray.tray_uuid}`);
+                            
+                            const matchingSpool = spools.find(s => {
+                                // WICHTIG: Erst nach Drucker filtern!
+                                // Mehrere Drucker können denselben ams_slot haben
+                                if (s.printer_id && devicePrinterId && s.printer_id !== devicePrinterId) {
+                                    return false;
+                                }
+                                
+                                // Priority 1: Match by tag_uid (RFID)
+                                if (s.tag_uid && tray.tag_uid && s.tag_uid === tray.tag_uid && tray.tag_uid !== "0000000000000000") {
+                                    console.log(`[AMS LITE] ✅ Matched spool ${s.id} by tag_uid: ${s.tag_uid}`);
+                                    return true;
+                                }
+                                // Priority 2: Match by tray_uuid
+                                if (s.tray_uuid && tray.tray_uuid && s.tray_uuid === tray.tray_uuid && tray.tray_uuid !== "00000000000000000000000000000000") {
+                                    console.log(`[AMS LITE] ✅ Matched spool ${s.id} by tray_uuid: ${s.tray_uuid}`);
+                                    return true;
+                                }
+                                // Priority 3: Match by ams_slot (fallback, exclude vt_tray)
+                                if (s.ams_slot === slotNumber && s.ams_slot !== 254) {
+                                    console.log(`[AMS LITE] ✅ Matched spool ${s.id} by ams_slot: ${s.ams_slot}`);
+                                    return true;
+                                }
+                                return false;
+                            });
+                            
+                            if (matchingSpool) {
+                                console.log(`[AMS LITE] Slot ${slotNumber} matched spool:`, matchingSpool);
+                            } else {
+                                console.log(`[AMS LITE] Slot ${slotNumber} NO MATCH - using MQTT data`);
+                            }
+                            
+                            const material = matchingSpool
+                                ? materials.find(m => m.id === matchingSpool.material_id)
+                                : null;
+                            
+                            // Verwende Datenbank-Gewicht wenn Spule gefunden, sonst MQTT-Daten
+                            let weightGrams = tray.remaining_grams || 0;
+                            let totalWeight = tray.tray_weight || 1000;
+                            let percentValue = tray.remain_percent || 0;
+                            
+                            if (matchingSpool) {
+                                // Spule in DB gefunden - verwende DB-Gewichte (präziser als RFID)
+                                const remaining = matchingSpool.remaining_weight_g || matchingSpool.weight_current || 0;
+                                const full = matchingSpool.weight_full || 1000;
+                                weightGrams = remaining;
+                                totalWeight = full;
+                                percentValue = full > 0 ? Math.round((remaining / full) * 100) : 0;
+                            }
+                            
+                            // Fallback zu Tray-Daten wenn keine Spule gefunden
+                            const materialName = material ? material.name : (tray.tray_sub_brands || tray.tray_type || 'Unbekannt');
+                            const materialBrand = material ? material.brand : '';
+                            
+                            slots[index] = {
+                                id: index + 1,
+                                slotId: slotNumber,
+                                type: materialBrand ? `${materialBrand} ${materialName}` : materialName,
+                                weight: weightGrams,
+                                totalWeight: totalWeight,
+                                percent: percentValue,
+                                color: tray.tray_color ? '#' + tray.tray_color.substring(0, 6) : '#999999',
+                                uuid: tray.tray_uuid,
+                                tagUid: tray.tag_uid,
+                                spoolNumber: matchingSpool ? matchingSpool.spool_number : null
+                            };
+                        }
+                    });
+                    
+                    activeSlot = 0;
+                }
+            }
+            
+            renderSlots();
+        } catch (error) {
+            console.error('Fehler beim Laden von AMS Lite Daten:', error);
+            // Fallback: Zeige Fehler
+            const grid = document.getElementById('slotsGrid');
+            if (grid) {
+                grid.innerHTML = '<p style="color: red;">Fehler beim Laden der AMS Lite Daten</p>';
+            }
+        }
+    }
+
+    function getBarColor(percent) {
+        if (percent < 20) return '#ff5722';
+        if (percent < 50) return '#ff9800';
+        if (percent < 70) return '#ffc107';
+        return '#4caf50';
+    }
+
+    function getGlowColor(percent) {
+        if (percent < 20) return 'rgba(255, 87, 34, 0.3)';
+        if (percent < 50) return 'rgba(255, 152, 0, 0.3)';
+        if (percent < 70) return 'rgba(255, 193, 7, 0.3)';
+        return 'rgba(76, 175, 80, 0.3)';
+    }
+
+    function renderSlots() {
+        const grid = document.getElementById('slotsGrid');
+        grid.innerHTML = '';
+
+        if (slots.length === 0) {
+            grid.innerHTML = '<p style="text-align: center; color: var(--text-dim);">Keine Spulen geladen</p>';
+            return;
+        }
+
+        // Stelle sicher, dass wir mindestens 4 Slots anzeigen (auch leere)
+        const maxSlots = Math.max(4, slots.length);
+        
+        for (let i = 0; i < maxSlots; i++) {
+            const slot = slots[i];
+            const card = document.createElement('div');
+            card.className = 'slot-card';
+            
+            if (slot) {
+                // Slot mit Daten
+                if (i === activeSlot) {
+                    card.classList.add('active');
+                }
+
+                const barColor = getBarColor(slot.percent);
+                const glowColor = getGlowColor(slot.percent);
+
+                card.innerHTML = `
+                    ${i === activeSlot ? '<div class="slot-checkmark">✓</div>' : ''}
+                    <div class="slot-number">Slot ${slot.slotId}${slot.spoolNumber != null ? ` · <span style="opacity:0.7;font-size:0.85em;">#${slot.spoolNumber}</span>` : ''}</div>
+                    <div class="slot-bar-bg">
+                        <div class="slot-bar-fill" style="width: ${slot.percent}%; background: linear-gradient(90deg, ${barColor}, ${barColor}dd);"></div>
+                    </div>
+                    <div class="slot-percent">${Math.round(slot.percent)}%</div>
+                `;
+
+                card.addEventListener('click', () => handleSlotClick(i));
+            } else {
+                // Leerer Slot
+                card.classList.add('slot-empty');
+                card.innerHTML = `
+                    <div class="slot-number">Slot ${i + 1}</div>
+                    <div style="color: var(--text-dim); font-size: 0.9rem; margin-top: 8px;">Leer</div>
+                `;
+            }
+            
+            grid.appendChild(card);
+        }
+
+        updateActiveCard();
+    }
+
+    function handleSlotClick(slotIndex) {
+        activeSlot = slotIndex;
+        renderSlots();
+    }
+
+    function updateActiveCard() {
+        if (slots.length === 0) return;
+        
+        const slot = slots[activeSlot];
+        if (!slot) return;
+
+        document.getElementById('activeSlotTitle').textContent = `Slot ${slot.slotId}${slot.spoolNumber != null ? ` · Spule #${slot.spoolNumber}` : ''}`;
+        document.getElementById('activeSlotDetails').textContent = `${slot.type} • ${Math.round(slot.weight)}g`;
+
+        const percentEl = document.getElementById('activeSlotPercent');
+        percentEl.textContent = `${Math.round(slot.percent)}%`;
+        percentEl.style.color = getBarColor(slot.percent);
+        percentEl.style.textShadow = `0 0 20px ${getGlowColor(slot.percent)}`;
+    }
+
+    // Auto-Refresh alle 5 Sekunden
+    setInterval(loadAmsLiteData, 5000);
+    
+    // Initiale Abfrage
+    loadAmsLiteData();
+})();
+</script>
+{% endblock %}

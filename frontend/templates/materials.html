@@ -1,0 +1,164 @@
+{% extends "layout.html" %}
+{% set page_title = "Spulen Hersteller" %}
+{% set page_subtitle = "Verwalte Materialprofile mit Dichte und Spulengewichten fuer Berechnungen" %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{{ url_for('frontend_static', path='materials.css') }}">
+{% endblock %}
+
+{% block header_actions %}
+<div class="actions">
+    <button class="btn primary" onclick="openCreateModal()">+ Neues Material</button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Bar -->
+<div class="mat-stats-bar">
+    <div class="mat-stats-bar__icon">&#128230;</div>
+    <div>
+        <div class="mat-stats-bar__num" id="matCount">0</div>
+        <div class="mat-stats-bar__label">Materialien gespeichert</div>
+    </div>
+</div>
+
+<!-- Search -->
+<div class="mat-search-wrap">
+    <span class="mat-search-wrap__icon">&#128269;</span>
+    <input type="text" class="mat-search-wrap__input" id="matSearchInput" placeholder="Material suchen...">
+</div>
+
+<!-- Card Grid -->
+<div class="mat-card-grid" id="matCardGrid">
+    <div class="mat-loading">Laden...</div>
+</div>
+
+<!-- Empty State -->
+<div class="mat-empty-state" id="matEmptyState" style="display:none;">
+    <div class="mat-empty-state__icon">&#128230;</div>
+    <p>Keine Materialien vorhanden</p>
+    <button class="btn primary" onclick="openCreateModal()">+ Material anlegen</button>
+</div>
+
+<!-- EDIT MODAL -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Material bearbeiten</h2>
+            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <form id="editForm" onsubmit="saveMaterial(event)">
+            <div class="form-group">
+                <label for="editName">Name *</label>
+                <input type="text" id="editName" name="name" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editBrand">Marke</label>
+                    <select id="editBrand" name="brand" onchange="toggleEditBrandInput()">
+                        <option value="">-- Keine --</option>
+                        <option value="__new__">+ Neue Marke...</option>
+                    </select>
+                    <input type="text" id="editBrandInput" placeholder="Neue Marke eingeben..." style="display: none; margin-top: 8px;">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editDensity">Dichte (g/cm³)</label>
+                    <input type="number" id="editDensity" name="density" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="editDiameter">Durchmesser (mm)</label>
+                    <input type="number" id="editDiameter" name="diameter" step="0.01">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editSpoolWeightEmpty">Spule Leergewicht (g)</label>
+                    <input type="number" id="editSpoolWeightEmpty" name="spool_weight_empty" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label for="editSpoolWeightFull">Spule Vollgewicht (g)</label>
+                    <input type="number" id="editSpoolWeightFull" name="spool_weight_full" step="0.1">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="editNotes">Notizen</label>
+                <textarea id="editNotes" name="notes" rows="3"></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="closeEditModal()">Abbrechen</button>
+                <button type="submit" class="btn primary">Speichern</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- CREATE MODAL -->
+<div id="createModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Neues Material</h2>
+            <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+        </div>
+        <form id="createForm" onsubmit="createMaterial(event)">
+            <div class="form-group">
+                <label for="createName">Name *</label>
+                <input type="text" id="createName" name="name" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="createBrand">Marke</label>
+                    <select id="createBrand" name="brand" onchange="toggleCreateBrandInput()">
+                        <option value="">-- Keine --</option>
+                        <option value="__new__">+ Neue Marke...</option>
+                    </select>
+                    <input type="text" id="createBrandInput" placeholder="Neue Marke eingeben..." style="display: none; margin-top: 8px;">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="createDensity">Dichte (g/cm³)</label>
+                    <input type="number" id="createDensity" name="density" step="0.01" value="1.24">
+                </div>
+                <div class="form-group">
+                    <label for="createDiameter">Durchmesser (mm)</label>
+                    <input type="number" id="createDiameter" name="diameter" step="0.01" value="1.75">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="createSpoolWeightEmpty">Spule Leergewicht (g)</label>
+                    <input type="number" id="createSpoolWeightEmpty" name="spool_weight_empty" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label for="createSpoolWeightFull">Spule Vollgewicht (g)</label>
+                    <input type="number" id="createSpoolWeightFull" name="spool_weight_full" step="0.1">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="createNotes">Notizen</label>
+                <textarea id="createNotes" name="notes" rows="3"></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="closeCreateModal()">Abbrechen</button>
+                <button type="submit" class="btn primary">Erstellen</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('frontend_static', path='js/materials.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,1394 @@
+{% extends "layout.html" %}
+{% set page_title = "Externe Spule" %}
+{% set page_subtitle = "Filament-Management für externe Spulen - Drucker individuell verwalten" %}
+
+{% block extra_styles %}
+<style>
+    .external-spool-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .printer-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+        .printer-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .card,
+    .printer-card,
+    .add-printer-card {
+        background: var(--card-bg, rgba(255, 255, 255, 0.05));
+        backdrop-filter: blur(10px);
+        border-radius: 1rem;
+        border: 1px solid var(--card-border, rgba(255, 255, 255, 0.1));
+        padding: 1.5rem;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        transition: transform 0.3s ease;
+    }
+
+    .card:hover,
+    .printer-card:hover {
+        transform: translateY(-2px);
+    }
+
+    /* Add Printer Card (Empty State) */
+    .add-printer-card {
+        border: 2px dashed rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.02);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 250px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .add-printer-card:hover {
+        border-color: var(--accent-color, #ff8c42);
+        background: rgba(255, 140, 66, 0.05);
+        transform: translateY(-4px);
+    }
+
+    .add-printer-icon {
+        font-size: 3rem;
+        color: var(--accent-color, #ff8c42);
+        margin-bottom: 1rem;
+    }
+
+    .add-printer-text {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary, #fff);
+        margin-bottom: 0.5rem;
+    }
+
+    .add-printer-hint {
+        font-size: 0.85rem;
+        color: var(--text-dim, #6b7280);
+    }
+
+    /* Printer Card Header */
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        gap: 1rem;
+    }
+
+    .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-primary, #fff);
+    }
+
+    .printer-badge {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 999px;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.8rem;
+        color: var(--text-primary, #fff);
+        white-space: nowrap;
+    }
+
+    /* Remove Printer Button */
+    .remove-printer-btn {
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #f87171;
+        border-radius: 0.5rem;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .remove-printer-btn:hover {
+        background: rgba(239, 68, 68, 0.3);
+    }
+
+    /* Loaded Spool Section */
+    .loaded-spool {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .spool-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .spool-color {
+        width: 3.5rem;
+        height: 3.5rem;
+        border-radius: 0.9rem;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .spool-details h3 {
+        font-size: 1.05rem;
+        margin-bottom: 0.25rem;
+        color: var(--text-primary, #fff);
+    }
+
+    .spool-details p {
+        color: var(--text-dim, #a0a0a0);
+        font-size: 0.85rem;
+    }
+
+    .progress-section {
+        margin-bottom: 1rem;
+    }
+
+    .progress-label {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .progress-label span:first-child {
+        color: var(--text-dim, #a0a0a0);
+    }
+
+    .progress-label span:last-child {
+        color: var(--accent-color, #ff8c42);
+        font-weight: 600;
+    }
+
+    .progress-bar {
+        height: 0.75rem;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ff8c42 0%, #ffb366 100%);
+        border-radius: 999px;
+        transition: width 0.5s ease;
+        box-shadow: 0 0 10px rgba(255, 140, 66, 0.5);
+    }
+
+    .btn-unload {
+        width: 100%;
+        padding: 0.75rem;
+        border-radius: 0.75rem;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.85rem;
+    }
+
+    .btn-unload:hover {
+        background: rgba(239, 68, 68, 0.3);
+    }
+
+    /* ── Klipper-Card — Material-Dark Design (nach React-Vorlage) ── */
+    :root {
+        --ms-bg-card:   #1e1e1e;
+        --ms-bg-dark:   rgba(0,0,0,0.2);
+        --ms-border:    rgba(255,255,255,0.08);
+        --ms-border-s:  rgba(255,255,255,0.14);
+        --ms-radius:    4px;
+        --ms-text-p:    rgba(255,255,255,0.87);
+        --ms-text-s:    rgba(255,255,255,0.54);
+        --ms-text-d:    rgba(255,255,255,0.26);
+        --ms-accent:    #e65100;
+        --ms-acc-light: #ff8a65;
+        --ms-green:     #388e3c;
+        --ms-green-l:   #66bb6a;
+        --ms-font-mono: 'Roboto Mono', 'Courier New', monospace;
+    }
+    @keyframes ms-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* Wrapper für die gesamte Klipper-Unit */
+    .ms-printer-wrap {
+        background: transparent;
+        border-radius: 0;
+        overflow: visible;
+        padding: 0;
+        border: none;
+        box-shadow: none;
+    }
+    /* Toolbar oben (Druckername + Status) */
+    .ms-toolbar {
+        background: var(--ms-bg-card);
+        border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius);
+        padding: 0 12px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+    .ms-toolbar-dot {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: var(--ms-green-l);
+        box-shadow: 0 0 6px var(--ms-green-l);
+        animation: ms-pulse 2s ease-in-out infinite;
+        flex-shrink: 0;
+    }
+    .ms-toolbar-title {
+        font-size: 12px; font-weight: 500;
+        color: var(--ms-text-s);
+        text-transform: uppercase; letter-spacing: 1px;
+        flex: 1;
+    }
+    .ms-chip {
+        display: flex; align-items: center; gap: 5px;
+        padding: 2px 8px; border-radius: 10px;
+        font-size: 10px; font-weight: 500;
+        text-transform: uppercase; letter-spacing: .5px;
+    }
+    .ms-chip.printing { background: rgba(56,142,60,.15); color: var(--ms-green-l); border: 1px solid rgba(56,142,60,.3); }
+    .ms-chip.idle     { background: rgba(255,255,255,.05); color: var(--ms-text-d); border: 1px solid var(--ms-border); }
+    .ms-chip.paused   { background: rgba(25,118,210,.15); color: #90caf9;          border: 1px solid rgba(25,118,210,.3); }
+    .ms-chip.error,
+    .ms-chip.cancelled{ background: rgba(183,28,28,.15);  color: #ef9a9a;          border: 1px solid rgba(183,28,28,.3); }
+    .ms-chip-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+    /* Haupt-Card */
+    .ms-card-body {
+        background: var(--ms-bg-card);
+        border: 1px solid var(--ms-border);
+        border-radius: var(--ms-radius);
+        overflow: hidden;
+    }
+    /* Card-Header-Bar */
+    .ms-card-hdr {
+        padding: 8px 12px;
+        background: var(--ms-bg-dark);
+        border-bottom: 1px solid var(--ms-border);
+        display: flex; align-items: center;
+        justify-content: space-between;
+        height: 36px;
+    }
+    .ms-card-hdr-lbl {
+        font-size: 11px; font-weight: 500;
+        color: var(--ms-text-s);
+        text-transform: uppercase; letter-spacing: .8px;
+    }
+    /* Row */
+    .ms-row {
+        display: flex; align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--ms-border);
+        gap: 8px;
+    }
+    .ms-row:last-child { border-bottom: none; }
+    .ms-row-lbl {
+        font-size: 11px; color: var(--ms-text-s);
+        text-transform: uppercase; letter-spacing: .5px;
+        min-width: 60px;
+    }
+    .ms-row-val {
+        font-family: var(--ms-font-mono);
+        font-size: 14px; color: var(--ms-text-p);
+    }
+    .ms-row-sub {
+        font-size: 11px; color: var(--ms-text-s);
+        font-family: var(--ms-font-mono);
+    }
+    /* Swatch */
+    .ms-swatch {
+        width: 28px; height: 28px;
+        border-radius: 2px;
+        border: 1px solid rgba(255,255,255,.15);
+        flex-shrink: 0;
+    }
+    /* Progress */
+    .ms-prog-wrap {
+        padding: 10px 14px 12px;
+        border-bottom: 1px solid var(--ms-border);
+    }
+    .ms-prog-head { display: flex; justify-content: space-between; margin-bottom: 6px; }
+    .ms-prog-lbl  { font-size: 11px; color: var(--ms-text-s); text-transform: uppercase; letter-spacing: .5px; }
+    .ms-prog-num  { font-family: var(--ms-font-mono); font-size: 11px; color: var(--ms-text-s); }
+    .ms-prog-track { width: 100%; height: 3px; background: rgba(255,255,255,.08); border-radius: 2px; overflow: hidden; }
+    .ms-prog-bar   { height: 100%; border-radius: 2px; transition: width .4s ease; }
+    .ms-prog-foot  { display: flex; justify-content: space-between; margin-top: 4px; }
+    .ms-prog-foot span { font-family: var(--ms-font-mono); font-size: 10px; color: var(--ms-text-d); }
+    /* Temps */
+    .ms-temps {
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 1px; background: var(--ms-border);
+        border-top: 1px solid var(--ms-border);
+        border-bottom: 1px solid var(--ms-border);
+    }
+    .ms-temp-cell { background: var(--ms-bg-card); padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+    .ms-temp-lbl  { font-size: 10px; color: var(--ms-text-s); text-transform: uppercase; letter-spacing: .8px; }
+    .ms-temp-val  { font-family: var(--ms-font-mono); font-size: 20px; font-weight: 500; line-height: 1; }
+    .ms-temp-val.nozzle { color: #ef9a9a; }
+    .ms-temp-val.bed    { color: #90caf9; }
+    /* Job row */
+    .ms-job {
+        padding: 10px 14px;
+        background: rgba(0,0,0,.1);
+        border-top: 1px solid var(--ms-border);
+        display: flex; align-items: center;
+        justify-content: space-between; gap: 8px;
+    }
+    .ms-job-name {
+        font-family: var(--ms-font-mono); font-size: 12px;
+        color: var(--ms-text-p);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
+    }
+    .ms-job-usage { font-family: var(--ms-font-mono); font-size: 11px; color: #f57c00; flex-shrink: 0; }
+    /* Buttons */
+    .ms-btn {
+        height: 28px; padding: 0 12px;
+        border: 1px solid var(--ms-border-s);
+        border-radius: var(--ms-radius);
+        background: transparent;
+        color: var(--ms-text-s);
+        font-size: 11px; font-weight: 500;
+        text-transform: uppercase; letter-spacing: .5px;
+        cursor: pointer; transition: all .15s; white-space: nowrap;
+    }
+    .ms-btn:hover { background: rgba(255,255,255,.05); color: var(--ms-text-p); border-color: rgba(255,255,255,.2); }
+    .ms-btn.primary { background: rgba(230,81,0,.15); border-color: rgba(230,81,0,.4); color: var(--ms-acc-light); }
+    .ms-btn.primary:hover { background: rgba(230,81,0,.25); border-color: var(--ms-acc-light); }
+    .ms-btn.danger  { background: rgba(183,28,28,.1); border-color: rgba(183,28,28,.3); color: #ef9a9a; }
+    .ms-btn.danger:hover  { background: rgba(183,28,28,.2); border-color: #ef9a9a; }
+    .ms-btn.remove  { background: rgba(183,28,28,.08); border-color: rgba(183,28,28,.25); color: #ef9a9a; height: 26px; font-size: 10px; }
+    .ms-btn.remove:hover { background: rgba(183,28,28,.18); }
+    /* Actions bar */
+    .ms-actions { display: flex; gap: 6px; padding: 10px 14px; border-top: 1px solid var(--ms-border); justify-content: flex-end; }
+    /* Unloaded */
+    .ms-unloaded { padding: 28px 14px; text-align: center; border-bottom: 1px solid var(--ms-border); }
+    .ms-unloaded-icon  { font-size: 28px; margin-bottom: 8px; opacity: .3; }
+    .ms-unloaded-text  { font-size: 12px; color: var(--ms-text-d); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
+    /* ── Ende Klipper-Card ───────────────────────────────────────── */
+
+    .empty-state {
+        text-align: center;
+        padding: 2.5rem 1rem;
+        color: var(--text-dim, #6b7280);
+    }
+
+    .empty-state-icon {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+        opacity: 0.6;
+    }
+
+    /* Printer Selection Modal */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .modal-overlay.active {
+        opacity: 1;
+        pointer-events: all;
+    }
+
+    .modal-dialog {
+        background: rgba(30, 30, 50, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 1.5rem;
+        padding: 2rem;
+        max-width: 500px;
+        width: 90%;
+        transform: scale(0.9);
+        transition: transform 0.3s ease;
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .modal-overlay.active .modal-dialog {
+        transform: scale(1);
+    }
+
+    .modal-dialog h3 {
+        font-size: 1.3rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary, #fff);
+    }
+
+    .modal-dialog p {
+        color: var(--text-dim, #a0a0a0);
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
+        font-size: 0.9rem;
+    }
+
+    .printer-selection-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .printer-selection-item {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .printer-selection-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .printer-selection-item.already-added {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .printer-selection-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .printer-selection-icon {
+        font-size: 1.5rem;
+    }
+
+    .printer-selection-details h4 {
+        font-size: 0.95rem;
+        margin-bottom: 0.25rem;
+        color: var(--text-primary, #fff);
+    }
+
+    .printer-selection-details p {
+        font-size: 0.8rem;
+        color: var(--text-dim, #a0a0a0);
+        margin: 0;
+    }
+
+    .printer-selection-btn {
+        background: rgba(255, 140, 66, 0.2);
+        border: 1px solid rgba(255, 140, 66, 0.3);
+        color: var(--accent-color, #ff8c42);
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .printer-selection-btn:hover {
+        background: rgba(255, 140, 66, 0.3);
+    }
+
+    .printer-selection-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .modal-close {
+        width: 100%;
+        padding: 0.75rem;
+        border-radius: 0.75rem;
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        color: var(--text-primary, #fff);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .modal-close:hover {
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    .loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    .no-printers-hint {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-dim, #6b7280);
+    }
+
+    .no-printers-hint-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.4;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="external-spool-wrap">
+    <!-- Dynamisch gerenderte Drucker-Cards -->
+    <div class="printer-grid" id="printerGrid">
+        <!-- Wird von JavaScript gefüllt -->
+    </div>
+</div>
+
+<!-- Printer Selection Modal -->
+<div class="modal-overlay" id="printerSelectionModal">
+    <div class="modal-dialog">
+        <h3>Drucker hinzufügen</h3>
+        <p>Wähle einen Drucker aus, den du für externe Spulen verwenden möchtest:</p>
+
+        <div class="printer-selection-list" id="printerSelectionList">
+            <!-- Wird von JavaScript gefüllt -->
+        </div>
+
+        <button class="modal-close" onclick="closePrinterSelectionModal()">Schließen</button>
+    </div>
+</div>
+
+<!-- Spool Selection Modal -->
+<div class="modal-overlay" id="spoolSelectionModal">
+    <div class="modal-dialog">
+        <h3>Spule auswählen</h3>
+        <p>Wähle eine Spule aus, die du als externe Spule laden möchtest:</p>
+
+        <!-- Search Bar -->
+        <div style="margin-bottom: 1rem;">
+            <input
+                type="text"
+                id="spoolSearchInput"
+                placeholder="🔍 Suche nach Nummer, Vendor, Material..."
+                style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: var(--text-primary, #fff); font-size: 0.95rem;"
+                oninput="filterSpoolList()"
+            />
+        </div>
+
+        <div class="printer-selection-list" id="spoolSelectionList">
+            <!-- Wird von JavaScript gefüllt -->
+        </div>
+
+        <button class="modal-close" onclick="closeSpoolSelectionModal()">Schließen</button>
+    </div>
+</div>
+
+<!-- Unload Confirmation Modal -->
+<div class="modal-overlay" id="unloadConfirmModal">
+    <div class="modal-dialog" style="max-width: 400px;">
+        <h3>Spule entladen?</h3>
+        <p style="margin: 1rem 0;">Möchtest du diese Spule wirklich entladen? Sie wird zurück ins Lager verschoben.</p>
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+            <button class="modal-close" onclick="closeUnloadConfirmModal()" style="flex: 1;">
+                Abbrechen
+            </button>
+            <button onclick="confirmUnloadSpool()"
+                    style="flex: 1; padding: 0.75rem; background: rgba(255,80,80,0.2); border: 1px solid rgba(255,80,80,0.4); color: #ff5050; border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
+                Entladen
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // ================================================================
+    // LOKALE STORAGE VERWALTUNG
+    // ================================================================
+    const STORAGE_KEY = "externe_spule_drucker_ids";
+
+    function getSelectedPrinterIds() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            return stored ? JSON.parse(stored) : [];
+        } catch (e) {
+            console.error("Failed to load selected printers:", e);
+            return [];
+        }
+    }
+
+    function saveSelectedPrinterIds(printerIds) {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(printerIds));
+        } catch (e) {
+            console.error("Failed to save selected printers:", e);
+        }
+    }
+
+    function addPrinter(printerId) {
+        // Validate printer ID
+        if (!printerId || printerId === 'null' || printerId === 'undefined') {
+            console.error('Cannot add printer with invalid ID:', printerId);
+            alert('Fehler: Drucker-ID ist ungültig');
+            return;
+        }
+
+        const ids = getSelectedPrinterIds();
+        if (!ids.includes(printerId)) {
+            ids.push(printerId);
+            saveSelectedPrinterIds(ids);
+            renderPrinterGrid();
+        }
+    }
+
+    function removePrinter(printerId) {
+        const ids = getSelectedPrinterIds();
+        const filtered = ids.filter(id => id !== printerId);
+        saveSelectedPrinterIds(filtered);
+        renderPrinterGrid();
+    }
+
+    // ================================================================
+    // API CALLS
+    // ================================================================
+    let allPrinters = [];
+    let allSpools = [];
+    let allMaterials = [];
+    let liveStateData = {};
+    let _klipperLiveCache = {};          // key = printer.id (UUID-string), value = live-state entry
+    let _klipperTempTimer = null;        // Interval-Handle für Live-Temp-Updates
+
+    async function fetchPrinters() {
+        try {
+            const res = await fetch("/api/printers");
+            if (!res.ok) throw new Error("Failed to fetch printers");
+            const printers = await res.json();
+
+            // Enriche mit live-state online status + Klipper Live-Cache befüllen
+            const liveStateRes = await fetch("/api/live-state/");
+            if (liveStateRes.ok) {
+                liveStateData = await liveStateRes.json();  // outer variable (nicht const!)
+                printers.forEach(printer => {
+                    // Klipper: key = "klipper_{id}", Bambu: key = cloud_serial
+                    const liveKey = printer.printer_type === 'klipper'
+                        ? `klipper_${printer.id}`
+                        : printer.cloud_serial;
+                    const liveEntry = liveStateData[liveKey];
+                    printer.online = liveEntry?.printer_online || false;
+                    // Klipper-Cache befüllen
+                    if (printer.printer_type === 'klipper' && liveEntry) {
+                        _klipperLiveCache[printer.id] = liveEntry;
+                    }
+                });
+            }
+
+            allPrinters = printers;
+        } catch (e) {
+            console.error("Error fetching printers:", e);
+            allPrinters = [];
+        }
+    }
+
+    async function fetchSpools() {
+        try {
+            const res = await fetch("/api/spools");
+            if (!res.ok) throw new Error("Failed to fetch spools");
+            allSpools = await res.json();
+        } catch (e) {
+            console.error("Error fetching spools:", e);
+            allSpools = [];
+        }
+    }
+
+    async function fetchMaterials() {
+        try {
+            const res = await fetch("/api/materials");
+            if (!res.ok) throw new Error("Failed to fetch materials");
+            allMaterials = await res.json();
+        } catch (e) {
+            console.error("Error fetching materials:", e);
+            allMaterials = [];
+        }
+    }
+
+    async function fetchLiveState(cloudSerial) {
+        try {
+            const res = await fetch(`/api/live-state/${cloudSerial}`);
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (e) {
+            console.error(`Error fetching live state for ${cloudSerial}:`, e);
+            return null;
+        }
+    }
+
+    async function loadExternalSpool(printerId, spoolId) {
+        try {
+            const res = await fetch(`/api/spools/${spoolId}/load-external`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ printer_id: printerId })
+            });
+            if (!res.ok) throw new Error("Failed to load spool");
+            await refreshPrinterData();
+        } catch (e) {
+            console.error("Error loading spool:", e);
+            alert("Fehler beim Laden der Spule");
+        }
+    }
+
+    async function unloadExternalSpool(printerId) {
+        try {
+            console.log('Unloading spool from printer:', printerId);
+            const res = await fetch(`/api/printers/${printerId}/unload-external`, {
+                method: "POST"
+            });
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error('Unload failed:', errorText);
+                throw new Error("Failed to unload spool");
+            }
+            const result = await res.json();
+            console.log('Unload successful:', result);
+
+            // Sofort Daten aktualisieren
+            await refreshPrinterData();
+        } catch (e) {
+            console.error("Error unloading spool:", e);
+            alert("Fehler beim Entladen der Spule");
+        }
+    }
+
+    // ================================================================
+    // RENDER FUNCTIONS
+    // ================================================================
+    async function renderPrinterGrid() {
+        const grid = document.getElementById("printerGrid");
+        if (!grid) return;
+
+        let selectedIds = getSelectedPrinterIds();
+
+        // Bereinige ungültige IDs aus localStorage (null, undefined, oder IDs die nicht existieren)
+        const validIds = selectedIds.filter(id => {
+            if (!id || id === 'null' || id === 'undefined') return false;
+            return allPrinters.some(p => p.id === id);
+        });
+
+        if (validIds.length !== selectedIds.length) {
+            console.log('Cleaning invalid printer IDs from localStorage:', selectedIds, '->', validIds);
+            saveSelectedPrinterIds(validIds);
+            selectedIds = validIds;
+        }
+
+        // Leerer Zustand: Nur "Drucker hinzufügen" Card
+        if (selectedIds.length === 0) {
+            grid.innerHTML = `
+                <div class="add-printer-card" onclick="openPrinterSelectionModal()">
+                    <div class="add-printer-icon">+</div>
+                    <div class="add-printer-text">Drucker hinzufügen</div>
+                    <div class="add-printer-hint">Wähle Drucker für externe Spulen</div>
+                </div>
+            `;
+            return;
+        }
+
+        // Render selected printers + Add Card
+        const selectedPrinters = allPrinters.filter(p => p.id && selectedIds.includes(p.id));
+
+        let html = '';
+        for (const printer of selectedPrinters) {
+            // Safety check: Skip if printer.id is null/undefined
+            if (!printer.id) {
+                console.error('Skipping printer with null/undefined id:', printer);
+                continue;
+            }
+
+            // Debug: Log printer data
+            console.log('Rendering printer:', printer.id, printer.name);
+
+            // Finde geladene Spule für diesen Drucker (aus DB: location="external")
+            // WICHTIG: AMS Lite Spulen (ams_slot=254) NICHT anzeigen - die gehören zu /ams-lite
+            const loadedSpool = allSpools.find(s => {
+                return s.printer_id === printer.id &&
+                       s.location === "external" &&
+                       s.ams_slot !== 254;  // AMS Lite ausschließen
+            });
+
+            console.log('Loaded spool for printer', printer.id, ':', loadedSpool);
+
+            if (printer.printer_type === 'klipper') {
+                // ── Klipper-spezifische Card ──────────────────────────────
+                const liveState = _klipperLiveCache[printer.id] || null;
+                html += renderKlipperCard(printer, loadedSpool, liveState);
+            } else {
+                // ── Standard-Card (Bambu / Manuell) ──────────────────────
+                const printerInfo = `${printer.model || 'Modell unbekannt'} • ${printer.ip_address || 'IP unbekannt'}`;
+                const onlineStatus = printer.online ? '🟢' : '🔴';
+                html += `
+                    <div class="printer-card" id="printerCard_${printer.id}">
+                        <div class="card-header">
+                            <div class="card-title">
+                                <span>${onlineStatus}</span>
+                                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                                    <span>${printer.name || "Unbekannt"}</span>
+                                    <span style="font-size: 0.75rem; font-weight: 400; color: var(--text-dim, #a0a0a0);">${printerInfo}</span>
+                                </div>
+                            </div>
+                            <button class="remove-printer-btn" onclick="removePrinter('${printer.id}')">
+                                Entfernen
+                            </button>
+                        </div>
+                        <div id="loadedContent_${printer.id}">
+                            ${renderSpoolContent(printer, loadedSpool)}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Add "Drucker hinzufügen" Card am Ende
+        html += `
+            <div class="add-printer-card" onclick="openPrinterSelectionModal()">
+                <div class="add-printer-icon">+</div>
+                <div class="add-printer-text">Weiteren Drucker hinzufügen</div>
+            </div>
+        `;
+
+        grid.innerHTML = html;
+
+        // Klipper-Temp-Refresh starten (jede 2s DOM-Update ohne Neurender)
+        startKlipperTempRefresh();
+    }
+
+    // ── Klipper Live-Temp periodisch aktualisieren (2s, nur DOM — kein Neurender) ──
+    function startKlipperTempRefresh() {
+        if (_klipperTempTimer) clearInterval(_klipperTempTimer);
+        _klipperTempTimer = setInterval(async () => {
+            try {
+                const res = await fetch('/api/live-state/');
+                if (!res.ok) return;
+                const data = await res.json();
+                document.querySelectorAll('[data-klipper-id]').forEach(wrap => {
+                    const pid     = wrap.dataset.klipperId;
+                    const entry   = data[`klipper_${pid}`];
+                    if (!entry) return;
+                    _klipperLiveCache[pid] = entry;
+                    const s      = entry?.payload?.payload?.status || {};
+                    const ps     = s.print_stats || {};
+                    const nozzle = s.extruder?.temperature;
+                    const bed    = s.heater_bed?.temperature;
+                    const state  = ps.state || 'unknown';
+                    const job    = ps.filename || '';
+                    const isPrinting = state === 'printing';
+
+                    // Temps
+                    const nEl = wrap.querySelector('.ms-nozzle-val');
+                    const bEl = wrap.querySelector('.ms-bed-val');
+                    if (nEl) nEl.textContent = nozzle != null ? `${Number(nozzle).toFixed(1)}°C` : '—';
+                    if (bEl) bEl.textContent = bed    != null ? `${Number(bed).toFixed(1)}°C`    : '—';
+
+                    // Status-Chip
+                    const chip = wrap.querySelector('.ms-status-chip');
+                    if (chip) {
+                        chip.className = `ms-chip ${isPrinting ? 'printing' : (state==='paused'?'paused':(state==='error'||state==='cancelled'?'error':'idle'))}`;
+                        chip.innerHTML = `<span class="ms-chip-dot"></span>${state.toUpperCase()}`;
+                    }
+                    // Pulse-Dot
+                    const dot = wrap.querySelector('.ms-toolbar-dot');
+                    if (dot) dot.style.display = isPrinting ? 'block' : 'none';
+
+                    // Job-Zeile ein/ausblenden
+                    const jobRow = wrap.querySelector('.ms-job');
+                    if (jobRow) {
+                        jobRow.style.display = (isPrinting && job) ? 'flex' : 'none';
+                        const nameEl = jobRow.querySelector('.ms-job-name');
+                        if (nameEl) nameEl.textContent = job;
+                    }
+                });
+            } catch(e) { /* silent */ }
+        }, 2000);
+    }
+
+    // ── Klipper-Card komplett rendern (Material-Dark Design) ────────────────
+    function renderKlipperCard(printer, spool, liveState) {
+        const s        = liveState?.payload?.payload?.status || {};
+        const ps       = s.print_stats || {};
+        const state    = ps.state || 'unknown';
+        const nozzle   = s.extruder?.temperature;
+        const bed      = s.heater_bed?.temperature;
+        const job      = ps.filename || '';
+        const filUsedM = ps.filament_used;
+        const isPrint  = state === 'printing';
+        const isPaused = state === 'paused';
+        const isErr    = state === 'error' || state === 'cancelled';
+
+        const nozzleStr = nozzle != null ? `${Number(nozzle).toFixed(1)}°C` : '—';
+        const bedStr    = bed    != null ? `${Number(bed).toFixed(1)}°C`    : '—';
+        const chipClass = isPrint ? 'printing' : (isPaused ? 'paused' : (isErr ? 'error' : 'idle'));
+
+        // Spool-Inhalt
+        let cardBody = '';
+        if (!spool) {
+            cardBody = `
+                <div class="ms-unloaded">
+                    <div class="ms-unloaded-icon">⊘</div>
+                    <div class="ms-unloaded-text">Keine Spule geladen</div>
+                    <button class="ms-btn primary" onclick="openLoadSpoolModal('${printer.id}')">Spule laden</button>
+                </div>`;
+        } else {
+            const remainingG = spool.remaining_weight_g || 0;
+            const fullG      = spool.weight_full || 1000;
+            const pct        = fullG > 0 ? Math.round((remainingG / fullG) * 100) : 0;
+            const usedG      = Math.max(0, fullG - remainingG);
+            const barColor   = pct > 30 ? '#66bb6a' : pct > 15 ? '#ffa726' : '#ef5350';
+            const matName    = getMaterialName(spool) || 'Unbekannt';
+            const vendor     = spool.vendor || '';
+            const spoolNum   = spool.spool_number ? `#${spool.spool_number}` : '—';
+            const colorHex   = spool.color || '#888888';
+            const diameter   = spool.diameter_mm ?? 1.75;
+
+            const matRight = `<div style="display:flex;align-items:center;gap:8px;">
+                <div class="ms-swatch" style="background:${colorHex};"></div>
+                <div style="text-align:right;">
+                    <div class="ms-row-val">${matName}</div>
+                    <div class="ms-row-sub">${vendor || '—'}</div>
+                </div></div>`;
+
+            const jobRow = isPrint && job ? `
+                <div class="ms-job" style="display:flex;">
+                    <span class="ms-row-lbl" style="flex-shrink:0;">Job</span>
+                    <span class="ms-job-name">${job}</span>
+                    ${filUsedM != null ? `<span class="ms-job-usage">~${(filUsedM/1000).toFixed(1)} m</span>` : ''}
+                </div>` : `<div class="ms-job" style="display:none;"><span class="ms-job-name">${job}</span></div>`;
+
+            cardBody = `
+                <div class="ms-row">
+                    <span class="ms-row-lbl">Filament</span>
+                    <span class="ms-row-val">${spoolNum}</span>
+                </div>
+                <div class="ms-row">
+                    <span class="ms-row-lbl">Material</span>
+                    ${matRight}
+                </div>
+                <div class="ms-row">
+                    <span class="ms-row-lbl">Durchmesser</span>
+                    <span class="ms-row-val">${diameter} mm</span>
+                </div>
+                <div class="ms-prog-wrap">
+                    <div class="ms-prog-head">
+                        <span class="ms-prog-lbl">Gewicht</span>
+                        <span class="ms-prog-num">${remainingG.toFixed(0)} g / ${fullG} g</span>
+                    </div>
+                    <div class="ms-prog-track">
+                        <div class="ms-prog-bar" style="width:${pct}%;background:${barColor};"></div>
+                    </div>
+                    <div class="ms-prog-foot">
+                        <span>${pct}%</span>
+                        <span>−${usedG.toFixed(0)} g verbraucht</span>
+                    </div>
+                </div>
+                ${jobRow}
+                <div class="ms-actions">
+                    <button class="ms-btn" onclick="openLoadSpoolModal('${printer.id}')">Wechseln</button>
+                    <button class="ms-btn danger" onclick="unloadExternalSpool('${printer.id}')">Entladen</button>
+                </div>`;
+        }
+
+        return `
+            <div class="ms-printer-wrap" id="printerCard_${printer.id}" data-klipper-id="${printer.id}">
+                <div class="ms-toolbar">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div class="ms-toolbar-dot" style="display:${isPrint?'block':'none'};"></div>
+                        <span class="ms-toolbar-title">${printer.name || 'Klipper'}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span class="ms-chip ms-status-chip ${chipClass}">
+                            <span class="ms-chip-dot"></span>${state.toUpperCase()}
+                        </span>
+                        <button class="ms-btn remove" onclick="removePrinter('${printer.id}')">Entfernen</button>
+                    </div>
+                </div>
+                <div class="ms-card-body">
+                    <div class="ms-card-hdr">
+                        <span class="ms-card-hdr-lbl">Filament</span>
+                        ${spool ? `<span class="ms-row-sub">Spule #${spool.spool_number || '—'}</span>` : ''}
+                    </div>
+                    ${cardBody}
+                    <div class="ms-temps">
+                        <div class="ms-temp-cell">
+                            <span class="ms-temp-lbl">Nozzle</span>
+                            <span class="ms-temp-val nozzle ms-nozzle-val">${nozzleStr}</span>
+                        </div>
+                        <div class="ms-temp-cell">
+                            <span class="ms-temp-lbl">Bed</span>
+                            <span class="ms-temp-val bed ms-bed-val">${bedStr}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    function renderSpoolContent(printer, spool) {
+        if (!spool) {
+            return `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📭</div>
+                    <p>Keine Spule geladen</p>
+                    <button class="btn-load" onclick="openLoadSpoolModal('${printer.id}')"
+                            style="margin-top: 1rem; padding: 0.75rem 1.5rem; background: rgba(255,140,66,0.2); border: 1px solid rgba(255,140,66,0.3); color: #ff8c42; border-radius: 0.5rem; cursor: pointer; font-weight: 500; transition: all 0.2s;">
+                        Spule laden
+                    </button>
+                </div>
+            `;
+        }
+
+        const percent = spool.remaining_weight_g && spool.weight_full
+            ? Math.round((spool.remaining_weight_g / spool.weight_full) * 100)
+            : 0;
+
+        const remainingG = spool.remaining_weight_g || 0;
+        const fullG = spool.weight_full || 1000;
+        const percentColor = percent > 50 ? '#10b981' : percent > 20 ? '#f59e0b' : '#ef4444';
+
+        return `
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <!-- Material Info Header -->
+                <div style="display: flex; align-items: center; gap: 0.75rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                    <div style="width: 2.5rem; height: 2.5rem; background-color: ${spool.color || '#cccccc'}; border-radius: 50%; border: 2px solid rgba(255,255,255,0.15);"></div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-size: 0.95rem; font-weight: 600; color: #fff; line-height: 1.3;">
+                            ${spool.spool_number ? `#${spool.spool_number}` : ''} ${spool.vendor || 'Unbekannt'}
+                        </div>
+                        <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 2px;">
+                            ${getMaterialName(spool)} • ${remainingG.toFixed(0)}g
+                        </div>
+                    </div>
+                    <div style="font-size: 1.75rem; font-weight: 700; color: ${percentColor}; line-height: 1;">
+                        ${percent}%
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div style="margin-top: -0.25rem;">
+                    <div style="height: 8px; background: linear-gradient(to right, #ef4444, #f59e0b, #10b981); border-radius: 999px; overflow: hidden; position: relative;">
+                        <div style="position: absolute; right: 0; top: 0; width: ${100 - percent}%; height: 100%; background: rgba(0,0,0,0.7); transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+
+                <!-- Button -->
+                <button data-printer-id="${printer.id}"
+                        data-spool-id="${spool.id}"
+                        class="btn-unload-external"
+                        style="width: 100%; padding: 0.625rem; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #ef4444; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.2s;">
+                    Spule entladen
+                </button>
+            </div>
+        `;
+    }
+
+    async function refreshPrinterData() {
+        console.log('Refreshing printer data...');
+        await fetchSpools();
+        console.log('Spools after refresh:', allSpools.length);
+        await renderPrinterGrid();
+    }
+
+    // ================================================================
+    // MODAL FUNCTIONS
+    // ================================================================
+    function openPrinterSelectionModal() {
+        const modal = document.getElementById("printerSelectionModal");
+        if (!modal) return;
+
+        renderPrinterSelectionList();
+        modal.classList.add("active");
+    }
+
+    function closePrinterSelectionModal() {
+        const modal = document.getElementById("printerSelectionModal");
+        if (!modal) return;
+        modal.classList.remove("active");
+    }
+
+    function renderPrinterSelectionList() {
+        const list = document.getElementById("printerSelectionList");
+        if (!list) return;
+
+        const selectedIds = getSelectedPrinterIds();
+
+        if (allPrinters.length === 0) {
+            list.innerHTML = `
+                <div class="no-printers-hint">
+                    <div class="no-printers-hint-icon">🔍</div>
+                    <p>Keine Drucker verfügbar.<br>Füge zuerst Drucker unter <strong>Drucker</strong> hinzu.</p>
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = allPrinters.filter(p => p.id).map(printer => {
+            const isAdded = selectedIds.includes(printer.id);
+            const onlineIcon = printer.online ? '🟢' : '🔴';
+            const onlineText = printer.online ? 'Online' : 'Offline';
+
+            // Baue Info-String: zeige nur IP und Online-Status
+            const infoParts = [];
+            if (printer.ip_address) infoParts.push(printer.ip_address);
+            infoParts.push(onlineText);
+            const printerInfo = infoParts.join(' • ');
+
+            return `
+                <div class="printer-selection-item ${isAdded ? 'already-added' : ''}"
+                     ${isAdded ? '' : `onclick="handleAddPrinter('${printer.id}')"`}>
+                    <div class="printer-selection-info">
+                        <div class="printer-selection-icon">${onlineIcon}</div>
+                        <div class="printer-selection-details">
+                            <h4>${printer.name || "Unbekannt"}</h4>
+                            <p>${printerInfo}</p>
+                        </div>
+                    </div>
+                    <button class="printer-selection-btn"
+                            ${isAdded ? 'disabled' : `onclick="event.stopPropagation(); handleAddPrinter('${printer.id}')"`}>
+                        ${isAdded ? 'Bereits hinzugefügt' : 'Hinzufügen'}
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function handleAddPrinter(printerId) {
+        addPrinter(printerId);
+        closePrinterSelectionModal();
+    }
+
+    // ================================================================
+    // LOAD/UNLOAD HANDLERS
+    // ================================================================
+    let currentPrinterId = null;
+
+    function openLoadSpoolModal(printerId) {
+        currentPrinterId = printerId;
+        const modal = document.getElementById("spoolSelectionModal");
+        const searchInput = document.getElementById("spoolSearchInput");
+        if (!modal) return;
+
+        // Suchfeld zurücksetzen
+        if (searchInput) searchInput.value = '';
+
+        renderSpoolSelectionList();
+        modal.classList.add("active");
+    }
+
+    function closeSpoolSelectionModal() {
+        const modal = document.getElementById("spoolSelectionModal");
+        if (!modal) return;
+        modal.classList.remove("active");
+        currentPrinterId = null;
+    }
+
+    function getMaterialName(spool) {
+        // Die Spule hat bereits name, vendor, tray_type Felder
+        // name = z.B. "PLA Basic"
+        // vendor = z.B. "Bambu Lab" (bei manuellen Spulen)
+        // tray_type = z.B. "PLA Basic" (bei AMS Spulen)
+
+        if (spool.name) {
+            return spool.name;
+        }
+        if (spool.tray_type) {
+            return spool.tray_type;
+        }
+        if (spool.vendor) {
+            return spool.vendor;
+        }
+        return 'Material unbekannt';
+    }
+
+    function renderSpoolSelectionList(searchTerm = '') {
+        const list = document.getElementById("spoolSelectionList");
+        if (!list) return;
+
+        // Filter: Nur Spulen ohne Drucker (printer_id ist null/undefined) und nicht leer
+        // Status ist egal - wenn printer_id null ist, ist die Spule verfügbar
+        let availableSpools = allSpools.filter(s => {
+            const hasNoPrinter = !s.printer_id || s.printer_id === null;
+            const isNotEmpty = !s.is_empty;
+            return hasNoPrinter && isNotEmpty;
+        });
+
+        // Suchfilter
+        if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            availableSpools = availableSpools.filter(spool => {
+                const spoolNum = spool.spool_number ? `#${spool.spool_number}` : '';
+                const material = getMaterialName(spool).toLowerCase();
+                const vendor = (spool.vendor || '').toLowerCase();
+                const trayType = (spool.tray_type || '').toLowerCase();
+
+                return spoolNum.includes(term) ||
+                       material.includes(term) ||
+                       vendor.includes(term) ||
+                       trayType.includes(term);
+            });
+        }
+
+        console.log("Available spools:", availableSpools.length, "Total spools:", allSpools.length);
+
+        if (availableSpools.length === 0) {
+            const message = searchTerm
+                ? `Keine Spulen gefunden für "${searchTerm}".`
+                : 'Keine verfügbaren Spulen gefunden.<br>Erstelle zuerst Spulen unter <strong>Spulenverwaltung</strong>.';
+
+            list.innerHTML = `
+                <div class="no-printers-hint">
+                    <div class="no-printers-hint-icon">📦</div>
+                    <p>${message}</p>
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = availableSpools.map(spool => {
+            const spoolNum = spool.spool_number ? `#${spool.spool_number}` : '';
+
+            // Baue Titel: z.B. "#6 Bambu Lab PLA Basic"
+            let title = '';
+            if (spoolNum) title += spoolNum + ' ';
+            if (spool.vendor) title += spool.vendor + ' ';
+            if (spool.name) {
+                title += spool.name;
+            } else if (spool.tray_type) {
+                title += spool.tray_type;
+            } else {
+                title += 'Material unbekannt';
+            }
+
+            const colorBg = spool.color || spool.tray_color || '#cccccc';
+            const remainingG = spool.remaining_weight_g || 0;
+            const percent = spool.weight_full ? Math.round((remainingG / spool.weight_full) * 100) : 0;
+
+            return `
+                <div class="printer-selection-item spool-item" data-spool-id="${spool.id}" onclick="handleSelectSpool('${spool.id}')">
+                    <div class="printer-selection-info">
+                        <div class="spool-color" style="width: 2rem; height: 2rem; border-radius: 50%; background-color: ${colorBg}; border: 2px solid rgba(255,255,255,0.2);"></div>
+                        <div class="printer-selection-details">
+                            <h4>${title.trim()}</h4>
+                            <p>${remainingG.toFixed(0)}g (${percent}%)</p>
+                        </div>
+                    </div>
+                    <button class="printer-selection-btn" onclick="event.stopPropagation(); handleSelectSpool('${spool.id}')">
+                        Auswählen
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function filterSpoolList() {
+        const searchInput = document.getElementById("spoolSearchInput");
+        if (!searchInput) return;
+        renderSpoolSelectionList(searchInput.value);
+    }
+
+    function handleSelectSpool(spoolId) {
+        if (!currentPrinterId) return;
+        loadExternalSpool(currentPrinterId, spoolId);
+        closeSpoolSelectionModal();
+    }
+
+    // Unload Modal State
+    let pendingUnloadPrinterId = null;
+
+    function handleUnloadSpool(printerId) {
+        if (!printerId || printerId === 'null') {
+            console.error('Cannot unload spool: printer ID is null');
+            alert('Fehler: Drucker-ID konnte nicht ermittelt werden');
+            return;
+        }
+
+        console.log('Opening unload confirmation for printer:', printerId);
+        pendingUnloadPrinterId = printerId;
+        const modal = document.getElementById("unloadConfirmModal");
+        if (!modal) return;
+        modal.classList.add("active");
+    }
+
+    function closeUnloadConfirmModal() {
+        const modal = document.getElementById("unloadConfirmModal");
+        if (!modal) return;
+        modal.classList.remove("active");
+        pendingUnloadPrinterId = null;
+    }
+
+    async function confirmUnloadSpool() {
+        console.log('confirmUnloadSpool called - pendingUnloadPrinterId:', pendingUnloadPrinterId);
+        if (!pendingUnloadPrinterId) {
+            console.error('Cannot confirm unload: pendingUnloadPrinterId is null');
+            return;
+        }
+        // Speichere die ID in einer lokalen Variable, bevor das Modal geschlossen wird
+        const printerIdToUnload = pendingUnloadPrinterId;
+        closeUnloadConfirmModal(); // Dies setzt pendingUnloadPrinterId auf null
+        await unloadExternalSpool(printerIdToUnload); // Verwende die lokale Kopie
+    }
+
+    // ================================================================
+    // INITIALIZATION
+    // ================================================================
+    document.addEventListener("DOMContentLoaded", async function() {
+        await fetchPrinters();
+        await fetchSpools();
+        await fetchMaterials();
+        await renderPrinterGrid();
+
+        // Event delegation für Unload-Button
+        document.addEventListener('click', function(event) {
+            const unloadBtn = event.target.closest('.btn-unload-external');
+            if (unloadBtn) {
+                event.preventDefault();
+                const printerId = unloadBtn.getAttribute('data-printer-id');
+                const spoolId = unloadBtn.getAttribute('data-spool-id');
+                console.log('Unload button clicked - Printer:', printerId, 'Spool:', spoolId);
+
+                if (printerId && printerId !== 'null') {
+                    handleUnloadSpool(printerId);
+                } else {
+                    console.error('Invalid printer ID from button:', printerId);
+                    alert('Fehler: Drucker-ID ist ungültig');
+                }
+            }
+        });
+
+        // Auto-refresh every 10 seconds
+        setInterval(async () => {
+            await fetchSpools();
+            await fetchPrinters();
+            await renderPrinterGrid();
+        }, 10000);
+    });
+</script>
+{% endblock %}
