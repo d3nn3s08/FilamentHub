@@ -375,8 +375,16 @@ tbody td small {
 .modal-content.modal-content-gcode {
     max-width: 1020px;
     width: 98vw;
-    overflow-y: visible;
-    overflow-x: hidden;
+    overflow: auto;
+    resize: both;
+    min-width: 700px;
+    min-height: 380px;
+}
+
+/* Modal-Outer für das G-Code Modal: flex-start damit resize nicht durch Zentrierung blockiert wird */
+.modal-gcode-outer {
+    align-items: flex-start !important;
+    padding-top: 5vh !important;
 }
 
 /* G-Code Datei-Typ Badge */

@@ -271,7 +271,7 @@ function renderJobs(jobsList) {
             status = `<span class="status-badge status-idle">${jobStatus}</span>`;
         }
 
-        const verbrauch = needsTracking
+        const verbrauch = (needsTracking && job.filament_used_g === 0)
             ? '<span style="color: var(--error, #dc3545); font-weight: bold;">Warnung 0g</span>'
             : `<strong>${job.filament_used_g.toFixed(1)}g</strong><br><small>${(job.filament_used_mm / 1000).toFixed(2)}m</small>`;
 
@@ -819,7 +819,8 @@ async function saveManualUsage(event) {
     let gcodeSelectionFiles = [];
     let gcodeConfirmData = null;
 
-    const GCODE_CONFIRM_STATUSES = ['failed', 'aborted', 'cancelled', 'stopped', 'error'];
+    // pending_weight = Job fertig aber kein Gewicht/Spule → auch Bestätigung anzeigen
+    const GCODE_CONFIRM_STATUSES = ['failed', 'aborted', 'cancelled', 'stopped', 'error', 'pending_weight'];
 
     window.refreshWeightFromGcode = async function(jobId, selectedFilename = null) {
         gcodeRefreshJobId = jobId;
@@ -902,6 +903,7 @@ async function saveManualUsage(event) {
             filename: data.filename,
             originalWeight: weight,
             durationMin: data.duration_min,
+            filamentWeightsG: data.filament_weights_g || null,
         };
 
         const modal = document.getElementById('gcodeSelectionModal');
@@ -946,6 +948,7 @@ async function saveManualUsage(event) {
             weightInput.value = weight.toFixed(2);
             previewBox.style.display = 'block';
             _updatePreviewRecommendation(weight, data.duration_min);
+            _renderSpoolBreakdown(data.filament_weights_g);
             const btn = document.getElementById('gcodeConfirmBtn');
             if (btn) btn.textContent = `Uebernehmen (${weight.toFixed(1)} g)`;
         }
@@ -1000,6 +1003,7 @@ async function saveManualUsage(event) {
             inputEl.value = w.toFixed(2);
             if (btn) btn.textContent = `✓ Übernehmen (${w.toFixed(1)} g)`;
             _updatePreviewRecommendation(w, gcodeConfirmData?.durationMin);
+            _renderSpoolBreakdown(gcodeConfirmData?.filamentWeightsG || null);
             _updateWeightCell(w);
             return;
         }
@@ -1019,12 +1023,14 @@ async function saveManualUsage(event) {
             if (result.needs_confirmation && result.weight > 0) {
                 const w = parseFloat(result.weight);
                 gcodeConfirmData = { ...(gcodeConfirmData || {}), filename, originalWeight: w,
-                    durationMin: result.duration_min ?? gcodeConfirmData?.durationMin };
+                    durationMin: result.duration_min ?? gcodeConfirmData?.durationMin,
+                    filamentWeightsG: result.filament_weights_g || gcodeConfirmData?.filamentWeightsG || null };
                 displayEl.textContent = `${w.toFixed(2)} g`;
                 displayEl.style.color = '#2ecc71';
                 inputEl.value = w.toFixed(2);
                 if (btn) btn.textContent = `✓ Übernehmen (${w.toFixed(1)} g)`;
                 _updatePreviewRecommendation(w, gcodeConfirmData.durationMin);
+                _renderSpoolBreakdown(gcodeConfirmData.filamentWeightsG);
                 _updateWeightCell(w);
             } else {
                 displayEl.textContent = '—';
@@ -1138,9 +1144,12 @@ async function saveManualUsage(event) {
         window.closeGcodeConfirmModal();
 
         try {
-            const url = `/api/jobs/${jobId}/refresh-weight-gcode`
+            let url = `/api/jobs/${jobId}/refresh-weight-gcode`
                 + `?gcode_filename=${encodeURIComponent(filename)}`
                 + `&confirmed_weight=${confirmedWeight}`;
+            if (gcodeConfirmData?.filamentWeightsG) {
+                url += `&filament_weights_json=${encodeURIComponent(JSON.stringify(gcodeConfirmData.filamentWeightsG))}`;
+            }
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -1222,6 +1231,9 @@ window.openGcodeSelectionModal = function(jobId, files, message = null, connecti
 
         gcodeRefreshJobId = jobId;
         document.getElementById('gcodeSelectionModal').style.display = 'flex';
+
+        // Job IDs im Hintergrund laden und Spalte befüllen
+        _loadJobIdMap().then(map => _updateJobIdCells(map, gcodeSelectionFiles));
 
         // Gewichte im Hintergrund laden (sofort nach Öffnen)
         _loadAllWeightsOnOpen(jobId, gcodeSelectionFiles);
@@ -1325,6 +1337,13 @@ window.openGcodeSelectionModal = function(jobId, files, message = null, connecti
 
     // Manuell eingeben (Fehler-Panel → rechtes Panel zeigen)
     window.gcodeShowManualEntry = function() {
+        // Placeholder setzen damit confirmGcodeSelection nicht an !selectedFile scheitert
+        const currentJobId = gcodeRefreshJobId || (gcodeConfirmData && gcodeConfirmData.jobId);
+        if (currentJobId) {
+            gcodeConfirmData = { ...(gcodeConfirmData || {}), jobId: currentJobId, filename: 'manual_entry' };
+            const selectEl = document.getElementById('gcodeFileSelect');
+            if (selectEl) selectEl.value = 'manual_entry';
+        }
         const errPanel = document.getElementById('gcodeErrorPanel');
         const previewBox = document.getElementById('gcodeWeightPreview');
         const previewPanel = document.getElementById('gcodePreviewPanel');
@@ -1478,9 +1497,12 @@ window.openGcodeSelectionModal = function(jobId, files, message = null, connecti
             }
             window.closeGcodeSelectionModal();
             try {
-                const url = `/api/jobs/${gcodeConfirmData.jobId}/refresh-weight-gcode`
+                let url = `/api/jobs/${gcodeConfirmData.jobId}/refresh-weight-gcode`
                     + `?gcode_filename=${encodeURIComponent(selectedFile)}`
                     + `&confirmed_weight=${confirmedWeight}`;
+                if (gcodeConfirmData.filamentWeightsG) {
+                    url += `&filament_weights_json=${encodeURIComponent(JSON.stringify(gcodeConfirmData.filamentWeightsG))}`;
+                }
                 const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
                 const result = await resp.json();
                 if (result.success) {
@@ -1499,6 +1521,86 @@ window.openGcodeSelectionModal = function(jobId, files, message = null, connecti
         // Normaler Pfad: erneuter API-Call mit gewähltem Filename
         window.refreshWeightFromGcode(gcodeRefreshJobId, selectedFile);
     }
+
+// Lädt Jobs-Liste und erstellt Name→task_id Map für Job-ID-Spalte
+async function _loadJobIdMap() {
+    try {
+        const resp = await fetch('/api/jobs?limit=500');
+        if (!resp.ok) return new Map();
+        const data = await resp.json();
+        const jobList = Array.isArray(data) ? data : (data.jobs || data.items || []);
+        const map = new Map();
+        for (const job of jobList) {
+            const label = job.task_id || (job.id ? job.id.slice(0, 8) : null);
+            if (!label) continue;
+            // Key: Job-Name ohne Datei-Extension, lowercase für fuzzy Match
+            const key = (job.name || '').toLowerCase()
+                .replace(/\.gcode\.3mf$/i, '').replace(/\.3mf$/i, '').replace(/\.gcode$/i, '').trim();
+            if (key) map.set(key, label);
+        }
+        return map;
+    } catch (_) {
+        return new Map();
+    }
+}
+
+// Befüllt Job-ID-Zellen nach dem Render mit gematchten task_ids
+function _updateJobIdCells(map, files) {
+    const cells = document.querySelectorAll('#gcodeFilesBody .gcode-jobid-cell');
+    cells.forEach((cell, idx) => {
+        const f = files && files[idx];
+        if (!f) return;
+        const key = (f.name || '').toLowerCase()
+            .replace(/\.gcode\.3mf$/i, '').replace(/\.3mf$/i, '').replace(/\.gcode$/i, '').trim();
+        const taskId = map.get(key);
+        if (taskId) {
+            cell.textContent = taskId;
+            cell.style.color = 'var(--accent, #f0a500)';
+            cell.title = taskId;
+        } else {
+            cell.textContent = '—';
+        }
+    });
+}
+
+// Zeigt per-Spool Gewicht-Breakdown (Multicolor, bis zu 16 Filamente)
+function _renderSpoolBreakdown(weights) {
+    const el = document.getElementById('gcodeSpoolBreakdown');
+    if (!el) return;
+    // DOM leeren
+    while (el.firstChild) el.removeChild(el.firstChild);
+    // Nur bei 2+ genutzten Filamenten anzeigen
+    const active = (weights || []).filter(w => w > 0);
+    if (!weights || active.length < 2) {
+        el.style.display = 'none';
+        return;
+    }
+    const total = weights.reduce((a, b) => a + b, 0);
+    weights.forEach((w, i) => {
+        if (w <= 0) return; // Ungenutzte Slots überspringen
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; justify-content:space-between; margin-bottom:2px;';
+        const lbl = document.createElement('span');
+        lbl.textContent = `Filament ${i + 1}`;
+        const val = document.createElement('strong');
+        val.textContent = `${w.toFixed(2)} g`;
+        row.appendChild(lbl);
+        row.appendChild(val);
+        el.appendChild(row);
+    });
+    // Trennlinie + Gesamtsumme
+    const sep = document.createElement('div');
+    sep.style.cssText = 'border-top:1px solid rgba(255,255,255,0.15); margin-top:4px; padding-top:4px; display:flex; justify-content:space-between;';
+    const totLbl = document.createElement('span');
+    totLbl.textContent = 'Gesamt';
+    const totVal = document.createElement('strong');
+    totVal.style.color = 'var(--text)';
+    totVal.textContent = `${total.toFixed(2)} g`;
+    sep.appendChild(totLbl);
+    sep.appendChild(totVal);
+    el.appendChild(sep);
+    el.style.display = 'block';
+}
 
 function renderGcodeOptions(fileList, skipSort = false) {
     const tbody = document.getElementById('gcodeFilesBody');
@@ -1629,8 +1731,15 @@ function renderGcodeOptions(fileList, skipSort = false) {
         const dtStr = fileInfo.mtime_str || '—';
         dateCell.textContent = _formatFtpDate(dtStr);
 
+        // --- Job ID (3. Spalte, zwischen Name und Gewicht) ---
+        const jobIdCell = document.createElement('td');
+        jobIdCell.className = 'gcode-jobid-cell';
+        jobIdCell.style.cssText = 'padding:6px 8px; width:80px; font-size:10px; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+        jobIdCell.textContent = '…';
+
         row.appendChild(typeCell);
         row.appendChild(nameCell);
+        row.appendChild(jobIdCell);
         row.appendChild(weightCell);
         row.appendChild(dateCell);
         tbody.appendChild(row);

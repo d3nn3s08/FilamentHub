@@ -16,7 +16,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 import re
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 
 logger = logging.getLogger("utils")
@@ -152,8 +152,9 @@ def _parse_gcode_header(gcode: str) -> Dict[str, Any]:
     """
     metadata = {}
 
+    all_lines = gcode.split('\n')
     # Read only first ~200 lines (headers are at the top)
-    lines = gcode.split('\n')[:200]
+    lines = all_lines[:200]
 
     patterns = {
         'total_filament_length_mm': r';\s*total filament length \[mm\]\s*[=:]\s*([\d.]+)',
@@ -178,6 +179,40 @@ def _parse_gcode_header(gcode: str) -> Dict[str, Any]:
                 else:
                     metadata[key] = float(value)
                 break  # Found match, move to next line
+
+    # Scan last ~200 lines for per-filament weights (Bambu footer)
+    # Format: ; filament used [g] = 4.56, 21.30, 8.90  (bis zu 16 Werte beim X1C)
+    footer_lines = all_lines[-200:] if len(all_lines) > 200 else all_lines
+    _wl_pattern = r';\s*filament used \[g\]\s*=\s*([\d.,\s]+)'
+    for _line in footer_lines:
+        _m = re.search(_wl_pattern, _line, re.IGNORECASE)
+        if _m:
+            _vals_str = _m.group(1).strip().rstrip(',')
+            _weights: List[float] = []
+            for _v in _vals_str.split(','):
+                _v = _v.strip()
+                if _v:
+                    try:
+                        _weights.append(float(_v))
+                    except ValueError:
+                        _weights.append(0.0)
+            if _weights:
+                metadata['filament_weights_g'] = _weights
+                logger.debug(f"[3MF] Per-Filament Gewichte (Footer): {_weights}")
+            break
+
+    # Footer-Summe als Gesamt-Gewicht verwenden wenn Header-Wert fehlt oder zu niedrig
+    # Begründung: Header zeigt bei Multicolor oft nur Filament 1; Footer immer vollständig
+    # X1C: bis zu 16 Filamente, sum() deckt alle ab inkl. 0.0g-Einträge für ungenutzte Slots
+    if 'filament_weights_g' in metadata:
+        _footer_total = sum(metadata['filament_weights_g'])
+        _header_total = metadata.get('total_filament_weight_g') or 0.0
+        if _footer_total > 0 and (_header_total <= 0 or _footer_total > _header_total * 1.05):
+            metadata['total_filament_weight_g'] = round(_footer_total, 2)
+            logger.debug(
+                f"[3MF] Gesamt-Gewicht aus Footer: {_footer_total:.2f}g "
+                f"({len(metadata['filament_weights_g'])} Filamente, Header war {_header_total:.2f}g)"
+            )
 
     return metadata
 

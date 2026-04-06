@@ -852,6 +852,7 @@ def refresh_weight_from_gcode(
     gcode_filename: Optional[str] = None,
     dry_run: bool = False,
     confirmed_weight: Optional[float] = None,
+    filament_weights_json: Optional[str] = None,
     session: Session = Depends(get_session)
 ):
     """
@@ -1086,6 +1087,7 @@ def refresh_weight_from_gcode(
         from app.services.gcode_ftp_service import FTPLibFTPS as _FTPLibFTPS_X1C
 
         _x1c_weight: Optional[float] = None
+        _x1c_weights_list: Optional[list] = None
         _x1c_filename: str = gcode_filename or f"[X1C] {job.name}"
         _x1c_conn_method = "ftps"
 
@@ -1209,6 +1211,9 @@ def refresh_weight_from_gcode(
                         _x1c_w_val = _w_result_x1c.get("weight_g")
                         if _x1c_w_val and float(_x1c_w_val) > 0:
                             _x1c_weight = round(float(_x1c_w_val), 2)
+                        _wl = _w_result_x1c.get("filament_weights_g")
+                        if _wl:
+                            _x1c_weights_list = _wl
                 except Exception as _we:
                     logger.warning(f"[X1C FTPS WEIGHT] Extraktion fehlgeschlagen: {_we}")
 
@@ -1380,6 +1385,7 @@ def refresh_weight_from_gcode(
                 "job_name": job.name,
                 "duration_min": _dur_x1c,
                 "connection_method": _x1c_conn_method,
+                "filament_weights_g": _x1c_weights_list,
             }
 
         _x1c_old_w = job.filament_used_g or 0
@@ -1387,7 +1393,57 @@ def refresh_weight_from_gcode(
         job.filament_used_g = _x1c_weight
         if (job.status or "").lower() == "pending_weight" and _x1c_weight > 0 and job.finished_at is not None:
             job.status = "completed"
-        if job.spool_id and _x1c_diff != 0:
+        # Per-Spool Gewichte: aus Frontend-Bestätigung (filament_weights_json) oder FTPS-Download
+        _per_spool_w: Optional[list] = None
+        if filament_weights_json:
+            try:
+                import json as _json_mod
+                _per_spool_w = _json_mod.loads(filament_weights_json)
+            except Exception:
+                pass
+        if not _per_spool_w and _x1c_weights_list:
+            _per_spool_w = _x1c_weights_list
+
+        if _per_spool_w:
+            # Multicolor: Jede Spule einzeln aktualisieren via JobSpoolUsage
+            from sqlmodel import select as _sel_su
+            from app.models.job import JobSpoolUsage as _JSU
+            _usages = session.exec(_sel_su(_JSU).where(_JSU.job_id == job_id)).all()
+            _usages_by_slot = {u.slot: u for u in _usages if u.slot is not None}
+            for _slot_i, _sw in enumerate(_per_spool_w):
+                _u = _usages_by_slot.get(_slot_i)
+                if not _u:
+                    continue
+                _u.used_g = round(float(_sw), 2)
+                session.add(_u)
+                if _u.spool_id and float(_sw) > 0:
+                    _u_spool = session.get(Spool, _u.spool_id)
+                    if _u_spool and _u_spool.weight_current is not None:
+                        _u_sw_old = float(_u_spool.weight_current)
+                        _u_sw_new = max(0.0, _u_sw_old - float(_sw))
+                        _u_spool.weight_current = _u_sw_new
+                        if _u_spool.weight_full and _u_spool.weight_empty:
+                            _u_wr = float(_u_spool.weight_full) - float(_u_spool.weight_empty)
+                            if _u_wr > 0:
+                                _u_spool.remain_percent = max(0, min(100, (
+                                    _u_sw_new - float(_u_spool.weight_empty)) / _u_wr * 100))
+                        try:
+                            from app.models.weight_history import WeightHistory as _WH_ms
+                            session.add(_WH_ms(
+                                spool_uuid=_u_spool.tray_uuid or _u_spool.id,
+                                spool_number=_u_spool.spool_number,
+                                old_weight=_u_sw_old,
+                                new_weight=_u_sw_new,
+                                source="print_consumed",
+                                change_reason="x1c_weight_refresh_multispool",
+                                user="System",
+                            ))
+                        except Exception:
+                            pass
+                        session.add(_u_spool)
+            logger.info(f"[X1C WEIGHT] Multi-Spool: {len(_per_spool_w)} Filamente → {_per_spool_w}")
+        elif job.spool_id and _x1c_diff != 0:
+            # Einzelspule: klassische Logik
             _x1c_spool = session.get(Spool, job.spool_id)
             if _x1c_spool and _x1c_spool.weight_current is not None:
                 _x1c_sw_old = float(_x1c_spool.weight_current or 0)

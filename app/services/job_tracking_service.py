@@ -3262,6 +3262,9 @@ class JobTrackingService:
                             total_used_g = cloud_result.get("total_used_g", total_used_g)
                             if job.status == "pending_weight" and float(total_used_g or 0.0) > 0:
                                 job.status = "completed"
+                                # filament_used_g muss ebenfalls gesetzt werden, sonst zeigt UI "Warnung 0g"
+                                if job.filament_used_g == 0:
+                                    job.filament_used_g = float(total_used_g)
                                 session.add(job)
                                 session.commit()
                                 session.refresh(job)

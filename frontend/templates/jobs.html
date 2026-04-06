@@ -240,7 +240,7 @@
 </div>
 
 <!-- G-Code File Selection Modal -->
-<div id="gcodeSelectionModal" class="modal" style="display: none;">
+<div id="gcodeSelectionModal" class="modal modal-gcode-outer" style="display: none;">
     <div class="modal-content modal-content-gcode">
         <div class="modal-header" style="align-items: flex-start;">
             <div>
@@ -279,6 +279,7 @@
                             <tr>
                                 <th style="padding: 7px 8px; text-align: left; width: 44px; color: var(--text-dim); font-weight: 500; font-size: 11px;">Typ</th>
                                 <th style="padding: 7px 8px; text-align: left; cursor: pointer; user-select: none; color: var(--text-dim); font-weight: 500; font-size: 11px;" onclick="sortGcodeFiles('name')">Name <span id="sortIndicatorName"></span></th>
+                                <th style="padding: 7px 8px; text-align: left; width: 80px; color: var(--text-dim); font-weight: 500; font-size: 11px;">Job ID</th>
                                 <th style="padding: 7px 8px; text-align: right; width: 70px; color: var(--text-dim); font-weight: 500; font-size: 11px;">Gewicht</th>
                                 <th style="padding: 7px 8px; text-align: right; width: 86px; cursor: pointer; user-select: none; color: var(--text-dim); font-weight: 500; font-size: 11px;" onclick="sortGcodeFiles('date')">Datum <span id="sortIndicatorDate"></span></th>
                             </tr>
@@ -301,10 +302,12 @@
 
                 <!-- Gewicht-Vorschau -->
                 <div id="gcodeWeightPreview" style="display: none;">
-                    <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 12px; text-align: center; margin-bottom: 10px;">
+                    <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 12px; text-align: center; margin-bottom: 6px;">
                         <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.08em;">Gewicht</div>
                         <div id="gcodePreviewWeightDisplay" style="font-size: 28px; font-weight: 700;">—</div>
                     </div>
+                    <!-- Per-Spool Breakdown (Multicolor / bis zu 16 Filamente) -->
+                    <div id="gcodeSpoolBreakdown" style="display:none; margin-bottom: 8px; font-size: 11px; color: var(--text-dim); background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 7px 10px;"></div>
                     <label style="font-size: 11px; color: var(--text-dim); display: block; margin-bottom: 4px;">Übernehmen mit (g):</label>
                     <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px;">
                         <input type="number" id="gcodePreviewWeight" class="form-control"

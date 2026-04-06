@@ -836,10 +836,15 @@ class GcodeFTPService:
 
             file_content = ftps.download_file(downloaded_file)
             if downloaded_file.lower().endswith('.3mf'):
-                weight, length = self._extract_metrics_from_3mf(file_content, downloaded_file)
+                weight, length, weights_list = self._extract_metrics_from_3mf(file_content, downloaded_file)
+                if weights_list:
+                    metrics["filament_weights_g"] = weights_list
             else:
                 gcode_text = file_content.decode('utf-8', errors='ignore')
                 weight, length = self._extract_metrics_from_gcode(gcode_text)
+                weights_list = self._extract_weight_list_from_gcode(gcode_text)
+                if weights_list:
+                    metrics["filament_weights_g"] = weights_list
 
             metrics["weight_g"] = weight
             metrics["length_mm"] = length
@@ -1056,8 +1061,8 @@ class GcodeFTPService:
             )
             return None
 
-    def _extract_metrics_from_3mf(self, file_content: bytes, filename: str) -> Tuple[Optional[float], Optional[float]]:
-        """Extrahiert Gewicht (g) und Laenge (mm) aus 3MF."""
+    def _extract_metrics_from_3mf(self, file_content: bytes, filename: str) -> Tuple[Optional[float], Optional[float], Optional[List[float]]]:
+        """Extrahiert Gewicht (g), Laenge (mm) und per-Filament Gewichte aus 3MF."""
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix='.3mf') as tmp:
                 tmp.write(file_content)
@@ -1067,16 +1072,17 @@ class GcodeFTPService:
                 metadata = extract_3mf_metadata(tmp_path)
                 weight = metadata.get('total_filament_weight_g')
                 length = metadata.get('total_filament_length_mm')
+                weights_list = metadata.get('filament_weights_g')
                 weight_f = float(weight) if weight is not None else None
                 length_f = float(length) if length is not None else None
-                return weight_f, length_f
+                return weight_f, length_f, weights_list
             finally:
                 try:
                     Path(tmp_path).unlink()
                 except Exception:
                     pass
         except Exception:
-            return None, None
+            return None, None, None
 
     def _extract_weight_from_gcode(self, gcode_content: str) -> Optional[float]:
         """
