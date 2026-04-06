@@ -109,7 +109,7 @@
         const materialText = detectionData.tray_sub_brands || detectionData.tray_type || 'Unbekannt';
         document.getElementById('sa-detected-material').textContent = materialText;
 
-        const slotText = detectionData.ams_slot != null ? `AMS Slot ${detectionData.ams_slot}` : 'AMS';
+        const slotText = detectionData.ams_slot != null ? `AMS Slot ${Number(detectionData.ams_slot) + 1}` : 'AMS';
         document.getElementById('sa-detected-slot').textContent = slotText;
 
         const printerText = detectionData.printer_name || '';
@@ -383,7 +383,7 @@
                 window.GlobalNotifications.triggerAlert({
                     type: 'success',
                     label: 'Neue Spule angelegt',
-                    message: `Neue Spule für Slot ${currentDetection.ams_slot} wurde angelegt.`,
+                    message: `Neue Spule für Slot ${Number(currentDetection.ams_slot) + 1} wurde angelegt.`,
                     persistent: false,
                 });
             }

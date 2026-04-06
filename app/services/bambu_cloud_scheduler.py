@@ -97,6 +97,14 @@ async def perform_scheduled_sync():
                 logger.debug("Bambu Cloud Sync übersprungen: Nicht aktiviert oder kein Token")
                 return
 
+            if config.sync_paused:
+                logger.debug("Bambu Cloud Sync übersprungen: Sync ist pausiert")
+                return
+
+            if config.connection_status == "error":
+                logger.debug("Bambu Cloud Sync übersprungen: Verbindung im Fehlerstatus – bitte manuell prüfen")
+                return
+
             # Token entschlüsseln
             try:
                 access_token = decrypt_token(config.access_token_encrypted)

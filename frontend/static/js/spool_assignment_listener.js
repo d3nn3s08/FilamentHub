@@ -90,7 +90,7 @@
     function showNewSpoolNotification(data) {
         // Build description
         const material = data.tray_sub_brands || data.tray_type || 'Unbekannt';
-        const slot = data.ams_slot != null ? `Slot ${data.ams_slot}` : 'AMS';
+        const slot = data.ams_slot != null ? `Slot ${Number(data.ams_slot) + 1}` : 'AMS';
         const printer = data.printer_name ? ` (${data.printer_name})` : '';
 
         // Show toast

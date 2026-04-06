@@ -46,6 +46,8 @@ class JobTrackingService:
         self.logger = logging.getLogger("services")
         self.snapshots_file = Path("data/job_snapshots.json")  # Persistente Job-Fingerprints
         self.binding_warning_layer_threshold = 10
+        self._job_finish_cooldown: Dict[str, float] = {}  # cloud_serial -> timestamp nach Job-Ende
+        self._JOB_FINISH_COOLDOWN_SECS = 120  # 2 Minuten Sperrzeit nach Job-Ende
 
     def _extract_job_name(self, parsed_payload: Dict[str, Any]) -> Optional[str]:
         """Extrahiert Jobnamen aus MQTT-Payload oder None."""
@@ -1189,6 +1191,15 @@ class JobTrackingService:
         # JOB START
         # ===================================================================
         if not has_active_job and current_gstate in PRINT_STATES:
+            # Cooldown-Check: Post-Print-Signale (PURGING, CHANGING_FILAMENT) nach Job-Ende ignorieren
+            import time as _t
+            _cooldown_ts = self._job_finish_cooldown.get(cloud_serial, 0.0)
+            if (_t.monotonic() - _cooldown_ts) < self._JOB_FINISH_COOLDOWN_SECS:
+                self.logger.debug(
+                    f"[JOB START] Cooldown aktiv für {cloud_serial} – "
+                    f"ignoriere Post-Print-Signal gcode_state={current_gstate!r}"
+                )
+                return None
             return self._handle_job_start(
                 cloud_serial,
                 parsed_payload,
@@ -2999,9 +3010,11 @@ class JobTrackingService:
                 gstate_normalized = (current_gstate or "").upper()
                 is_klipper = bool(printer and (printer.printer_type or "").lower() == "klipper")
 
+                # Kein Gewicht UND keine Spule -> pending_weight (gilt fuer alle Drucker)
+                _no_data = float(total_used_g or 0.0) <= 0 and not job.spool_id
+
                 if gstate_normalized in completed_states:
-                    # [BETA] Nur fuer Klipper: completed erst mit Gewicht.
-                    if is_klipper and float(total_used_g or 0.0) <= 0:
+                    if _no_data:
                         job.status = "pending_weight"
                     else:
                         job.status = "completed"
@@ -3024,7 +3037,7 @@ class JobTrackingService:
                 else:
                     # Fallback: Wenn mc_percent==100 aber kein gcode_state â†’ "completed"
                     if parsed_payload.get("print", {}).get("mc_percent") == 100:
-                        if is_klipper and float(total_used_g or 0.0) <= 0:
+                        if _no_data:
                             job.status = "pending_weight"
                         else:
                             job.status = "completed"
@@ -3320,6 +3333,11 @@ class JobTrackingService:
 
                 # Cleanup RAM
                 del self.active_jobs[cloud_serial]
+
+                # Cooldown setzen – verhindert Phantomjobs durch Post-Print-Signale (PURGING etc.)
+                import time as _t
+                self._job_finish_cooldown[cloud_serial] = _t.monotonic()
+                self.logger.info(f"[JOB FINISH] Cooldown gesetzt für {cloud_serial} ({self._JOB_FINISH_COOLDOWN_SECS}s)")
 
                 # === SNAPSHOT LÃ–SCHEN (Job ist fertig) ===
                 self._delete_snapshot(cloud_serial, job_info.get("printer_id"))

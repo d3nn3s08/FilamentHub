@@ -17,6 +17,11 @@ from services.printer_service import get_printer_service
 router = APIRouter(prefix="/api/printers", tags=["printers"])
 logger = logging.getLogger("app")
 
+# Cache für has_real_ams (30s TTL) – wird alle 12s vom Frontend abgefragt
+import time as _time
+_ams_cache: dict = {"value": None, "ts": 0.0}
+_AMS_CACHE_TTL = 30.0
+
 UPLOAD_DIR = os.path.join("app", "static", "uploads", "printers")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -80,12 +85,13 @@ def get_all_printers(live: bool = False, session: Session = Depends(get_session)
 def get_global_has_real_ams(session: Session = Depends(get_session)):
     """
     Global indicator for real AMS presence (excluding AMS Lite).
-    
-    Checks:
-    1. Database for printer model (A1MINI = AMS Lite, excluded)
-    2. Live state for devices with AMS
-    3. Fallback: Extract model from printer.name
+    Cached for 30s to avoid repeated DB + live-state queries.
     """
+    global _ams_cache
+    now = _time.monotonic()
+    if _ams_cache["value"] is not None and (now - _ams_cache["ts"]) < _AMS_CACHE_TTL:
+        return {"value": _ams_cache["value"]}
+
     try:
         from app.services import live_state as live_state_module
         from app.services.ams_normalizer import has_real_ams_from_payload
@@ -122,8 +128,10 @@ def get_global_has_real_ams(session: Session = Depends(get_session)):
             # Check if this device has real AMS (not AMS Lite)
             payload = entry.get("payload") or {}
             if has_real_ams_from_payload(payload, printer_model=printer_model):
+                _ams_cache.update({"value": True, "ts": _time.monotonic()})
                 return {"value": True}
-        
+
+        _ams_cache.update({"value": False, "ts": _time.monotonic()})
         return {"value": False}
     except Exception:
         logger.exception("Failed to resolve global real AMS state")
