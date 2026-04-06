@@ -364,6 +364,19 @@
         <div class="big-number" id="filamentTodayValue">–</div>
         <p class="subtitle" style="margin:0;">Verbraucht</p>
     </div>
+    <div class="live-card" id="versionCard">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div>
+                <p class="eyebrow" style="margin-bottom:4px;">🔖 Version</p>
+                <div class="big-number" id="dashVerCurrent" style="font-size:22px;">–</div>
+            </div>
+            <div style="text-align:right;">
+                <p class="eyebrow" style="margin-bottom:4px;">Kanal</p>
+                <div class="big-number" id="dashVerChannel" style="font-size:22px;">–</div>
+            </div>
+        </div>
+        <p class="subtitle" style="margin:4px 0 0 0;" id="dashVerStatus">Prüfe...</p>
+    </div>
 </section>
 
 <!-- Active Print Jobs -->
@@ -552,5 +565,42 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(checkAndShowWelcomePopup, 500);
 });
+</script>
+
+<script>
+(function() {
+    const card    = document.getElementById('versionCard');
+    const verEl   = document.getElementById('dashVerCurrent');
+    const statEl  = document.getElementById('dashVerStatus');
+
+    fetch('/api/version/check')
+        .then(r => r.json())
+        .then(d => {
+            verEl.textContent = d.current || '–';
+            const chanEl = document.getElementById('dashVerChannel');
+            if (chanEl && d.channel) {
+                chanEl.textContent = d.channel === 'beta' ? 'BETA' : 'STABLE';
+            }
+            if (d.update_available) {
+                card.style.borderColor = 'rgba(255,193,101,.4)';
+                card.style.background  = 'radial-gradient(circle at 20% 20%, rgba(255,193,101,.05), transparent 40%), var(--panel)';
+                statEl.textContent     = '↑ ' + d.latest + ' verfügbar';
+                statEl.style.color     = '#ffc165';
+            } else if (d.latest) {
+                statEl.textContent = '✓ Aktuell';
+                statEl.style.color = '#6ae485';
+            } else {
+                statEl.textContent = d.error || 'Offline';
+                statEl.style.color = 'var(--text-dim)';
+            }
+        })
+        .catch(() => {
+            fetch('/api/version/current').then(r => r.json()).then(d => {
+                verEl.textContent  = d.version || '–';
+                statEl.textContent = '–';
+                statEl.style.color = 'var(--text-dim)';
+            }).catch(() => {});
+        });
+})();
 </script>
 {% endblock %}

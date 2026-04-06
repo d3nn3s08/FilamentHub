@@ -30,7 +30,7 @@ _cache: dict = {"latest": None, "fetched_at": 0.0, "channel": None}
 
 _VERSION_URLS = {
     "beta":   "https://raw.githubusercontent.com/d3nn3s08/FilamentHub/beta/VERSION",
-    "stable": "https://raw.githubusercontent.com/d3nn3s08/FilamentHub/master/VERSION",
+    "stable": "https://raw.githubusercontent.com/d3nn3s08/FilamentHub/main/VERSION",
 }
 
 
@@ -86,7 +86,7 @@ def get_current_version():
 @router.get("/check")
 async def check_for_update(session: Session = Depends(get_session), channel: str | None = None):
     if channel not in ("stable", "beta"):
-        channel = get_setting(session, "update_channel", "stable") or "stable"
+        channel = get_setting(session, "update_channel", "beta") or "beta"
     current = _read_current_version()
     latest  = await _fetch_latest(channel)
 
