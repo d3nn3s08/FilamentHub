@@ -10,6 +10,7 @@
 - **CI** – GitHub Actions Workflow für automatischen Docker Hub Build
 
 ### Fixes
+- **AMS-Flash-Bug** – AMS-Übersicht blitzte kurz beim Seitenwechsel auf; `no-ams` jetzt direkt am `<body>` gesetzt
 - **Backup** – Admin-Sperre entfernt, Backup/Restore/Upload jetzt ohne Login nutzbar
 - **Dockerfile** – VERSION-Datei wird ins Image kopiert (behebt "0.0.0" Anzeige im Container)
 - **Datenbank** – Alembic-Migrationen für fehlende Spalten: `sync_paused`, `dry_run_mode`, `cloud_mqtt_enabled`, `cloud_mqtt_connected`, `cloud_mqtt_last_message` in `bambu_cloud_config`
