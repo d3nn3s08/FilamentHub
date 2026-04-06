@@ -116,6 +116,7 @@ from app.routes.spool_assignment_routes import router as spool_assignment_router
 from app.routes.monitoring_routes import router as monitoring_router
 from app.routes.bambu_cloud_routes import router as bambu_cloud_router
 from app.routes.mmu_routes import router as mmu_router  # Happy Hare MMU
+from app.routes.version_routes import router as version_router  # Update-Check
 
 from app.websocket.log_stream import stream_log
 from sqlmodel import Session, select
@@ -664,6 +665,7 @@ app.include_router(lexikon_router)
 app.include_router(externe_spule_router)
 app.include_router(bambu_cloud_router)  # Bambu Cloud Integration
 app.include_router(mmu_router)          # Happy Hare MMU Integration
+app.include_router(version_router)      # Update-Check
 
 
 # -----------------------------------------------------

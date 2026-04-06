@@ -34,6 +34,7 @@ DEFAULTS = {
     "enable_file_selection_dialog": "false",
     "enable_multi_color_tracking": "true",
     "enable_ftp_gcode_download": "true",
+    "update_channel": "stable",
 }
 PRO_CONFIG_DEFAULTS = {
     "debug.config.debug_logging_enabled": "false",
@@ -189,6 +190,7 @@ def get_settings(_: None = Depends(admin_required), session: Session = Depends(g
         "enable_file_selection_dialog": _normalize_bool(enable_file_selection_dialog, default=False),
         "enable_multi_color_tracking": _normalize_bool(enable_multi_color_tracking, default=True),
         "enable_ftp_gcode_download": _normalize_bool(enable_ftp_gcode_download, default=True),
+        "update_channel": get_setting(session, "update_channel", DEFAULTS["update_channel"]) or DEFAULTS["update_channel"],
         "debug.config.debug_logging_enabled": _normalize_bool(debug_logging_enabled, default=False),
         "debug.config.latency_warning_threshold_ms": _normalize_int(
             latency_warning_threshold,
@@ -234,6 +236,7 @@ async def update_settings(payload: dict, _: None = Depends(admin_required), sess
         "enable_file_selection_dialog",
         "enable_multi_color_tracking",
         "enable_ftp_gcode_download",
+        "update_channel",
     }
     if not any(k in payload for k in allowed_keys):
         raise HTTPException(status_code=400, detail="Keine gueltigen Settings uebergeben.")
@@ -401,5 +404,11 @@ async def update_settings(payload: dict, _: None = Depends(admin_required), sess
         val = payload.get("enable_ftp_gcode_download")
         normalized = "true" if str(val).lower() in TRUE_VALUES else "false"
         set_setting(session, "enable_ftp_gcode_download", normalized)
+
+    if "update_channel" in payload:
+        channel = str(payload.get("update_channel", "")).lower()
+        if channel not in {"stable", "beta"}:
+            raise HTTPException(status_code=400, detail="update_channel muss stable oder beta sein.")
+        set_setting(session, "update_channel", channel)
 
     return get_settings(session)

@@ -206,6 +206,28 @@
     {# Globale Benachrichtigungen auf allen Seiten #}
     <div id="alert-root" class="alert-container"></div>
 
+    {# Update-Banner #}
+    <div id="fh-update-banner" style="display:none;background:rgba(255,193,101,.1);border-bottom:1px solid rgba(255,193,101,.3);padding:8px 20px;display:none;align-items:center;gap:12px;font-size:13px;color:#ffc165;">
+        <span>&#x2197;</span>
+        <span id="fh-update-text"></span>
+        <a href="/settings" style="color:#ffc165;font-weight:600;text-decoration:underline;">Einstellungen</a>
+        <button onclick="document.getElementById('fh-update-banner').style.display='none';localStorage.setItem('fh_dismissed_ver',document.getElementById('fh-update-text').dataset.ver||'');" style="margin-left:auto;background:none;border:none;color:#ffc165;cursor:pointer;font-size:16px;" title="Schließen">&#x2715;</button>
+    </div>
+    <script>
+    (function(){
+        fetch('/api/version/check').then(function(r){ return r.json(); }).then(function(d){
+            if(!d.update_available) return;
+            var dismissed = localStorage.getItem('fh_dismissed_ver');
+            if(dismissed === d.latest) return;
+            var banner = document.getElementById('fh-update-banner');
+            var txt = document.getElementById('fh-update-text');
+            txt.textContent = 'Neue Version verfügbar: ' + d.latest + ' (du hast ' + d.current + ')';
+            txt.dataset.ver = d.latest;
+            banner.style.display = 'flex';
+        }).catch(function(){});
+    })();
+    </script>
+
     <main class="content">
         {% block header %}
         {% if active_page != "debug" %}

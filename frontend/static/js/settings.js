@@ -24,10 +24,10 @@ function resolveUpdateSetting() {
 }
 
 async function bindSettingsControls() {
-    const amsRadios = document.querySelectorAll('input[name="settings_ams_mode"][data-setting="ams_mode"]');
+    const amsRadios     = document.querySelectorAll('input[name="settings_ams_mode"][data-setting="ams_mode"]');
     const debugCheckbox = document.querySelector('input[type="checkbox"][data-setting="debug_ws_logging"]');
-    const debugStatus = document.getElementById("debugStatus");
-    if (!amsRadios.length && !debugCheckbox) return;
+    const channelRadios = document.querySelectorAll('input[name="update_channel"][data-setting="update_channel"]');
+    const debugStatus   = document.getElementById("debugStatus");
 
     const fetchFn = resolveFetchSettings();
     const updateFn = resolveUpdateSetting();
@@ -42,6 +42,9 @@ async function bindSettingsControls() {
             if (debugStatus) {
                 debugStatus.textContent = `Status: ${debugCheckbox.checked ? "aktiv" : "inaktiv"}`;
             }
+        }
+        if (channelRadios.length && settings?.update_channel) {
+            channelRadios.forEach(r => r.checked = r.value === settings.update_channel);
         }
     } catch (e) {
         console.warn("Settings laden fehlgeschlagen", e);
@@ -60,5 +63,12 @@ async function bindSettingsControls() {
         if (debugStatus) {
             debugStatus.textContent = `Status: ${debugCheckbox.checked ? "aktiv" : "inaktiv"}`;
         }
+    });
+
+    channelRadios.forEach(radio => {
+        radio.addEventListener("change", async () => {
+            if (!radio.checked) return;
+            await updateFn({ update_channel: radio.value });
+        });
     });
 }
