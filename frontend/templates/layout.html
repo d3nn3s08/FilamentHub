@@ -320,6 +320,9 @@
                     <button class="settings-tab" data-tab="backup" style="padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s;">
                         Sicherung
                     </button>
+                    <button class="settings-tab" data-tab="firmware" style="padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s;">
+                        Firmware
+                    </button>
                 </div>
 
                 <!-- Tab Content: Allgemein -->
@@ -543,6 +546,51 @@
                         <div id="settingsBackupList" style="min-height: 40px;">
                             <p style="font-size: 12px; color: rgba(255,255,255,0.4);">Lade Backups...</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Firmware -->
+                <div class="settings-tab-content" data-content="firmware" style="display: none;">
+                    <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin: 0 0 16px 0;">Update-Kanal & Versionsinfo</p>
+
+                    <div style="margin-bottom: 20px;">
+                        <p style="font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: .05em; margin: 0 0 10px 0;">Update-Kanal</p>
+                        <div style="display:flex;flex-direction:column;gap:10px;">
+                            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                                <input type="radio" name="modal_update_channel" value="stable" data-setting="update_channel"
+                                       style="accent-color:#6ae485;">
+                                <span style="font-size:13px;color:rgba(255,255,255,0.85);">Stable
+                                    <span style="color:rgba(255,255,255,0.4);font-size:12px;">— getestete Releases (empfohlen)</span>
+                                </span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                                <input type="radio" name="modal_update_channel" value="beta" data-setting="update_channel"
+                                       style="accent-color:#ffc165;">
+                                <span style="font-size:13px;color:rgba(255,255,255,0.85);">Beta
+                                    <span style="color:rgba(255,255,255,0.4);font-size:12px;">— neue Features, kann Bugs enthalten</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:14px;">
+                        <p style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px 0;">Version</p>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+                            <span style="font-size:13px;color:rgba(255,255,255,0.6);">Installiert:</span>
+                            <span id="modalVerCurrent" style="background:rgba(154,180,216,.15);color:#9ab4d8;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">—</span>
+                            <span style="font-size:13px;color:rgba(255,255,255,0.6);">Aktuell:</span>
+                            <span id="modalVerLatest" style="background:rgba(106,228,133,.15);color:#6ae485;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">—</span>
+                        </div>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <button id="modalVerCheckBtn" style="padding:7px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);color:#fff;cursor:pointer;font-size:13px;">
+                                Auf Updates prüfen
+                            </button>
+                            <a style="color:#6ae485;font-size:13px;text-decoration:none;" href="https://github.com/d3nn3s08/FilamentHub/releases" target="_blank">Changelog ↗</a>
+                        </div>
+                        <p id="modalVerResult" style="font-size:13px;color:rgba(255,255,255,0.5);margin:10px 0 0 0;min-height:18px;"></p>
+                        <p id="modalVerUpdateLink" style="display:none;margin:6px 0 0 0;">
+                            <a style="color:#ffc165;font-size:13px;text-decoration:none;" href="https://github.com/d3nn3s08/FilamentHub/releases" target="_blank">&#x2197; Zum Release →</a>
+                        </p>
                     </div>
                 </div>
 

@@ -90,6 +90,14 @@ function initUserMenu() {
     const settingsBackupUploadBtn = document.getElementById('settingsBackupUploadBtn');
     const settingsBackupUploadInput = document.getElementById('settingsBackupUploadInput');
 
+    // Firmware Tab Elements
+    const modalUpdateChannelRadios = document.querySelectorAll('input[name="modal_update_channel"]');
+    const modalVerCheckBtn = document.getElementById('modalVerCheckBtn');
+    const modalVerCurrent = document.getElementById('modalVerCurrent');
+    const modalVerLatest = document.getElementById('modalVerLatest');
+    const modalVerResult = document.getElementById('modalVerResult');
+    const modalVerUpdateLink = document.getElementById('modalVerUpdateLink');
+
     // Restore theme on load
     const stored = localStorage.getItem("fh_theme");
     if (stored === "light") {
@@ -261,8 +269,20 @@ function initUserMenu() {
             const experimentalModeEnabled = settings?.experimental_mode || false;
             updateExperimentalTabState(experimentalModeEnabled);
 
+            // Load Update Channel (Firmware tab)
+            if (modalUpdateChannelRadios.length && settings?.update_channel) {
+                modalUpdateChannelRadios.forEach(r => { r.checked = r.value === settings.update_channel; });
+            }
+
         } catch (e) {
             console.warn("Settings modal load failed", e);
+        }
+
+        // Load current version into Firmware tab
+        if (modalVerCurrent) {
+            fetch('/api/version/current').then(r => r.json()).then(d => {
+                modalVerCurrent.textContent = d.version || '—';
+            }).catch(() => {});
         }
 
         // Reset to first tab
@@ -356,6 +376,12 @@ function initUserMenu() {
             allSettings.ams_conflict_tolerance_g = parseInt(settingsAmsConflictTolerance.value, 10);
         }
 
+        // Firmware Tab: Update Channel
+        const checkedChannel = document.querySelector('input[name="modal_update_channel"]:checked');
+        if (checkedChannel) {
+            allSettings.update_channel = checkedChannel.value;
+        }
+
         // Ein einziger API-Call statt 10+ sequentielle (spart ~2s)
         await updateSetting(allSettings);
 
@@ -368,6 +394,40 @@ function initUserMenu() {
             localStorage.clear();
             sessionStorage.clear();
             location.reload();
+        }
+    });
+
+    // Firmware Tab: Version Check Button
+    modalVerCheckBtn?.addEventListener("click", async () => {
+        modalVerCheckBtn.disabled = true;
+        modalVerCheckBtn.textContent = 'Prüfe\u2026';
+        if (modalVerResult) modalVerResult.textContent = '';
+        if (modalVerUpdateLink) modalVerUpdateLink.style.display = 'none';
+        try {
+            const selectedChannel = document.querySelector('input[name="modal_update_channel"]:checked')?.value || 'stable';
+            const r = await fetch(`/api/version/check?channel=${selectedChannel}`);
+            const d = await r.json();
+            if (modalVerCurrent) modalVerCurrent.textContent = d.current || '—';
+            if (d.latest && modalVerLatest) {
+                modalVerLatest.textContent = d.latest;
+                if (d.update_available) {
+                    modalVerLatest.style.background = 'rgba(255,193,101,.15)';
+                    modalVerLatest.style.color = '#ffc165';
+                    if (modalVerResult) modalVerResult.textContent = 'Update verfügbar!';
+                    if (modalVerUpdateLink) modalVerUpdateLink.style.display = 'block';
+                } else {
+                    modalVerLatest.style.background = 'rgba(106,228,133,.15)';
+                    modalVerLatest.style.color = '#6ae485';
+                    if (modalVerResult) modalVerResult.textContent = '\u2713 FilamentHub ist aktuell.';
+                }
+            } else if (modalVerResult) {
+                modalVerResult.textContent = d.error || 'GitHub nicht erreichbar.';
+            }
+        } catch (e) {
+            if (modalVerResult) modalVerResult.textContent = 'Fehler: ' + e.message;
+        } finally {
+            modalVerCheckBtn.disabled = false;
+            modalVerCheckBtn.textContent = 'Auf Updates prüfen';
         }
     });
 

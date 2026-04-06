@@ -4,147 +4,37 @@
 
 {% block content %}
 
-<style>
-.settings-tabs { display:flex; gap:4px; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,.1); }
-.settings-tab  { padding:8px 18px; border-radius:8px 8px 0 0; border:1px solid transparent; border-bottom:none; cursor:pointer; font-size:13px; color:var(--text-dim,#9ab4d8); background:transparent; transition:.15s; }
-.settings-tab:hover { color:#fff; background:rgba(255,255,255,.05); }
-.settings-tab.active { color:#fff; background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.12); }
-.settings-pane { display:none; }
-.settings-pane.active { display:block; }
-.ver-row { display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
-.ver-badge { padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; }
-.ver-badge.current { background:rgba(154,180,216,.15); color:#9ab4d8; }
-.ver-badge.ok  { background:rgba(106,228,133,.15); color:#6ae485; }
-.ver-badge.upd { background:rgba(255,193,101,.15); color:#ffc165; }
-#verCheckBtn { padding:7px 16px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.07); color:#fff; cursor:pointer; font-size:13px; }
-#verCheckBtn:hover { background:rgba(255,255,255,.12); }
-#verCheckBtn:disabled { opacity:.5; cursor:default; }
-#verResult { font-size:13px; color:var(--text-dim,#9ab4d8); min-height:20px; }
-</style>
-
-<div class="settings-tabs">
-    <button class="settings-tab active" data-tab="general">Allgemein</button>
-    <button class="settings-tab" data-tab="version">Version</button>
-</div>
-
-<div id="pane-general" class="settings-pane active">
-    <section class="card-grid">
-        <div class="panel">
-            <p class="eyebrow">AMS Settings</p>
-            <div style="display:flex;flex-direction:column;gap:10px;">
-                <label class="user-menu__option">
-                    <input type="radio" name="settings_ams_mode" value="single" data-setting="ams_mode">
-                    <span>Single AMS</span>
-                </label>
-                <label class="user-menu__option">
-                    <input type="radio" name="settings_ams_mode" value="multi" data-setting="ams_mode">
-                    <span>Multi AMS (Experimental)</span>
-                </label>
-            </div>
-        </div>
-        <div class="panel">
-            <p class="eyebrow">Debug</p>
+<section class="card-grid">
+    <div class="panel">
+        <p class="eyebrow">AMS Settings</p>
+        <div style="display:flex;flex-direction:column;gap:10px;">
             <label class="user-menu__option">
-                <input type="checkbox" data-setting="debug_ws_logging">
-                <span>WS JSON Logging aktivieren</span>
-                <span class="tooltip-container">
-                    <span class="tooltip-icon" tabindex="0">i</span>
-                    <span class="tooltip-box">Loggt alle eingehenden WebSocket-Events als JSON zur Fehlersuche. Empfohlen nur für Debug-Zwecke.</span>
-                </span>
+                <input type="radio" name="settings_ams_mode" value="single" data-setting="ams_mode">
+                <span>Single AMS</span>
             </label>
-            <p class="subtitle" id="debugStatus">Status: unbekannt</p>
-            <a class="user-menu__link" href="/debug">Zum Debug Center</a>
+            <label class="user-menu__option">
+                <input type="radio" name="settings_ams_mode" value="multi" data-setting="ams_mode">
+                <span>Multi AMS (Experimental)</span>
+            </label>
         </div>
-    </section>
-</div>
-
-<div id="pane-version" class="settings-pane">
-    <section class="card-grid">
-        <div class="panel" style="grid-column:1/-1">
-            <p class="eyebrow">Update-Kanal</p>
-            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
-                <label class="user-menu__option">
-                    <input type="radio" name="update_channel" value="stable" data-setting="update_channel">
-                    <span>Stable <span style="color:var(--text-dim);font-size:12px">— getestete Releases (empfohlen)</span></span>
-                </label>
-                <label class="user-menu__option">
-                    <input type="radio" name="update_channel" value="beta" data-setting="update_channel">
-                    <span>Beta <span style="color:var(--text-dim);font-size:12px">— neue Features, kann Bugs enthalten</span></span>
-                </label>
-            </div>
-            <p class="eyebrow">Version</p>
-            <div class="ver-row">
-                <span>Installiert:</span><span class="ver-badge current" id="verCurrent">lädt…</span>
-                <span>Aktuell:</span><span class="ver-badge ok" id="verLatest">—</span>
-            </div>
-            <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
-                <button id="verCheckBtn">Auf Updates prüfen</button>
-                <a style="color:#6ae485;font-size:13px;text-decoration:none" href="https://github.com/d3nn3s08/FilamentHub/releases" target="_blank">Changelog ↗</a>
-            </div>
-            <p id="verResult"></p>
-            <p id="verUpdateLink" style="display:none;margin-top:6px;">
-                <a style="color:#ffc165;font-size:13px;text-decoration:none" href="https://github.com/d3nn3s08/FilamentHub/releases" target="_blank">&#x2197; Zum Release →</a>
-            </p>
-        </div>
-    </section>
-</div>
+    </div>
+    <div class="panel">
+        <p class="eyebrow">Debug</p>
+        <label class="user-menu__option">
+            <input type="checkbox" data-setting="debug_ws_logging">
+            <span>WS JSON Logging aktivieren</span>
+            <span class="tooltip-container">
+                <span class="tooltip-icon" tabindex="0">i</span>
+                <span class="tooltip-box">Loggt alle eingehenden WebSocket-Events als JSON zur Fehlersuche. Empfohlen nur für Debug-Zwecke.</span>
+            </span>
+        </label>
+        <p class="subtitle" id="debugStatus">Status: unbekannt</p>
+        <a class="user-menu__link" href="/debug">Zum Debug Center</a>
+    </div>
+</section>
 
 {% endblock %}
 
 {% block extra_scripts %}
 <script src="{{ url_for('frontend_static', path='js/settings.js') }}"></script>
-<script>
-document.querySelectorAll('.settings-tab').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        document.querySelectorAll('.settings-tab').forEach(function(b) { b.classList.remove('active'); });
-        document.querySelectorAll('.settings-pane').forEach(function(p) { p.classList.remove('active'); });
-        btn.classList.add('active');
-        document.getElementById('pane-' + btn.dataset.tab).classList.add('active');
-    });
-});
-
-async function loadVersionInfo() {
-    try {
-        var r = await fetch('/api/version/current');
-        var d = await r.json();
-        document.getElementById('verCurrent').textContent = d.version;
-    } catch(e) {}
-}
-
-document.getElementById('verCheckBtn').addEventListener('click', async function() {
-    var btn = this;
-    var result = document.getElementById('verResult');
-    var latest = document.getElementById('verLatest');
-    var updateLink = document.getElementById('verUpdateLink');
-    btn.disabled = true;
-    btn.textContent = 'Prüfe\u2026';
-    result.textContent = '';
-    updateLink.style.display = 'none';
-    try {
-        var r = await fetch('/api/version/check');
-        var d = await r.json();
-        document.getElementById('verCurrent').textContent = d.current;
-        if (d.latest) {
-            latest.textContent = d.latest;
-            if (d.update_available) {
-                latest.className = 'ver-badge upd';
-                result.textContent = 'Update verfügbar!';
-                updateLink.style.display = 'block';
-            } else {
-                latest.className = 'ver-badge ok';
-                result.textContent = '\u2713 FilamentHub ist aktuell.';
-            }
-        } else {
-            result.textContent = d.error || 'GitHub nicht erreichbar.';
-        }
-    } catch(e) {
-        result.textContent = 'Fehler: ' + e.message;
-    } finally {
-        btn.disabled = false;
-        btn.textContent = 'Auf Updates prüfen';
-    }
-});
-
-loadVersionInfo();
-</script>
 {% endblock %}
