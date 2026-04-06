@@ -27,6 +27,7 @@ COPY run.py /app/
 COPY config.yaml /app/
 COPY frontend/ /app/frontend/
 COPY .env /app/.env
+COPY VERSION /app/
 
 EXPOSE 8085
 
