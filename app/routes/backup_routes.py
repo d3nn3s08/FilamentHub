@@ -5,9 +5,8 @@ import shutil
 import re
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Request
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
-from app.routes.admin_routes import admin_required
 
 from app import database as app_database
 
@@ -47,7 +46,7 @@ def _cleanup_old_backups():
 
 
 @router.post("/create")
-def backup_database(_: None = Depends(admin_required)):
+def backup_database():
     """Erstellt ein Dateisystem-Backup der DB."""
     if not os.path.exists(DB_PATH):
         raise HTTPException(status_code=404, detail="Datenbank nicht gefunden")
@@ -72,7 +71,7 @@ def backup_database(_: None = Depends(admin_required)):
 
 
 @router.get("/list")
-def list_backups(_: None = Depends(admin_required)):
+def list_backups():
     """Listet alle vorhandenen Backups auf."""
     if not os.path.exists(BACKUP_DIR):
         return {"backups": [], "count": 0}
@@ -98,7 +97,7 @@ def list_backups(_: None = Depends(admin_required)):
 
 
 @router.get("/download/{filename}")
-def download_backup(filename: str, _: None = Depends(admin_required)):
+def download_backup(filename: str):
     """Liefert eine Backup-Datei als Download."""
     backup_path = _validate_backup_filename(filename)
     if not os.path.exists(backup_path):
@@ -111,7 +110,7 @@ def download_backup(filename: str, _: None = Depends(admin_required)):
 
 
 @router.post("/upload")
-async def upload_backup(file: UploadFile = File(...), _: None = Depends(admin_required)):
+async def upload_backup(file: UploadFile = File(...)):
     """Laedt eine .db-Backup-Datei in den Backup-Ordner hoch."""
     source_name = (file.filename or "").strip()
     if not source_name.lower().endswith(".db"):
@@ -160,7 +159,7 @@ async def upload_backup(file: UploadFile = File(...), _: None = Depends(admin_re
 
 
 @router.post("/restore/{filename}")
-def restore_backup(filename: str, _: None = Depends(admin_required)):
+def restore_backup(filename: str):
     """Stellt die Datenbank aus einem Backup wieder her."""
     backup_path = _validate_backup_filename(filename)
     if not os.path.exists(backup_path):
@@ -189,7 +188,7 @@ def restore_backup(filename: str, _: None = Depends(admin_required)):
 
 
 @router.delete("/delete/{filename}")
-def delete_backup(filename: str, _: None = Depends(admin_required)):
+def delete_backup(filename: str):
     """Loescht ein einzelnes Backup."""
     backup_path = _validate_backup_filename(filename)
     if not os.path.exists(backup_path):
