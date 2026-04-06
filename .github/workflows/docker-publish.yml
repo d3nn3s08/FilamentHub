@@ -201,13 +201,6 @@ jobs:
         tag_name: ${{ steps.channel.outputs.release_tag }}
         name: ${{ steps.channel.outputs.release_name }}
         prerelease: ${{ steps.channel.outputs.prerelease }}
-        body: |
-          ## 🇩🇪 Deutsch
-          ${{ steps.changelog_de.outputs.changelog || 'Beta Release – kein finaler Changelog.' }}
-
-          ---
-
-          ## 🇬🇧 English
-          ${{ steps.changelog_en.outputs.changelog || 'Beta release – no final changelog.' }}
+        body_path: CHANGELOG.md
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
