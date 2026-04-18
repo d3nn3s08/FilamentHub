@@ -2,7 +2,7 @@ app:
   developer: Denis (d3nn3s08)
   environment: development
   name: FilamentHub
-  version: 0.1.6
+  version: 1.6
 logging:
   enabled: true
   keep_days: 14
@@ -26,7 +26,7 @@ integrations:
   mode: bambu  # bambu | klipper | dual | standalone
 server:
   host: 0.0.0.0
-  port: 8088
+  port: 8081
   reload: true
 json_inspector:
   max_size_mb: 5  # Maximale JSON-Dateigröße beim Upload in MB
