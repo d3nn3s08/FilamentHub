@@ -609,8 +609,8 @@ class NoCacheStaticFiles(StaticFiles):
 app.mount("/static", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "app", "static")), name="static")
 app.mount("/frontend", NoCacheStaticFiles(directory=os.path.join(FRONTEND_DIR, "static")), name="frontend_static")
 templates = Jinja2Templates(directory=os.path.join(FRONTEND_DIR, "templates"))
-templates.env.globals["app_version"] = os.environ.get("APP_VERSION", "Beta 1.6 - FilamentHub")
-templates.env.globals["design_version"] = os.environ.get("DESIGN_VERSION", "Design Beta-1.0")
+templates.env.globals["app_version"] = os.environ.get("APP_VERSION", "Stable 1.6 - FilamentHub").replace("Beta v1.6 · FilamentHub", "Stable 1.6 - FilamentHub").replace("Beta 1.6 - FilamentHub", "Stable 1.6 - FilamentHub")
+templates.env.globals["design_version"] = os.environ.get("DESIGN_VERSION", "Design 1.0").replace("Design Beta-1.0", "Design 1.0")
 import time as _time
 templates.env.globals["build_ts"] = int(_time.time())  # Cache-Buster für JS/CSS
 

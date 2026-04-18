@@ -1,6 +1,6 @@
 # Changelog - FilamentHub
 
-## [1.6 Beta] - 2026-04-18
+## [1.6 Stable] - 2026-04-18
 
 ### Neu
 - **Mobile Layout** - Hauptnavigation als echtes Mobile-Drawer-Menue umgesetzt. Header, Karten und zentrale Layout-Bloecke verhalten sich auf Handy jetzt deutlich sauberer.
