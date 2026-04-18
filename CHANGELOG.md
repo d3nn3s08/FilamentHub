@@ -2,7 +2,13 @@
 
 ## [1.6 Beta] - 2026-04-18
 
+### Neu
+- **Mobile Layout** - Hauptnavigation als echtes Mobile-Drawer-Menue umgesetzt. Header, Karten und zentrale Layout-Bloecke verhalten sich auf Handy jetzt deutlich sauberer.
+
 ### Fixes
+- **AMS Lite Sichtbarkeit** - `/ams-lite` und zugehoerige Navigation werden nur noch angezeigt, wenn wirklich ein aktiver Bambu-Drucker mit AMS Lite erkannt wird.
+- **Bambu Cloud Login** - Doppelter Versand von Verifikationsmails behoben. Der Login-Flow fordert den Email-Code nicht mehr doppelt an und blockiert parallele Login-/Verify-Requests.
+- **Bambu Cloud Sync-Fehler** - Token-Entschluesselungsfehler werden beim manuellen Sync jetzt gezielt erkannt und als klare Fehlermeldung statt generischem 500er an die UI zurueckgegeben.
 - **Lokale Debug-Credentials** - `/api/printers/{printer_id}/credentials` liefert keinen `api_key` mehr im Klartext aus. Der Endpoint gibt nur noch Metadaten plus `has_api_key` zurueck.
 - **Bambu Cloud Token-Encryption** - `FILAMENTHUB_ENCRYPTION_KEY` wird jetzt im korrekten Fernet-Format verarbeitet. Dadurch brechen Encrypt/Decrypt-Laeufe mit gesetzter Umgebungsvariable nicht mehr.
 - **Dependencies** - `cryptography` zu `requirements.txt` hinzugefuegt, damit die Token-Verschluesselung auf frischen Setups nicht am Import scheitert.
