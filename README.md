@@ -231,3 +231,68 @@ python -m venv .venv
 source .venv/bin/activate && pip install -r requirements.txt  # Linux/Mac
 
 python run.py  # Startet API + UI (Port 8085)
+```
+
+---
+
+# 🚀 Release-Prozess
+
+FilamentHub nutzt [Release Please](https://github.com/googleapis/release-please) für vollautomatisches Versioning, Changelog-Generierung und Docker-Publishing.
+
+## Commit-Konvention (Conventional Commits)
+
+Damit der Release-Agent den Changelog korrekt befüllt und die Version automatisch erhöht, müssen Commits dem [Conventional Commits](https://www.conventionalcommits.org)-Format folgen:
+
+| Typ | Beschreibung | Auswirkung |
+|-----|-------------|------------|
+| `feat: ...` | Neue Funktion | Minor-Bump (0.x.0) |
+| `fix: ...` | Bugfix | Patch-Bump (0.0.x) |
+| `feat!: ...` / `BREAKING CHANGE:` | Breaking Change | Major-Bump (x.0.0) |
+| `chore: ...` | Wartungsarbeiten | Kein Release |
+| `docs: ...` | Dokumentation | Kein Release |
+| `refactor: ...` | Code-Umbau | Kein Release |
+
+**Beispiele:**
+```
+feat: add multi-printer support
+fix: correct AMS temperature display
+feat!: redesign filament API (breaking change)
+```
+
+## Wie ein Release entsteht
+
+1. **Code committen & pushen** auf `main` (mit Conventional Commits)
+2. **Release Please öffnet automatisch einen Release-PR** der:
+   - Die Version in `config.yaml` erhöht
+   - `CHANGELOG.md` aktualisiert
+3. **Release-PR mergen** → Release Please erstellt automatisch:
+   - Git-Tag (z. B. `v0.2.0`)
+   - GitHub Release mit Release Notes aus `CHANGELOG.md`
+4. **Docker-Image wird automatisch gebaut** und auf GHCR gepusht:
+   - `ghcr.io/d3nn3s08/filamenthub:v0.2.0`
+   - `ghcr.io/d3nn3s08/filamenthub:latest`
+
+## Beta-Branch
+
+Pushes auf den `beta`-Branch erzeugen automatisch ein Docker-Image:
+- `ghcr.io/d3nn3s08/filamenthub:beta`
+- `ghcr.io/d3nn3s08/filamenthub:<version>-beta`
+
+## Docker-Image verwenden
+
+```bash
+# Stable
+docker pull ghcr.io/d3nn3s08/filamenthub:latest
+
+# Bestimmte Version
+docker pull ghcr.io/d3nn3s08/filamenthub:v0.2.0
+
+# Beta
+docker pull ghcr.io/d3nn3s08/filamenthub:beta
+```
+
+Releases und Artefakte sind unter [GitHub Releases](https://github.com/d3nn3s08/FilamentHub/releases) zu finden.
+
+---
+
+📄 Lizenz: [MIT](LICENSE.md) · 👤 Entwickelt von [d3nn3s08](https://github.com/d3nn3s08)
