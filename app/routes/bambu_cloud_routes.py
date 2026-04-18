@@ -10,7 +10,7 @@ Endpunkte für die Bambu Cloud Integration:
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select, col
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 from app.database import get_session
@@ -25,7 +25,7 @@ from app.models.cloud_conflict import (
     CloudConflictRead,
     CloudConflictResolve,
 )
-from app.services.token_encryption import encrypt_token, decrypt_token
+from app.services.token_encryption import encrypt_token, decrypt_token, TokenDecryptionError
 from app.services.bambu_cloud_service import (
     BambuCloudService,
     BambuCloudAuthError,
@@ -51,6 +51,34 @@ router = APIRouter(
     prefix="/api/bambu-cloud",
     tags=["bambu-cloud"],
 )
+
+_LOGIN_RESEND_GRACE_SECONDS = 90
+
+
+def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def _recent_pending_verification(config: Optional[BambuCloudConfig], email: str, region: str) -> bool:
+    if not config:
+        return False
+    if config.connection_status != "pending_verification":
+        return False
+    if (config.bambu_username or "").strip().lower() != email.strip().lower():
+        return False
+    if (config.region or "eu") != region:
+        return False
+
+    updated_at = _parse_iso_datetime(config.updated_at) or _parse_iso_datetime(config.created_at)
+    if not updated_at:
+        return False
+
+    return (datetime.now() - updated_at) < timedelta(seconds=_LOGIN_RESEND_GRACE_SECONDS)
 
 
 # ============================================================
@@ -321,6 +349,18 @@ async def bambu_cloud_login(
         - state: "success" | "need_verification_code" | "need_tfa" | "failed"
         - message: Beschreibung des nächsten Schritts
     """
+    config = session.exec(select(BambuCloudConfig)).first()
+
+    if not tfa_code and _recent_pending_verification(config, email, region):
+        logger.info("Bambu Cloud Login: existing verification still valid for %s", email)
+        return {
+            "status": "ok",
+            "state": "need_verification_code",
+            "message": "Verifikationscode wurde bereits gesendet. Bitte nutze den zuletzt erhaltenen Code aus der Email.",
+            "email": email,
+            "reused": True,
+        }
+
     auth = BambuAuthService(region=region)
 
     try:
@@ -333,7 +373,6 @@ async def bambu_cloud_login(
 
         if result.state == LoginState.SUCCESS:
             # Direkter Login erfolgreich - Token speichern
-            config = session.exec(select(BambuCloudConfig)).first()
             if not config:
                 config = BambuCloudConfig(created_at=datetime.now().isoformat())
                 session.add(config)
@@ -371,7 +410,6 @@ async def bambu_cloud_login(
         elif result.state == LoginState.NEED_VERIFICATION_CODE:
             # Email-Verifikation erforderlich
             # Email temporär speichern für verify-Schritt
-            config = session.exec(select(BambuCloudConfig)).first()
             if not config:
                 config = BambuCloudConfig(created_at=datetime.now().isoformat())
                 session.add(config)
@@ -979,6 +1017,19 @@ async def trigger_sync(session: Session = Depends(get_session)):
         finally:
             await service.close()
             
+    except TokenDecryptionError as e:
+        config.last_sync_status = "error"
+        config.connection_status = "error"
+        config.last_error_message = str(e)
+        config.updated_at = datetime.now().isoformat()
+        session.commit()
+
+        logger.error(f"Bambu Cloud Sync Token-Fehler: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Token-Fehler: {e}. Bitte in Bambu Cloud erneut einloggen oder den Token neu speichern."
+        )
+
     except BambuCloudAuthError as e:
         config.last_sync_status = "error"
         config.connection_status = "error"

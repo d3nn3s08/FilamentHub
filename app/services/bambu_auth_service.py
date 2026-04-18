@@ -309,12 +309,9 @@ class BambuAuthService:
             # Email-Verifikation erforderlich
             logger.info("Auth: Email verification required")
 
-            # Verifikationscode anfordern
-            await self._request_verification_code(email)
-
             return LoginResult(
                 state=LoginState.NEED_VERIFICATION_CODE,
-                message="Verifikationscode wurde per Email gesendet",
+                message="Verifikationscode erforderlich",
             )
 
         elif login_type == "tfa":

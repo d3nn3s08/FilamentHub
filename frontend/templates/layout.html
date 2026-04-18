@@ -205,6 +205,7 @@
     {% block extra_styles %}{% endblock %}
 </head>
 <body class="page no-ams no-ams-lite" data-active-page="{{ active_page|default('dashboard') }}">
+    <div class="sidebar-backdrop" data-sidebar-close></div>
     {% include "sidebar.html" %}
 
     {# Globale Benachrichtigungen auf allen Seiten #}
@@ -236,10 +237,17 @@
         {% block header %}
         {% if active_page != "debug" %}
         <header class="content__header">
-            <div>
+            <div class="content__header-main">
+                <button type="button" class="mobile-nav-toggle" data-sidebar-toggle aria-label="Navigation öffnen" aria-expanded="false">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <div>
                 <p class="eyebrow">FilamentHub</p>
                 <h1 class="title">{{ page_title or title or "Übersicht" }}</h1>
                 <p class="subtitle">{{ page_subtitle or "Modernes Dark-Layout basierend auf der printers-modern Vorschau." }}</p>
+                </div>
             </div>
             <div class="header__right">
                 {% block header_actions %}{% endblock %}
@@ -1980,6 +1988,9 @@
         // ==========================================
         // LOGIN FLOW (Email + Passwort + Verifikation)
         // ==========================================
+        let bambuLoginInFlight = false;
+        let bambuVerifyInFlight = false;
+
         document.getElementById('bambuLoginBtn')?.addEventListener('click', async () => {
             const loginBtn = document.getElementById('bambuLoginBtn');
             const statusEl = document.getElementById('bambuLoginStatus');
@@ -1987,6 +1998,10 @@
             const password = document.getElementById('bambuPassword')?.value;
             const region = document.getElementById('bambuRegion')?.value || 'eu';
             const tfaCode = document.getElementById('bambuTfaCode')?.value?.trim();
+
+            if (bambuLoginInFlight) {
+                return;
+            }
 
             if (!email || !password) {
                 if (statusEl) {
@@ -1999,6 +2014,7 @@
             }
 
             try {
+                bambuLoginInFlight = true;
                 if (loginBtn) {
                     loginBtn.disabled = true;
                     loginBtn.textContent = '⏳ Einloggen...';
@@ -2095,6 +2111,7 @@
                     statusEl.innerHTML = `<strong style="color: #e74c3c;">❌ Netzwerkfehler</strong>`;
                 }
             } finally {
+                bambuLoginInFlight = false;
                 if (loginBtn) {
                     loginBtn.disabled = false;
                     loginBtn.textContent = '🔐 Einloggen';
@@ -2111,6 +2128,10 @@
             const region = document.getElementById('bambuRegion')?.value || 'eu';
             const tfaKey = window._bambuTfaKey; // Wurde beim Login gesetzt falls 2FA
 
+            if (bambuVerifyInFlight) {
+                return;
+            }
+
             if (!code || code.length !== 6) {
                 if (statusEl) {
                     statusEl.style.display = 'block';
@@ -2122,6 +2143,7 @@
             }
 
             try {
+                bambuVerifyInFlight = true;
                 if (verifyBtn) {
                     verifyBtn.disabled = true;
                     verifyBtn.textContent = '⏳ Prüfen...';
@@ -2187,6 +2209,7 @@
                     statusEl.innerHTML = `<strong style="color: #e74c3c;">❌ Netzwerkfehler</strong>`;
                 }
             } finally {
+                bambuVerifyInFlight = false;
                 if (verifyBtn) {
                     verifyBtn.disabled = false;
                     verifyBtn.textContent = '✓ Code bestätigen';

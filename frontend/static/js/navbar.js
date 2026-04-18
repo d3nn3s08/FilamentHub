@@ -1,7 +1,63 @@
 document.addEventListener("DOMContentLoaded", () => {
     highlightActiveNav();
+    initMobileNav();
     initUserMenu();
 });
+
+function initMobileNav() {
+    const body = document.body;
+    const toggleButtons = document.querySelectorAll("[data-sidebar-toggle]");
+    const closeButtons = document.querySelectorAll("[data-sidebar-close]");
+    const navLinks = document.querySelectorAll(".sidebar__nav .nav__item");
+    const isMobile = () => window.innerWidth <= 960;
+
+    const syncToggleState = (open) => {
+        toggleButtons.forEach((button) => {
+            button.setAttribute("aria-expanded", open ? "true" : "false");
+        });
+    };
+
+    const closeNav = () => {
+        body.classList.remove("nav-open");
+        syncToggleState(false);
+    };
+
+    const openNav = () => {
+        if (!isMobile()) return;
+        body.classList.add("nav-open");
+        syncToggleState(true);
+    };
+
+    toggleButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            if (body.classList.contains("nav-open")) {
+                closeNav();
+            } else {
+                openNav();
+            }
+        });
+    });
+
+    closeButtons.forEach((button) => {
+        button.addEventListener("click", closeNav);
+    });
+
+    navLinks.forEach((link) => {
+        link.addEventListener("click", () => {
+            if (isMobile()) closeNav();
+        });
+    });
+
+    window.addEventListener("resize", () => {
+        if (!isMobile()) {
+            closeNav();
+        }
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeNav();
+    });
+}
 
 function highlightActiveNav() {
     const active = document.body.dataset.activePage;
