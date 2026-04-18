@@ -162,7 +162,7 @@ def get_printer(printer_id: str, session: Session = Depends(get_session)):
 def get_printer_credentials(printer_id: str, session: Session = Depends(get_session)):
     """
     Lade Drucker Credentials (MQTT-relevant) aus der Datenbank.
-    Liefert nur die Felder, die für MQTT-Connections benötigt werden.
+    API Keys werden hier bewusst nicht mehr im Klartext ausgeliefert.
     """
     printer = session.get(Printer, printer_id)
     if not printer:
@@ -172,13 +172,13 @@ def get_printer_credentials(printer_id: str, session: Session = Depends(get_sess
         "success": True,
         "printer_id": printer.id,
         "name": printer.name,
-        "api_key": printer.api_key,
         "cloud_serial": printer.cloud_serial,
         "ip_address": printer.ip_address,
         "port": printer.port,
         "printer_type": printer.printer_type,
         "mqtt_version": printer.mqtt_version,
-        "model": printer.model
+        "model": printer.model,
+        "has_api_key": bool(printer.api_key),
     }
 
 

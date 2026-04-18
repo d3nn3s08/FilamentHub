@@ -694,8 +694,8 @@ async def api_help_page(request: Request):
     for r in routes:
         unique[r['path']] = r
     api_routes = sorted(unique.values(), key=lambda x: x['path'])
-    templates = Jinja2Templates(directory="c:/Users/Denis/Desktop/FilamentHub_Projekt/FilamentHub/app/templates")
-    return templates.TemplateResponse(
+    help_templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "app", "templates"))
+    return help_templates.TemplateResponse(
         "help.html",
         {"request": request, "api_routes": api_routes, "title": "API Hilfeseite"}
     )

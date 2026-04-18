@@ -496,6 +496,13 @@ def apply_auto_connect(printer: Optional[Printer]) -> Dict[str, Any]:
         return result
 
     logger.info("Auto-connect disabled → disconnecting runtime (printer %s)", getattr(printer, "id", "<unknown>"))
+    if _client_config and _client_config.printer_id and _client_config.printer_id != getattr(printer, "id", None):
+        logger.info(
+            "Auto-connect disabled for printer %s, but runtime is attached to printer %s - disconnect skipped",
+            getattr(printer, "id", "<unknown>"),
+            _client_config.printer_id,
+        )
+        return {"success": True, "connected": _client_instance is not None, "note": "different printer runtime active"}
     return disconnect()
 
 

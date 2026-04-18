@@ -11,6 +11,7 @@ pyyaml
 websockets
 wsproto
 bcrypt
+cryptography
 python-dotenv
 pytest
 pytest-cov
