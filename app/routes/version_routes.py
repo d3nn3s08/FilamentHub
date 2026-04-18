@@ -86,7 +86,7 @@ def get_current_version():
 @router.get("/check")
 async def check_for_update(session: Session = Depends(get_session), channel: str | None = None):
     if channel not in ("stable", "beta"):
-        channel = get_setting(session, "update_channel", "beta") or "beta"
+        channel = get_setting(session, "update_channel", "stable") or "stable"
     current = _read_current_version()
     latest  = await _fetch_latest(channel)
 

@@ -335,6 +335,30 @@
             grid-template-columns: 1fr !important;
         }
     }
+
+    @media (max-width: 768px) {
+        .live-status-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .job-card {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .job-header,
+        .progress-text,
+        .job-stats {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .live-card .big-number {
+            font-size: 28px;
+        }
+    }
 </style>
 <link rel="stylesheet" href="{{ url_for('frontend_static', path='css/activePrintCard.css') }}">
 {% endblock %}

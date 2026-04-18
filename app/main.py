@@ -63,11 +63,12 @@ def init_admin():
 
 
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from services.printer_service import initialize_printer_service
 from app.services.ams_sync import mark_printer_service_started
 from app.services.ams_sync_state import set_ams_sync_state
+from app.services.ams_normalizer import global_has_ams_lite
 from app.services import mqtt_runtime
 from app.monitoring.runtime_monitor import record_request
 import time
@@ -608,8 +609,8 @@ class NoCacheStaticFiles(StaticFiles):
 app.mount("/static", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "app", "static")), name="static")
 app.mount("/frontend", NoCacheStaticFiles(directory=os.path.join(FRONTEND_DIR, "static")), name="frontend_static")
 templates = Jinja2Templates(directory=os.path.join(FRONTEND_DIR, "templates"))
-templates.env.globals["app_version"] = os.environ.get("APP_VERSION", "Beta 1.6 - FilamentHub")
-templates.env.globals["design_version"] = os.environ.get("DESIGN_VERSION", "Design Beta-1.0")
+templates.env.globals["app_version"] = os.environ.get("APP_VERSION", "Stable 1.6 - FilamentHub").replace("Beta v1.6 · FilamentHub", "Stable 1.6 - FilamentHub").replace("Beta 1.6 - FilamentHub", "Stable 1.6 - FilamentHub")
+templates.env.globals["design_version"] = os.environ.get("DESIGN_VERSION", "Design 1.0").replace("Design Beta-1.0", "Design 1.0")
 import time as _time
 templates.env.globals["build_ts"] = int(_time.time())  # Cache-Buster für JS/CSS
 
@@ -755,6 +756,8 @@ async def ams_page(request: Request):
 
 @app.get('/ams-lite', response_class=HTMLResponse)
 async def ams_lite_page(request: Request):
+    if not global_has_ams_lite():
+        return RedirectResponse(url='/', status_code=307)
     return templates.TemplateResponse(
         'ams-lite.html',
         {
@@ -767,6 +770,8 @@ async def ams_lite_page(request: Request):
 
 @app.get('/all-slots', response_class=HTMLResponse)
 async def all_slots_page(request: Request):
+    if not global_has_ams_lite():
+        return RedirectResponse(url='/', status_code=307)
     return templates.TemplateResponse(
         'all-slots.html',
         {

@@ -34,7 +34,7 @@ DEFAULTS = {
     "enable_file_selection_dialog": "false",
     "enable_multi_color_tracking": "true",
     "enable_ftp_gcode_download": "true",
-    "update_channel": "beta",
+    "update_channel": "stable",
 }
 PRO_CONFIG_DEFAULTS = {
     "debug.config.debug_logging_enabled": "false",
