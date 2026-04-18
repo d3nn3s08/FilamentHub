@@ -1117,6 +1117,7 @@ def resolve_conflict(
                 
                 # Wenn Spool weight_full vorhanden, berechne neues Gewicht
                 if spool.weight_full and spool.weight_full > 0:
+                    old_weight = spool.weight_current or (spool.weight_full - spool.weight_empty if spool.weight_full else 0)
                     new_weight = (cloud_remain_percent / 100.0) * spool.weight_full
                     spool.weight_current = max(0, new_weight)
                     spool.weight_source = "bambu_cloud"
@@ -1125,7 +1126,6 @@ def resolve_conflict(
                     
                     # Weight History erstellen
                     from app.models.weight_history import WeightHistory
-                    old_weight = spool.weight_current or (spool.weight_full - spool.weight_empty if spool.weight_full else 0)
                     weight_entry = WeightHistory(
                         spool_uuid=spool.tray_uuid or spool.id,
                         spool_number=spool.spool_number,
@@ -1174,6 +1174,7 @@ def resolve_conflict(
                     
                     # Wenn es ein Gewicht ist
                     if isinstance(merge_data, (int, float)) and spool.weight_full:
+                        old_weight = spool.weight_current or (spool.weight_full - spool.weight_empty if spool.weight_full else 0)
                         new_weight = float(merge_data)
                         spool.weight_current = max(0, min(new_weight, spool.weight_full))
                         spool.weight_source = "bambu_cloud"
@@ -1181,7 +1182,6 @@ def resolve_conflict(
                         
                         # Weight History
                         from app.models.weight_history import WeightHistory
-                        old_weight = spool.weight_current or (spool.weight_full - spool.weight_empty if spool.weight_full else 0)
                         weight_entry = WeightHistory(
                             spool_uuid=spool.tray_uuid or spool.id,
                             spool_number=spool.spool_number,
