@@ -393,6 +393,41 @@ def has_real_ams_from_payload(payload: Any, printer_model: Optional[str] = None)
     return False
 
 
+def has_ams_lite_from_payload(payload: Any, printer_model: Optional[str] = None) -> bool:
+    """Check if a payload belongs to an active AMS Lite device."""
+    if not isinstance(payload, dict):
+        return False
+
+    if not printer_model:
+        printer_model = _extract_printer_model_from_payload(payload)
+
+    is_ams_lite_device = bool(
+        printer_model and printer_model.upper() in ("A1MINI", "A1 MINI", "A1")
+    )
+
+    try:
+        if is_ams_lite_firmware(payload):
+            return True
+    except Exception:
+        logger.debug("is_ams_lite_firmware failed in has_ams_lite_from_payload")
+
+    try:
+        parsed = parse_ams(payload) or []
+        if parsed and is_ams_lite_device:
+            return True
+    except Exception:
+        logger.debug("parse_ams failed in has_ams_lite_from_payload")
+
+    try:
+        vt_tray = parse_vt_tray(payload)
+        if vt_tray and is_ams_lite_device:
+            return True
+    except Exception:
+        logger.debug("parse_vt_tray failed in has_ams_lite_from_payload")
+
+    return False
+
+
 def device_has_real_ams_from_live_state(device_id: str, printer_model: Optional[str] = None) -> bool:
     """Check if device has real AMS (not AMS Lite).
     
@@ -431,5 +466,28 @@ def global_has_real_ams() -> bool:
                 printer_model = "A1MINI"
         
         if has_real_ams_from_payload(entry.get("payload") or {}, printer_model=printer_model):
+            return True
+    return False
+
+
+def global_has_ams_lite() -> bool:
+    """Check if there's at least one active AMS Lite online."""
+    from app.services import live_state as live_state_module
+
+    all_state = live_state_module.get_all_live_state()
+    for _, entry in (all_state or {}).items():
+        payload = entry.get("payload") or {}
+        printer_model = _extract_printer_model_from_payload(payload)
+
+        if not printer_model:
+            printer_name = entry.get("printer_name", "")
+            if printer_name:
+                name_upper = printer_name.upper()
+                if "A1" in name_upper and "MINI" in name_upper:
+                    printer_model = "A1MINI"
+                elif "A1" in name_upper:
+                    printer_model = "A1"
+
+        if has_ams_lite_from_payload(payload, printer_model=printer_model):
             return True
     return False

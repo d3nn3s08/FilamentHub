@@ -9,7 +9,11 @@ from app.database import get_session
 from app.models.printer import Printer, PrinterCreate, PrinterRead
 from app.models.spool import Spool
 from app.services import mqtt_runtime
-from app.services.ams_normalizer import device_has_real_ams_from_live_state, global_has_real_ams
+from app.services.ams_normalizer import (
+    device_has_real_ams_from_live_state,
+    global_has_real_ams,
+    has_ams_lite_from_payload,
+)
 from services.printer_service import get_printer_service
 
 # Hinweis: kleine Kommentar-Änderung, um Dateisystem-Änderung und Reload zu triggern
@@ -20,6 +24,7 @@ logger = logging.getLogger("app")
 # Cache für has_real_ams (30s TTL) – wird alle 12s vom Frontend abgefragt
 import time as _time
 _ams_cache: dict = {"value": None, "ts": 0.0}
+_ams_lite_cache: dict = {"value": None, "ts": 0.0}
 _AMS_CACHE_TTL = 30.0
 
 UPLOAD_DIR = os.path.join("app", "static", "uploads", "printers")
@@ -135,6 +140,55 @@ def get_global_has_real_ams(session: Session = Depends(get_session)):
         return {"value": False}
     except Exception:
         logger.exception("Failed to resolve global real AMS state")
+        return {"value": False}
+
+
+@router.get("/has_ams_lite", response_model=dict)
+def get_global_has_ams_lite(session: Session = Depends(get_session)):
+    """
+    Global indicator for AMS Lite presence.
+    Cached for 30s to avoid repeated DB + live-state queries.
+    """
+    global _ams_lite_cache
+    now = _time.monotonic()
+    if _ams_lite_cache["value"] is not None and (now - _ams_lite_cache["ts"]) < _AMS_CACHE_TTL:
+        return {"value": _ams_lite_cache["value"]}
+
+    try:
+        from app.services import live_state as live_state_module
+
+        printers = session.exec(select(Printer)).all()
+        model_map: Dict[str, str] = {}
+        name_map: Dict[str, str] = {}
+
+        for printer in printers:
+            if printer.cloud_serial:
+                if printer.model:
+                    model_map[printer.cloud_serial] = printer.model
+                if printer.name:
+                    name_map[printer.cloud_serial] = printer.name
+
+        all_state = live_state_module.get_all_live_state()
+        for device_id, entry in (all_state or {}).items():
+            printer_model = model_map.get(device_id)
+
+            if not printer_model and device_id in name_map:
+                printer_name = name_map[device_id]
+                name_upper = printer_name.upper()
+                if "A1" in name_upper and "MINI" in name_upper:
+                    printer_model = "A1MINI"
+                elif "A1" in name_upper:
+                    printer_model = "A1"
+
+            payload = entry.get("payload") or {}
+            if has_ams_lite_from_payload(payload, printer_model=printer_model):
+                _ams_lite_cache.update({"value": True, "ts": _time.monotonic()})
+                return {"value": True}
+
+        _ams_lite_cache.update({"value": False, "ts": _time.monotonic()})
+        return {"value": False}
+    except Exception:
+        logger.exception("Failed to resolve global AMS Lite state")
         return {"value": False}
 
 

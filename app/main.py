@@ -63,11 +63,12 @@ def init_admin():
 
 
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from services.printer_service import initialize_printer_service
 from app.services.ams_sync import mark_printer_service_started
 from app.services.ams_sync_state import set_ams_sync_state
+from app.services.ams_normalizer import global_has_ams_lite
 from app.services import mqtt_runtime
 from app.monitoring.runtime_monitor import record_request
 import time
@@ -755,6 +756,8 @@ async def ams_page(request: Request):
 
 @app.get('/ams-lite', response_class=HTMLResponse)
 async def ams_lite_page(request: Request):
+    if not global_has_ams_lite():
+        return RedirectResponse(url='/', status_code=307)
     return templates.TemplateResponse(
         'ams-lite.html',
         {
@@ -767,6 +770,8 @@ async def ams_lite_page(request: Request):
 
 @app.get('/all-slots', response_class=HTMLResponse)
 async def all_slots_page(request: Request):
+    if not global_has_ams_lite():
+        return RedirectResponse(url='/', status_code=307)
     return templates.TemplateResponse(
         'all-slots.html',
         {
