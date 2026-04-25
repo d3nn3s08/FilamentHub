@@ -180,7 +180,7 @@
             <div class="form-columns">
                 <div class="form-column">
                     <div class="form-group">
-                        <label for="spoolMaterial">Material *</label>
+                        <label for="spoolMaterial">Spulen Hersteller *</label>
                         <select id="spoolMaterial" required class="form-control">
                             <option value="">-- Material wählen --</option>
                         </select>
@@ -230,6 +230,12 @@
                     <div class="form-group">
                         <label for="spoolManufacturerId">RFID / Hersteller ID</label>
                         <input type="text" id="spoolManufacturerId" class="form-control" placeholder="Optional">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spoolSpoolmanId">Spoolman ID</label>
+                        <input type="number" id="spoolSpoolmanId" class="form-control" placeholder="z.B. 12" min="1">
+                        <small class="form-hint">Für Klipper/Moonraker Auto-Erkennung</small>
                     </div>
 
                     <div class="form-group">
@@ -307,5 +313,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('frontend_static', path='spools.js') }}"></script>
+<script src="{{ url_for('frontend_static', path='spools.js') }}?v=20260418-amsmanual3"></script>
 {% endblock %}
