@@ -883,9 +883,14 @@ function openEditModal(id) {
 
     const remainingForEdit = toNumber(spool.remaining_weight_g);
     document.getElementById('spoolWeightRemaining').value = remainingForEdit ?? '';
-    document.getElementById('spoolManufacturerId').value = spool.manufacturer_spool_id || '';
-    document.getElementById('spoolSpoolmanId').value = spool.external_id || '';
-    document.getElementById('spoolNumber').value = spool.spool_number || '';
+    const manufacturerIdField = document.getElementById('spoolManufacturerId');
+    if (manufacturerIdField) manufacturerIdField.value = spool.manufacturer_spool_id || '';
+
+    const spoolmanIdField = document.getElementById('spoolSpoolmanId');
+    if (spoolmanIdField) spoolmanIdField.value = spool.external_id || '';
+
+    const spoolNumberField = document.getElementById('spoolNumber');
+    if (spoolNumberField) spoolNumberField.value = spool.spool_number || '';
 
     const labelField = document.getElementById('spoolLabel');
     if (labelField) labelField.value = spool.label || '';
