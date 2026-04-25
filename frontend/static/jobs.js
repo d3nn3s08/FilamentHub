@@ -287,16 +287,19 @@ function renderJobs(jobsList) {
         if (usages && usages.length > 0) {
             const spoolItems = usages.map(usage => {
                 const spool = spoolMap.get(usage.spool_id);
-                if (!spool) return null;
-                const colorHex = spool.tray_color ? spool.tray_color.substring(0, 6) : 'cccccc';
+                const colorHex = spool?.tray_color
+                    ? spool.tray_color.substring(0, 6)
+                    : (usage.tray_color ? usage.tray_color.substring(0, 6) : 'cccccc');
                 const slotNum = usage.slot !== null && usage.slot !== undefined ? usage.slot : '?';
-                const label = spool.label || `AMS Slot ${slotNum}`;
+                const spoolNumber = spool?.spool_number ?? usage.spool_number;
+                const label = spool?.label || usage.spool_label || `AMS Slot ${slotNum}`;
                 const usedG = parseFloat(usage.used_g || 0);
                 const usedGText = usedG > 0
                     ? `${usedG.toFixed(1)}g`
                     : (job.finished_at ? '—' : 'läuft...');
-                const remainText = spool.weight_current != null ? ` | ${Math.round(spool.weight_current)}g verbleibend` : '';
-                return `<div style="display:flex;align-items:center;gap:3px;padding:2px 6px;background:rgba(255,255,255,0.1);border-radius:4px;" title="${label}: ${usedGText}${remainText}"><span class="color-preview" style="background:#${colorHex}; width:12px; height:12px; border-radius:2px;"></span><span style="font-size:11px;color:var(--text-dim);">Slot ${slotNum}</span></div>`;
+                const remainText = spool?.weight_current != null ? ` | ${Math.round(spool.weight_current)}g verbleibend` : '';
+                const slotLabel = spoolNumber ? `#${spoolNumber} · Slot ${slotNum}` : `Slot ${slotNum}`;
+                return `<div style="display:flex;align-items:center;gap:3px;padding:2px 6px;background:rgba(255,255,255,0.1);border-radius:4px;" title="${label}: ${usedGText}${remainText}"><span class="color-preview" style="background:#${colorHex}; width:12px; height:12px; border-radius:2px;"></span><span style="font-size:11px;color:var(--text-dim);">${slotLabel}</span></div>`;
             }).filter(Boolean);
             spoolDisplay = spoolItems.length > 0 ? `<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">${spoolItems.join('')}</div>` : '<span style="color: var(--text-dim);">-</span>';
         } else if (primarySpool) {

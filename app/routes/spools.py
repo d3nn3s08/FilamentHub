@@ -13,6 +13,7 @@ import app.services.live_state as live_state_module
 from app.models.printer import Printer
 from app.models.spool import Spool, SpoolCreateSchema, SpoolUpdateSchema, SpoolReadSchema
 from app.models.material import Material
+from app.models.job import Job, JobSpoolUsage
 from app.services.spool_number_service import assign_spool_number
 from app.services.ams_normalizer import device_has_real_ams_from_live_state
 from app.services.filament_weights import compute_fill_state, compute_spool_remaining
@@ -49,6 +50,46 @@ def _get_material(session: Session, material_id: str | None, cache: dict[str, Ma
     if material:
         cache[material_id] = material
     return material
+
+
+def _build_active_spool_locks(session: Session) -> dict[str, dict]:
+    active_jobs = session.exec(
+        select(Job)
+        .where(col(Job.started_at).is_not(None))
+        .where(col(Job.finished_at).is_(None))
+        .order_by(col(Job.started_at).desc())
+    ).all()
+
+    if not active_jobs:
+        return {}
+
+    active_job_ids = [job.id for job in active_jobs]
+    usages = session.exec(
+        select(JobSpoolUsage).where(col(JobSpoolUsage.job_id).in_(active_job_ids))
+    ).all()
+
+    usages_by_job: dict[str, list[JobSpoolUsage]] = {}
+    for usage in usages:
+        usages_by_job.setdefault(usage.job_id, []).append(usage)
+
+    locks: dict[str, dict] = {}
+
+    def register_lock(spool_id: str | None, job: Job) -> None:
+        if not spool_id or spool_id in locks:
+            return
+        locks[spool_id] = {
+            "is_locked": True,
+            "lock_reason": "active_print",
+            "active_job_id": job.id,
+            "active_job_name": job.display_name or job.name,
+        }
+
+    for job in active_jobs:
+        register_lock(job.spool_id, job)
+        for usage in usages_by_job.get(job.id, []):
+            register_lock(usage.spool_id, job)
+
+    return locks
 
 def _normalize_spool_payload(
     data: SpoolCreateSchema | SpoolUpdateSchema,
@@ -137,10 +178,11 @@ def list_spools(response: Response, session: Session = Depends(get_session)):
 
     result = session.exec(select(Spool)).all()
     material_cache: dict[str, Material] = {}
+    spool_locks = _build_active_spool_locks(session)
     serialized: list[dict] = []
     for s in result:
         try:
-            serialized.append(_serialize_spool(s, session, material_cache))
+            serialized.append(_serialize_spool(s, session, material_cache, spool_locks))
         except Exception:
             logger.exception("Spool konnte nicht serialisiert werden (id=%s)", getattr(s, "id", "unknown"))
             continue
@@ -167,7 +209,8 @@ def get_spool(spool_id: str, session: Session = Depends(get_session)):
     if not spool:
         raise HTTPException(status_code=404, detail="Spule nicht gefunden")
     material_cache: dict[str, Material] = {}
-    return _serialize_spool(spool, session, material_cache)
+    spool_locks = _build_active_spool_locks(session)
+    return _serialize_spool(spool, session, material_cache, spool_locks)
 
 
 @router.post("/", response_model=SpoolReadSchema, status_code=status.HTTP_201_CREATED)
@@ -211,19 +254,35 @@ def update_spool(spool_id: str, data: SpoolUpdateSchema, session: Session = Depe
     # `spool.spool_number` bereits gesetzt, darf sie nicht mehr
     # verändert werden (außer es wird der gleiche Wert erneut gesendet).
     if spool.ams_slot is not None:
-        # Wenn keine spool_number im Payload, lehne alle Änderungen ab
-        if "spool_number" not in update_data:
-            update_data = {}
-        else:
+        spool_locks = _build_active_spool_locks(session)
+        is_locked = bool(spool_locks.get(spool.id))
+
+        allowed_fields = {"spool_number"}
+        if not is_locked:
+            allowed_fields.add("weight_current")
+
+        blocked_fields = {key for key in update_data.keys() if key not in allowed_fields}
+        if blocked_fields:
+            if is_locked:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Spule kann waehrend eines aktiven Drucks nicht bearbeitet werden"
+                )
+            update_data = {key: value for key, value in update_data.items() if key in allowed_fields}
+
+        if "spool_number" in update_data:
             new_num = update_data.get("spool_number")
-            # Verbot: Nummer löschen während im AMS
             if new_num is None:
                 raise HTTPException(status_code=400, detail="Spool-Nummer kann nicht gelöscht werden, solange Spule im AMS ist")
-            # Wenn bereits eine Nummer existiert, darf sie nicht geändert werden
             if spool.spool_number is not None and int(spool.spool_number) != int(new_num):
                 raise HTTPException(status_code=400, detail="Spool-Nummer darf nicht geändert werden, wenn Spule im AMS ist")
-            # Erlaube nur spool_number im Update (identisch oder erstmalig)
-            update_data = {"spool_number": int(new_num)}
+            update_data["spool_number"] = int(new_num)
+
+        if "weight_current" in update_data and is_locked:
+            raise HTTPException(
+                status_code=400,
+                detail="Restgewicht kann waehrend eines aktiven Drucks nicht geaendert werden"
+            )
     # Schutz: Nummer darf nur freigegeben werden, wenn Spule leer ist
     if "spool_number" in update_data and update_data.get("spool_number") is None:
         next_is_empty = update_data.get("is_empty", spool.is_empty)
@@ -243,6 +302,23 @@ def update_spool(spool_id: str, data: SpoolUpdateSchema, session: Session = Depe
     # Set updated_at timestamp
     update_data["updated_at"] = datetime.utcnow().isoformat()  # type: ignore
 
+    manual_weight_history_payload = None
+    if "weight_current" in update_data and update_data.get("weight_current") is not None:
+        old_weight = float(spool.weight_current or 0.0)
+        new_weight = max(0.0, float(update_data["weight_current"]))
+        update_data["weight_current"] = new_weight
+        update_data["weight_source"] = "filamenthub_manual"
+        update_data["last_manual_update"] = datetime.utcnow().isoformat()
+        manual_weight_history_payload = {
+            "old_weight": old_weight,
+            "new_weight": new_weight,
+        }
+
+        if spool.weight_full and spool.weight_empty:
+            weight_range = float(spool.weight_full) - float(spool.weight_empty)
+            if weight_range > 0:
+                update_data["remain_percent"] = max(0.0, min(100.0, (new_weight / weight_range) * 100.0))
+
     for key, value in update_data.items():
         setattr(spool, key, value)
 
@@ -252,6 +328,20 @@ def update_spool(spool_id: str, data: SpoolUpdateSchema, session: Session = Depe
 
     try:
         session.add(spool)
+        if manual_weight_history_payload and manual_weight_history_payload["old_weight"] != manual_weight_history_payload["new_weight"]:
+            from app.models.weight_history import WeightHistory
+            session.add(
+                WeightHistory(
+                    spool_uuid=spool.tray_uuid or spool.id,
+                    spool_number=spool.spool_number,
+                    old_weight=manual_weight_history_payload["old_weight"],
+                    new_weight=manual_weight_history_payload["new_weight"],
+                    source="filamenthub_manual",
+                    change_reason="manual_spool_weight_update",
+                    user="System",
+                    details="Manuelle Anpassung des Restfilaments in der Spulenverwaltung",
+                )
+            )
         session.commit()
         session.refresh(spool)
 
@@ -272,7 +362,8 @@ def update_spool(spool_id: str, data: SpoolUpdateSchema, session: Session = Depe
                 logger.exception("[SPOOL UPDATE] Weight-History Backfill fehlgeschlagen (non-critical)")
 
         material_cache: dict[str, Material] = {}
-        return _serialize_spool(spool, session, material_cache)
+        spool_locks = _build_active_spool_locks(session)
+        return _serialize_spool(spool, session, material_cache, spool_locks)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Fehler bei Validierung: {e}")
 
@@ -422,7 +513,12 @@ def unassign_spool(spool_id: str, session: Session = Depends(get_session)):
     return _serialize_spool(spool, session, material_cache)
 
 
-def _serialize_spool(spool: Spool, session: Session, material_cache: dict[str, Material]) -> dict:
+def _serialize_spool(
+    spool: Spool,
+    session: Session,
+    material_cache: dict[str, Material],
+    spool_locks: dict[str, dict] | None = None,
+) -> dict:
     """
     Erzeuge die API-Repruemstentation einer Spule und berechne
     canonical Felder: remaining_weight_g, total_weight_g, remaining_percent.
@@ -471,6 +567,12 @@ def _serialize_spool(spool: Spool, session: Session, material_cache: dict[str, M
             base["printer_name"] = None
     else:
         base["printer_name"] = None
+
+    lock_info = (spool_locks or {}).get(spool.id, {})
+    base["is_locked"] = bool(lock_info.get("is_locked", False))
+    base["lock_reason"] = lock_info.get("lock_reason")
+    base["active_job_id"] = lock_info.get("active_job_id")
+    base["active_job_name"] = lock_info.get("active_job_name")
 
     return base
 

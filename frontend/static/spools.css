@@ -414,6 +414,20 @@
     position: relative;
 }
 
+.spool-card-locked {
+    overflow: hidden;
+}
+
+.spool-card-locked::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(135deg, rgba(255, 170, 0, 0.12), transparent 38%),
+        linear-gradient(180deg, rgba(10, 12, 16, 0.05), rgba(10, 12, 16, 0.28));
+    pointer-events: none;
+}
+
 .spool-card:hover {
     transform: scale(1.02);
     border-color: rgba(0, 212, 170, 0.3);
@@ -569,6 +583,49 @@
     z-index: 10;
 }
 
+.spool-lock-overlay {
+    position: absolute;
+    inset: 0 0 auto 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: 0.8rem 0.9rem 0;
+    z-index: 11;
+    pointer-events: none;
+}
+
+.spool-lock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    align-self: flex-start;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(255, 170, 0, 0.2);
+    border: 1px solid rgba(255, 170, 0, 0.38);
+    color: #ffd27a;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.spool-lock-icon {
+    font-size: 0.8rem;
+}
+
+.spool-lock-job {
+    max-width: calc(100% - 4rem);
+    padding: 0.25rem 0.1rem 0;
+    color: rgba(255, 244, 214, 0.95);
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .spool-card:hover .spool-card-actions {
     opacity: 1;
 }
@@ -592,6 +649,19 @@
     background: var(--accent);
     border-color: var(--accent);
     color: #000;
+}
+
+.card-action-btn.disabled,
+.card-action-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+.card-action-btn.disabled:hover,
+.card-action-btn:disabled:hover {
+    background: rgba(0, 0, 0, 0.6);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--text);
 }
 
 .card-action-btn.delete:hover {

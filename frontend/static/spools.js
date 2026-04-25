@@ -6,6 +6,9 @@ let currentSpoolId = null;
 let deleteTargetId = null;
 let viewMode = 'grid'; // 'grid' or 'table'
 let selectedMaterial = null;
+let pendingAmsAssignmentDetection = null;
+const PENDING_AMS_CREATE_STORAGE_KEY = 'pending_manual_ams_create';
+const AMS_CREATE_QUERY_FLAG = 'openAmsCreate';
 
 // Material colors for chart
 const MATERIAL_COLORS = [
@@ -22,6 +25,92 @@ const MATERIAL_COLORS = [
 function toNumber(val) {
     const n = parseFloat(val);
     return isNaN(n) ? null : n;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function normalizeAmsHexColor(val) {
+    const raw = String(val || '').replace('#', '').trim();
+    if (raw.length >= 6) return `#${raw.substring(0, 6)}`;
+    return '#ffffff';
+}
+
+function findMaterialForAmsDetection(detection) {
+    if (!detection) return null;
+
+    if (detection.material_id) {
+        const byId = materials.find(m => m.id === detection.material_id);
+        if (byId) return byId;
+    }
+
+    const traySubBrands = String(detection.tray_sub_brands || '').trim().toLowerCase();
+    const trayType = String(detection.tray_type || '').trim().toLowerCase();
+    const vendor = String(detection.vendor || '').trim().toLowerCase();
+
+    return materials.find(m => {
+        const name = String(m.name || '').trim().toLowerCase();
+        const brand = String(m.brand || '').trim().toLowerCase();
+        return (
+            (traySubBrands && name === traySubBrands) ||
+            (trayType && name === trayType) ||
+            (vendor && trayType && brand === vendor && name === trayType)
+        );
+    }) || null;
+}
+
+function clearPendingAmsAssignmentStorage(detection) {
+    if (!detection) return;
+    try {
+        let pending = JSON.parse(localStorage.getItem('pending_spool_assignments') || '[]');
+        const key = detection.tray_uuid || detection.tag_uid;
+        if (!key) return;
+        pending = pending.filter(p => (p.tray_uuid || p.tag_uid) !== key);
+        localStorage.setItem('pending_spool_assignments', JSON.stringify(pending));
+    } catch (error) {
+        console.error('Fehler beim Bereinigen der AMS-Pending-Daten:', error);
+    }
+}
+
+function persistPendingAmsCreatePrefill(detection) {
+    try {
+        localStorage.setItem(PENDING_AMS_CREATE_STORAGE_KEY, JSON.stringify(detection || null));
+    } catch (error) {
+        console.error('Fehler beim Speichern der AMS-Prefill-Daten:', error);
+    }
+}
+
+function restorePendingAmsCreatePrefill() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const shouldOpen = params.get(AMS_CREATE_QUERY_FLAG) === '1' || !!localStorage.getItem(PENDING_AMS_CREATE_STORAGE_KEY);
+        if (!shouldOpen) return;
+
+        const raw = localStorage.getItem(PENDING_AMS_CREATE_STORAGE_KEY);
+        if (params.has(AMS_CREATE_QUERY_FLAG)) {
+            params.delete(AMS_CREATE_QUERY_FLAG);
+            const nextUrl = `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}${window.location.hash || ''}`;
+            window.history.replaceState({}, '', nextUrl);
+        }
+        if (!raw) {
+            openAddModal();
+            return;
+        }
+        localStorage.removeItem(PENDING_AMS_CREATE_STORAGE_KEY);
+        const detection = JSON.parse(raw);
+        if (detection) {
+            openAddModalFromAmsDetection(detection);
+        }
+    } catch (error) {
+        console.error('Fehler beim Wiederherstellen der AMS-Prefill-Daten:', error);
+        localStorage.removeItem(PENDING_AMS_CREATE_STORAGE_KEY);
+    }
 }
 
 // Farbverlauf für Progress: Grün (100%) -> Gelb (50%) -> Rot (0%)
@@ -50,7 +139,9 @@ function getProgressColor(percentage) {
 
 // === INIT ===
 document.addEventListener('DOMContentLoaded', () => {
-    loadData();
+    loadData().then(() => {
+        restorePendingAmsCreatePrefill();
+    });
     setupEventListeners();
 });
 
@@ -378,16 +469,36 @@ function renderSpoolCards(spoolsToRender) {
 
         // Display name: label ist für manuell vergebene Namen (kein auto "AMS Slot X" mehr)
         const displayName = s.label || '';
+        const isLocked = !!s.is_locked;
+        const activeJobName = s.active_job_name || 'Aktiver Druck';
 
         return `
-            <div class="spool-card ${isLow ? 'spool-card-low' : ''}">
+            <div class="spool-card ${isLow ? 'spool-card-low' : ''} ${isLocked ? 'spool-card-locked' : ''}">
+                ${isLocked ? `
+                    <div class="spool-lock-overlay">
+                        <div class="spool-lock-badge">
+                            <span class="spool-lock-icon">🔒</span>
+                            <span>Im Druck gesperrt</span>
+                        </div>
+                        <div class="spool-lock-job">${escapeHtml(activeJobName)}</div>
+                    </div>
+                ` : ''}
                 <div class="spool-card-actions">
-                    <button class="card-action-btn" onclick="openEditModal('${s.id}')" title="Bearbeiten">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                    </button>
+                    ${isLocked ? `
+                        <button class="card-action-btn disabled" title="Waehrend eines aktiven Drucks gesperrt" disabled>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                        </button>
+                    ` : `
+                        <button class="card-action-btn" onclick="openEditModal('${s.id}')" title="Bearbeiten">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                        </button>
+                    `}
                     <button class="card-action-btn delete" onclick="openDeleteModal('${s.id}')" title="Löschen">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
                             <polyline points="3 6 5 6 21 6"/>
@@ -699,6 +810,7 @@ function openAddModal() {
         return;
     }
 
+    pendingAmsAssignmentDetection = null;
     currentSpoolId = null;
     document.getElementById('modalTitle').textContent = 'Spule hinzufügen';
     document.getElementById('spoolForm').reset();
@@ -706,8 +818,52 @@ function openAddModal() {
     document.getElementById('spoolColor').value = '#ffffff';
     document.getElementById('spoolColorHex').value = '#ffffff';
     document.getElementById('spoolStatus').value = 'Lager';
+    document.getElementById('spoolSpoolmanId').value = '';
 
     document.getElementById('spoolModal').classList.add('active');
+}
+
+function openAddModalFromAmsDetection(detection) {
+    if (!detection) return;
+
+    openAddModal();
+    pendingAmsAssignmentDetection = { ...detection };
+
+    const material = findMaterialForAmsDetection(detection);
+    const colorHex = normalizeAmsHexColor(detection.tray_color);
+    const weightFull = toNumber(detection.weight_full);
+    const weightEmpty = toNumber(detection.weight_empty);
+    const weightCurrent = toNumber(detection.weight_current);
+
+    document.getElementById('modalTitle').textContent = 'Spule aus AMS anlegen';
+    document.getElementById('spoolColor').value = colorHex;
+    document.getElementById('spoolColorHex').value = colorHex;
+    document.getElementById('spoolStatus').value = 'Lager';
+    document.getElementById('spoolLabel').value = '';
+    document.getElementById('spoolManufacturerId').value = detection.tag_uid || detection.tray_uuid || '';
+
+    if (material) {
+        document.getElementById('spoolMaterial').value = material.id;
+        if (material.spool_weight_empty != null) {
+            document.getElementById('spoolWeightEmpty').value = material.spool_weight_empty;
+        }
+        if (material.brand) {
+            document.getElementById('spoolVendor').value = material.brand;
+        }
+    }
+
+    if (!document.getElementById('spoolVendor').value) {
+        document.getElementById('spoolVendor').value = detection.vendor || '';
+    }
+    if (weightFull != null) {
+        document.getElementById('spoolWeightFull').value = weightFull;
+    }
+    if (weightEmpty != null) {
+        document.getElementById('spoolWeightEmpty').value = weightEmpty;
+    }
+    if (weightCurrent != null) {
+        document.getElementById('spoolWeightRemaining').value = weightCurrent;
+    }
 }
 
 function openEditModal(id) {
@@ -728,6 +884,7 @@ function openEditModal(id) {
     const remainingForEdit = toNumber(spool.remaining_weight_g);
     document.getElementById('spoolWeightRemaining').value = remainingForEdit ?? '';
     document.getElementById('spoolManufacturerId').value = spool.manufacturer_spool_id || '';
+    document.getElementById('spoolSpoolmanId').value = spool.external_id || '';
     document.getElementById('spoolNumber').value = spool.spool_number || '';
 
     const labelField = document.getElementById('spoolLabel');
@@ -744,16 +901,35 @@ function openEditModal(id) {
     // Lock status if in AMS
     const statusDropdown = document.getElementById('spoolStatus');
     const statusHint = document.getElementById('spoolStatusHint');
+    const weightField = document.getElementById('spoolWeightRemaining');
     const isInAMS = spool.ams_slot != null && spool.printer_id != null;
+    const isLocked = !!spool.is_locked;
 
-    if (isInAMS) {
+    if (isLocked) {
         statusDropdown.disabled = true;
         statusDropdown.style.opacity = '0.6';
+        if (weightField) {
+            weightField.disabled = true;
+            weightField.style.opacity = '0.6';
+        }
+        statusHint.textContent = `Spule ist waehrend des aktiven Drucks gesperrt${spool.active_job_name ? ': ' + spool.active_job_name : ''}`;
+        statusHint.style.color = 'var(--warning)';
+    } else if (isInAMS) {
+        statusDropdown.disabled = true;
+        statusDropdown.style.opacity = '0.6';
+        if (weightField) {
+            weightField.disabled = false;
+            weightField.style.opacity = '1';
+        }
         statusHint.textContent = 'Status kann nicht geändert werden (Spule ist im AMS)';
         statusHint.style.color = 'var(--warning)';
     } else {
         statusDropdown.disabled = false;
         statusDropdown.style.opacity = '1';
+        if (weightField) {
+            weightField.disabled = false;
+            weightField.style.opacity = '1';
+        }
         statusHint.textContent = 'Status wird bei AMS-Nutzung automatisch aktualisiert';
         statusHint.style.color = 'var(--text-dim)';
     }
@@ -764,6 +940,34 @@ function openEditModal(id) {
 function closeModal() {
     document.getElementById('spoolModal').classList.remove('active');
     currentSpoolId = null;
+    pendingAmsAssignmentDetection = null;
+}
+
+async function assignNewSpoolToAms(spoolId, detection) {
+    const response = await fetch(`/api/spools/${spoolId}/assign-from-ams`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            tray_uuid: detection.tray_uuid || null,
+            tag_uid: detection.tag_uid || null,
+            ams_slot: detection.ams_slot,
+            ams_id: detection.ams_id || null,
+            printer_id: detection.printer_id || null,
+            remain_percent: detection.remain_percent,
+            tray_type: detection.tray_type || null,
+            tray_color: detection.tray_color || null,
+            weight_current: detection.weight_current || null,
+            weight_full: detection.weight_full || null,
+            weight_empty: detection.weight_empty || null,
+        })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'AMS-Zuordnung fehlgeschlagen');
+    }
+
+    return response.json();
 }
 
 function openDeleteModal(id) {
@@ -796,6 +1000,7 @@ async function saveSpool(event) {
     const colorHex = document.getElementById('spoolColor').value;
     const trayColor = colorHex?.replace('#', '') || null;
     const spoolNumber = document.getElementById('spoolNumber').value;
+    const spoolmanId = document.getElementById('spoolSpoolmanId').value;
     const priceValue = document.getElementById('spoolPrice')?.value;
 
     const is_empty = (status === 'Leer');
@@ -813,6 +1018,7 @@ async function saveSpool(event) {
         material_id: materialId,
         vendor_id: document.getElementById('spoolVendor').value || null,
         manufacturer_spool_id: document.getElementById('spoolManufacturerId').value || null,
+        external_id: spoolmanId ? String(parseInt(spoolmanId, 10)) : null,
         tray_color: trayColor,
         is_open: is_open,
         is_empty: is_empty,
@@ -827,6 +1033,10 @@ async function saveSpool(event) {
 
     try {
         let response;
+        const isCreate = !currentSpoolId;
+        const detection = isCreate && pendingAmsAssignmentDetection
+            ? { ...pendingAmsAssignmentDetection }
+            : null;
 
         if (currentSpoolId) {
             response = await fetch(`/api/spools/${currentSpoolId}`, {
@@ -843,7 +1053,22 @@ async function saveSpool(event) {
         }
 
         if (response.ok) {
-            showNotification(currentSpoolId ? 'Spule aktualisiert!' : 'Spule erstellt!', 'success');
+            const savedSpool = await response.json();
+
+            if (isCreate && detection && savedSpool?.id) {
+                try {
+                    await assignNewSpoolToAms(savedSpool.id, detection);
+                    clearPendingAmsAssignmentStorage(detection);
+                    pendingAmsAssignmentDetection = null;
+                    showNotification('Spule erstellt und AMS-Slot zugewiesen!', 'success');
+                } catch (assignError) {
+                    console.error('Fehler bei AMS-Zuordnung nach dem Speichern:', assignError);
+                    showNotification(`Spule erstellt, aber AMS-Zuordnung fehlgeschlagen: ${assignError.message}`, 'warning');
+                }
+            } else {
+                showNotification(currentSpoolId ? 'Spule aktualisiert!' : 'Spule erstellt!', 'success');
+            }
+
             closeModal();
             clearFilters();
             await loadSpools();
@@ -900,3 +1125,6 @@ function showNotification(message, type = 'info') {
         setTimeout(() => notification.remove(), 300);
     }, 3000);
 }
+
+window.openAddModalFromAmsDetection = openAddModalFromAmsDetection;
+window.persistPendingAmsCreatePrefill = persistPendingAmsCreatePrefill;

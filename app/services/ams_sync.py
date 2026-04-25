@@ -867,6 +867,8 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
                     # WEIGHT MANAGER INTEGRATION
                     # AMS-Type-basierte Gewichts-Verwaltung
                     # ========================================
+                    weight_conflict_detected = False
+
                     if weight_current is not None and spool.tray_uuid:
                         # Determine AMS type from printer model
                         printer = session.get(Printer, printer_id) if printer_id else None
@@ -890,6 +892,7 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
 
                             # If conflict detected, broadcast to frontend
                             if weight_result.get('conflict'):
+                                weight_conflict_detected = True
                                 logger.warning(
                                     f"[WEIGHT CONFLICT] Spool #{spool.spool_number} (UUID: {spool.tray_uuid}): "
                                     f"Cloud={weight_result['cloud_weight']}g vs DB={weight_result['db_weight']}g "
@@ -974,7 +977,12 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
                             logger.exception(f"[WEIGHT MANAGER] Error processing spool {spool.tray_uuid}: {e}")
                             # Fall back to original weight_current calculation
 
-                    if weight_current is not None:
+                    if weight_conflict_detected:
+                        logger.info(
+                            f"[AMS SYNC] Skip weight update for spool {spool.id}: "
+                            "conflict pending user resolution"
+                        )
+                    elif weight_current is not None:
                         # KRITISCH: Prüfe ob AMS-Wert niedriger als DB-Wert ist
                         # Problem: AMS Lite kann RFID nur LESEN, nicht SCHREIBEN
                         # Wenn Spule von AMS Lite → Regular AMS wandert, hat RFID veraltete Daten!
