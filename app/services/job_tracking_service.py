@@ -191,7 +191,7 @@ class JobTrackingService:
         Berechnet direkt aus dem gemeldeten Prozentsatz statt
         inkrementell, um Fehlerakkumulation zu vermeiden.
 
-        Formel: weight_current = weight_empty + (remain% / 100 * net_weight)
+        Formel: weight_current = remain% / 100 * net_weight
 
         Args:
             spool: Spulen-Objekt
@@ -205,21 +205,21 @@ class JobTrackingService:
             return
 
         net_weight = float(spool.weight_full) - float(spool.weight_empty)
-        new_weight = float(spool.weight_empty) + (float(remain_percent) / 100.0 * net_weight)
+        new_weight = float(remain_percent) / 100.0 * net_weight
 
         # Validierung & Capping
-        if new_weight < float(spool.weight_empty):
+        if new_weight < 0:
             self.logger.warning(
                 f"[WEIGHT] Spule {spool.id}: Berechnetes Gewicht ({new_weight:.1f}g) "
-                f"unter Leergewicht ({spool.weight_empty}g) - auf Leergewicht begrenzt"
+                "unter 0g - auf 0g begrenzt"
             )
-            new_weight = float(spool.weight_empty)
-        elif new_weight > float(spool.weight_full):
+            new_weight = 0.0
+        elif new_weight > net_weight:
             self.logger.warning(
                 f"[WEIGHT] Spule {spool.id}: Berechnetes Gewicht ({new_weight:.1f}g) "
-                f"ueber Vollgewicht ({spool.weight_full}g) - auf Vollgewicht begrenzt"
+                f"ueber Netto-Vollgewicht ({net_weight:.1f}g) - auf Netto-Vollgewicht begrenzt"
             )
-            new_weight = float(spool.weight_full)
+            new_weight = net_weight
 
         # Log nur bei signifikanter Aenderung (> 1g)
         if spool.weight_current is None or abs(new_weight - spool.weight_current) > 1.0:

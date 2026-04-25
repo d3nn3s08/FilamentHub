@@ -266,3 +266,7 @@ class SpoolReadSchema(BaseModel):
     cloud_tray_uuid: str | None = None
     last_verified_at: str | None = None
     cloud_sync_status: str | None = None
+    is_locked: bool = False
+    lock_reason: str | None = None
+    active_job_id: str | None = None
+    active_job_name: str | None = None

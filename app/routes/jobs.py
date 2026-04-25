@@ -178,18 +178,23 @@ def _load_spools_for_job(job: Job, session: Session) -> None:
             .order_by(col(JobSpoolUsage.order_index))
         ).all()
         # Konvertiere zu Dictionaries für korrekte JSON-Serialisierung
-        spools_data = [
-            {
-                "id": u.id,
-                "job_id": u.job_id,
-                "spool_id": u.spool_id,
-                "slot": u.slot,
-                "used_mm": u.used_mm,
-                "used_g": u.used_g,
-                "order_index": u.order_index
-            }
-            for u in usages
-        ]
+        spools_data = []
+        for u in usages:
+            spool = session.get(Spool, u.spool_id) if u.spool_id else None
+            spools_data.append(
+                {
+                    "id": u.id,
+                    "job_id": u.job_id,
+                    "spool_id": u.spool_id,
+                    "slot": u.slot,
+                    "used_mm": u.used_mm,
+                    "used_g": u.used_g,
+                    "order_index": u.order_index,
+                    "spool_number": spool.spool_number if spool else None,
+                    "spool_label": spool.label if spool else None,
+                    "tray_color": spool.tray_color if spool else None,
+                }
+            )
         object.__setattr__(job, 'spools', spools_data)
     except Exception:
         logger.exception("Failed to load spools for job_id=%s", job.id)
