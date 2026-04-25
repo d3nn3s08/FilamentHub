@@ -23,6 +23,7 @@ from app.services.ams_weight_manager import (
     process_ams_spool_detection,
     AMSType,
 )
+from app.services.ams_normalizer import has_ams_lite_from_payload
 import asyncio
 
 logger = logging.getLogger("services")
@@ -69,6 +70,37 @@ def _to_int(value: Any):
         return int(value)
     except Exception:
         return None
+
+
+def _is_ams_lite_printer(printer: Optional[Printer]) -> bool:
+    if not printer:
+        return False
+
+    candidates = [
+        getattr(printer, "series", None),
+        getattr(printer, "model", None),
+        getattr(printer, "name", None),
+    ]
+    normalized = [str(value).strip().upper() for value in candidates if value]
+
+    for value in normalized:
+        if value in {"A", "A1", "A1MINI", "A1 MINI"}:
+            return True
+
+    cloud_serial = getattr(printer, "cloud_serial", None)
+    if not cloud_serial:
+        return False
+
+    try:
+        from app.services import live_state as live_state_module
+
+        live_entry = live_state_module.get_live_state(cloud_serial) or {}
+        payload = live_entry.get("payload") or {}
+        printer_model = getattr(printer, "model", None) or getattr(printer, "name", None)
+        return has_ams_lite_from_payload(payload, printer_model=printer_model)
+    except Exception:
+        logger.exception("[AMS SYNC] Failed AMS Lite detection for printer %s", printer.id)
+        return False
 
 
 def _get_default_material_id(session: Session) -> Optional[str]:
@@ -872,7 +904,7 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
                     if weight_current is not None and spool.tray_uuid:
                         # Determine AMS type from printer model
                         printer = session.get(Printer, printer_id) if printer_id else None
-                        ams_type = AMSType.AMS_LITE if (printer and printer.series and 'A1' in printer.series) else AMSType.AMS_FULL
+                        ams_type = AMSType.AMS_LITE if _is_ams_lite_printer(printer) else AMSType.AMS_FULL
 
                         # Prepare MQTT data for weight manager
                         mqtt_data_for_manager = {
