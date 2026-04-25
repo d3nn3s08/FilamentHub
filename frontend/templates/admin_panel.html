@@ -709,8 +709,9 @@ async function loadTables() {
     const container = document.getElementById('dbTables');
     container.innerHTML = 'Lädt...';
     try {
-        const res = await fetch('/api/database/tables');
+        const res = await fetch('/api/debug/db/tables');
         const data = await res.json();
+        if (!res.ok) { container.innerHTML = `<p style="color:var(--error);">Fehler beim Laden: ${data.detail || data.error || res.status}</p>`; return; }
         if (!data.tables || data.tables.length === 0) { container.innerHTML = '<p>Keine Tabellen gefunden.</p>'; return; }
         let html = '';
         data.tables.forEach(t => {
@@ -728,7 +729,7 @@ async function loadTables() {
             html += '</tbody></table></div>';
         });
         container.innerHTML = html;
-    } catch (e) { container.innerHTML = '<p style="color:var(--error);">Fehler beim Laden!</p>'; }
+    } catch (e) { container.innerHTML = `<p style="color:var(--error);">Fehler beim Laden: ${e.message}</p>`; }
 }
 
 // ===== LEXIKON =====

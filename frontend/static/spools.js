@@ -229,7 +229,7 @@ function updateMaterialSelect() {
     const select = document.getElementById('spoolMaterial');
     if (!select) return;
 
-    select.innerHTML = '<option value="">-- Material wählen --</option>';
+    select.innerHTML = '<option value="">-- Spulen Hersteller wählen --</option>';
     materials.forEach(m => {
         const option = document.createElement('option');
         option.value = m.id;
