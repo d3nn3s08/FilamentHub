@@ -989,7 +989,19 @@ function closeDeleteModal() {
 async function saveSpool(event) {
     event.preventDefault();
 
-    const status = document.getElementById('spoolStatus').value;
+    const statusField = document.getElementById('spoolStatus');
+    const weightRemainingField = document.getElementById('spoolWeightRemaining');
+    const materialField = document.getElementById('spoolMaterial');
+    const colorField = document.getElementById('spoolColor');
+    const spoolNumberField = document.getElementById('spoolNumber');
+    const spoolmanIdField = document.getElementById('spoolSpoolmanId');
+    const priceField = document.getElementById('spoolPrice');
+    const weightFullField = document.getElementById('spoolWeightFull');
+    const weightEmptyField = document.getElementById('spoolWeightEmpty');
+    const vendorField = document.getElementById('spoolVendor');
+    const manufacturerIdField = document.getElementById('spoolManufacturerId');
+
+    const status = statusField?.value || 'Lager';
 
     if (status === 'Leer') {
         const confirmed = confirm(
@@ -1000,19 +1012,19 @@ async function saveSpool(event) {
         if (!confirmed) return;
     }
 
-    const weightRemaining = document.getElementById('spoolWeightRemaining').value;
-    const materialId = document.getElementById('spoolMaterial').value;
-    const colorHex = document.getElementById('spoolColor').value;
+    const weightRemaining = weightRemainingField?.value || '';
+    const materialId = materialField?.value || '';
+    const colorHex = colorField?.value || '';
     const trayColor = colorHex?.replace('#', '') || null;
-    const spoolNumber = document.getElementById('spoolNumber').value;
-    const spoolmanId = document.getElementById('spoolSpoolmanId').value;
-    const priceValue = document.getElementById('spoolPrice')?.value;
+    const spoolNumber = spoolNumberField?.value || '';
+    const spoolmanId = spoolmanIdField?.value || '';
+    const priceValue = priceField?.value || '';
 
     const is_empty = (status === 'Leer');
     const is_open = (status === 'Aktiv' || status === 'In Benutzung' || status === 'Leer');
 
-    const weightFull = toNumber(document.getElementById('spoolWeightFull').value);
-    const weightEmpty = toNumber(document.getElementById('spoolWeightEmpty').value);
+    const weightFull = toNumber(weightFullField?.value || '');
+    const weightEmpty = toNumber(weightEmptyField?.value || '');
     let weightCurrent = null;
     if (weightRemaining) {
         weightCurrent = toNumber(weightRemaining);
@@ -1021,8 +1033,8 @@ async function saveSpool(event) {
     const data = {
         label: document.getElementById('spoolLabel')?.value || null,
         material_id: materialId,
-        vendor_id: document.getElementById('spoolVendor').value || null,
-        manufacturer_spool_id: document.getElementById('spoolManufacturerId').value || null,
+        vendor_id: vendorField?.value || null,
+        manufacturer_spool_id: manufacturerIdField?.value || null,
         external_id: spoolmanId ? String(parseInt(spoolmanId, 10)) : null,
         tray_color: trayColor,
         is_open: is_open,
