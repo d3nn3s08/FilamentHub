@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, select
+from sqlalchemy.exc import IntegrityError
 
 from app.database import get_session
 from app.models.settings import Setting
@@ -56,9 +57,17 @@ def get_setting(session: Session, key: str, default: str | None = None) -> str |
     if default is not None:
         setting = Setting(key=key, value=default)
         session.add(setting)
-        session.commit()
-        session.refresh(setting)
-        return setting.value
+        try:
+            session.commit()
+            session.refresh(setting)
+            return setting.value
+        except IntegrityError:
+            # Another request inserted the same default concurrently.
+            session.rollback()
+            existing = session.exec(select(Setting).where(Setting.key == key)).first()
+            if existing:
+                return existing.value
+            raise
     return None
 
 
@@ -69,7 +78,17 @@ def set_setting(session: Session, key: str, value: str) -> None:
     else:
         setting = Setting(key=key, value=value)
         session.add(setting)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        # If another request created the row first, retry as an update.
+        session.rollback()
+        setting = session.exec(select(Setting).where(Setting.key == key)).first()
+        if setting:
+            setting.value = value
+            session.commit()
+            return
+        raise
 
 
 def _normalize_bool(value: str | None, default: bool) -> bool:
@@ -146,7 +165,7 @@ def _ensure_runtime_settings(session: Session) -> None:
 
 
 @router.get("/api/settings")
-def get_settings(_: None = Depends(admin_required), session: Session = Depends(get_session)):
+def get_settings(session: Session = Depends(get_session)):
     _ensure_runtime_settings(session)
     ams_mode = get_setting(session, "ams_mode", DEFAULTS["ams_mode"]) or DEFAULTS["ams_mode"]
     debug_ws_logging = get_setting(session, "debug_ws_logging", DEFAULTS["debug_ws_logging"]) or DEFAULTS["debug_ws_logging"]
@@ -210,7 +229,7 @@ def get_settings(_: None = Depends(admin_required), session: Session = Depends(g
 
 
 @router.put("/api/settings")
-async def update_settings(payload: dict, _: None = Depends(admin_required), session: Session = Depends(get_session)):
+async def update_settings(payload: dict, session: Session = Depends(get_session)):
     _ensure_runtime_settings(session)
     allowed_keys = {
         "ams_mode",

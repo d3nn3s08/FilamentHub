@@ -163,13 +163,47 @@
 .badge-unhealthy { background-color: #dc3545; }
 
 .alert-item {
-    padding: 10px;
-    margin-bottom: 10px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
     border-left: 4px solid;
+    border-radius: 10px;
+    color: #f5f7fb;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
-.alert-critical { border-color: #dc3545; background-color: #f8d7da; }
-.alert-error { border-color: #fd7e14; background-color: #fff3cd; }
-.alert-warning { border-color: #ffc107; background-color: #fff3cd; }
+.alert-critical { border-color: #ff6b6b; background: linear-gradient(135deg, rgba(127, 29, 29, 0.96), rgba(69, 10, 10, 0.96)); }
+.alert-error { border-color: #ff922b; background: linear-gradient(135deg, rgba(120, 53, 15, 0.96), rgba(67, 20, 7, 0.96)); }
+.alert-warning { border-color: #ffd43b; background: linear-gradient(135deg, rgba(113, 63, 18, 0.96), rgba(66, 32, 6, 0.96)); }
+.alert-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+.alert-severity {
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.alert-type {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+.alert-message {
+    color: #ffffff;
+    font-size: 0.96rem;
+    line-height: 1.45;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
 </style>
 
 <script>
@@ -217,8 +251,11 @@ async function loadAlerts() {
         alertsSection.style.display = 'block';
         alertsList.innerHTML = data.alerts.map(alert => `
             <div class="alert-item alert-${alert.severity.toLowerCase()}">
-                <strong>${alert.severity}:</strong> ${alert.message}
-                <small class="text-muted">(${alert.type})</small>
+                <div class="alert-header">
+                    <span class="alert-severity">${alert.severity}</span>
+                    <span class="alert-type">${alert.type.replaceAll('_', ' ')}</span>
+                </div>
+                <div class="alert-message">${alert.message}</div>
             </div>
         `).join('');
 

@@ -12,6 +12,9 @@ let probeTarget = null;
 let configLoaded = false;
 let configSnapshot = {};
 let logViewerState = { module: 'app', lastCount: 0 };
+let serviceFtpPrintersLoaded = false;
+let serviceFtpLastPrinterId = '';
+let serviceFtpLastPayload = null;
 
 function setConfigEditable(enabled) {
   document.querySelectorAll('#panel-config input, #panel-config select, #panel-config button').forEach(el => {
@@ -3170,44 +3173,301 @@ console.log('✓ JSON Inspector functions registered');
 
 async function loadServicesData() {
     try {
-        const [perfRes, sysRes] = await Promise.all([
+        await populateServiceFtpPrinters();
+        const [
+            perfRes,
+            sysRes,
+            processRes,
+            statsRes,
+            dockerRes,
+            composeRes
+        ] = await Promise.all([
             fetch('/api/debug/performance'),
-            fetch('/api/debug/system_status')
+            fetch('/api/debug/system_status'),
+            fetch('/api/services/process/info'),
+            fetch('/api/services/server/stats'),
+            fetch('/api/services/docker/status'),
+            fetch('/api/services/docker/compose/ps')
         ]);
 
-        if (!perfRes.ok || !sysRes.ok) {
+        if (!perfRes.ok || !sysRes.ok || !processRes.ok || !statsRes.ok || !dockerRes.ok || !composeRes.ok) {
             console.warn('[services] Failed to load data');
             return;
         }
 
-        const perfData = await perfRes.json();
-        const sysData = await sysRes.json();
+        const [
+            perfData,
+            sysData,
+            processData,
+            statsData,
+            dockerData,
+            composeData
+        ] = await Promise.all([
+            perfRes.json(),
+            sysRes.json(),
+            processRes.json(),
+            statsRes.json(),
+            dockerRes.json(),
+            composeRes.json()
+        ]);
 
-        updateServicesDisplay(perfData, sysData);
+        updateServicesDisplay(perfData, sysData, processData, statsData, dockerData, composeData);
     } catch (err) {
         console.error('[services] Error loading data', err);
     }
 }
 
-function updateServicesDisplay(perf, sys) {
+function formatServiceUptime(totalSeconds) {
+    if (!Number.isFinite(totalSeconds)) return '-';
+
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    const parts = [];
+
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0 || days > 0) parts.push(`${hours}h`);
+    if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}m`);
+    parts.push(`${seconds}s`);
+
+    return parts.join(' ');
+}
+
+function setStatusBadge(element, label, variant) {
+    if (!element) return;
+    element.className = `status-badge ${variant}`;
+    element.textContent = label;
+}
+
+function formatServiceFileSize(bytes) {
+    const num = Number(bytes);
+    if (!Number.isFinite(num) || num < 0) return '-';
+    if (num < 1024) return `${num} B`;
+    if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
+    if (num < 1024 * 1024 * 1024) return `${(num / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(num / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+function setServiceFtpMessage(message, type = 'idle') {
+    const el = document.getElementById('service-ftp-message');
+    if (!el) return;
+    el.textContent = message || '';
+    const colors = {
+        idle: 'var(--text-dim)',
+        success: '#8ef0b5',
+        error: '#ff9a8a',
+        warning: '#ffd666',
+    };
+    el.style.color = colors[type] || colors.idle;
+}
+
+function updateServiceFtpSummary(payload = null) {
+    const statusEl = document.getElementById('service-ftp-status');
+    const pathEl = document.getElementById('service-ftp-path');
+    const methodEl = document.getElementById('service-ftp-method');
+    const countEl = document.getElementById('service-ftp-count');
+
+    if (!payload) {
+        if (pathEl) pathEl.textContent = '-';
+        if (methodEl) methodEl.textContent = '-';
+        if (countEl) countEl.textContent = '-';
+        if (statusEl) setStatusBadge(statusEl, 'Idle', 'status-idle');
+        return;
+    }
+
+    if (pathEl) pathEl.textContent = payload.path || '-';
+    if (methodEl) methodEl.textContent = payload.connection_method || '-';
+    if (countEl) countEl.textContent = Number.isFinite(payload.file_count) ? String(payload.file_count) : '-';
+    if (statusEl) setStatusBadge(statusEl, 'Verbunden', 'status-ok');
+}
+
+async function populateServiceFtpPrinters(force = false) {
+    if (serviceFtpPrintersLoaded && !force) return;
+    const select = document.getElementById('service-ftp-printer');
+    if (!select) return;
+
+    const previousValue = select.value || serviceFtpLastPrinterId;
+    select.innerHTML = '<option value="">-- Drucker wählen --</option>';
+
+    try {
+        const response = await fetch('/api/printers/');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const printers = await response.json();
+        (Array.isArray(printers) ? printers : []).forEach(printer => {
+            const option = document.createElement('option');
+            option.value = printer.id;
+            option.textContent = `${printer.name} (${printer.printer_type || 'unknown'})`;
+            select.appendChild(option);
+        });
+        if (previousValue) select.value = previousValue;
+        serviceFtpPrintersLoaded = true;
+    } catch (err) {
+        console.error('[services][ftp] printer list failed', err);
+        setServiceFtpMessage('Druckerliste konnte nicht geladen werden.', 'error');
+    }
+}
+
+function renderServiceFtpFiles(files = []) {
+    const tbody = document.getElementById('serviceFtpFilesBody');
+    const countBadge = document.getElementById('serviceFtpCountBadge');
+    if (!tbody) return;
+    const term = (document.getElementById('serviceFtpSearch')?.value || '').trim().toLowerCase();
+    const filtered = (Array.isArray(files) ? files : []).filter(item => {
+        const hay = `${item.name || ''} ${item.type || ''}`.toLowerCase();
+        return !term || hay.includes(term);
+    });
+
+    if (countBadge) {
+        countBadge.textContent = `${filtered.length} Datei${filtered.length === 1 ? '' : 'en'}`;
+    }
+
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="padding:14px 10px;color:var(--text-dim);text-align:center;">Keine Dateien gefunden.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(item => {
+        const badgeClass = item.type === 'dir' ? 'dir' : 'file';
+        const badgeLabel = item.type === 'dir' ? 'Ordner' : 'Datei';
+        const sizeLabel = item.type === 'dir' ? 'Ordner' : formatServiceFileSize(item.size);
+        return `
+            <tr>
+                <td class="service-ftp-type"><span class="service-ftp-type-badge ${badgeClass}">${badgeLabel}</span></td>
+                <td class="service-ftp-name" title="${item.name || ''}"><span class="service-ftp-name-text">${item.name || '-'}</span></td>
+                <td class="service-ftp-size">${sizeLabel}</td>
+                <td class="service-ftp-time">${item.mtime_str || '-'}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function openServiceFtpModal() {
+    const modal = document.getElementById('serviceFtpModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeServiceFtpModal() {
+    const modal = document.getElementById('serviceFtpModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function showServiceFtpError(title, detail = '') {
+    const errPanel = document.getElementById('serviceFtpErrorPanel');
+    const filePanel = document.getElementById('serviceFtpFilePanel');
+    const loading = document.getElementById('serviceFtpLoading');
+    const titleEl = document.getElementById('serviceFtpErrorTitle');
+    const detailEl = document.getElementById('serviceFtpErrorDetail');
+    if (filePanel) filePanel.style.display = 'none';
+    if (loading) loading.style.display = 'none';
+    if (errPanel) errPanel.style.display = 'block';
+    if (titleEl) titleEl.textContent = title || 'Verbindung fehlgeschlagen';
+    if (detailEl) detailEl.textContent = detail || '';
+}
+
+function hideServiceFtpError() {
+    const errPanel = document.getElementById('serviceFtpErrorPanel');
+    const filePanel = document.getElementById('serviceFtpFilePanel');
+    if (errPanel) errPanel.style.display = 'none';
+    if (filePanel) filePanel.style.display = '';
+}
+
+function setServiceFtpLoading(isLoading, message = 'Verbinde mit dem Drucker...') {
+    const loading = document.getElementById('serviceFtpLoading');
+    const loadingStatus = document.getElementById('serviceFtpLoadingStatus');
+    if (loading) loading.style.display = isLoading ? 'block' : 'none';
+    if (loadingStatus) loadingStatus.textContent = message;
+}
+
+async function fetchServiceFtpListing(printerId, openModalOnSuccess = false) {
+    if (!printerId) {
+        setServiceFtpMessage('Bitte zuerst einen Drucker auswählen.', 'warning');
+        updateServiceFtpSummary(null);
+        return;
+    }
+
+    serviceFtpLastPrinterId = printerId;
+    const select = document.getElementById('service-ftp-printer');
+    const selectedText = select?.selectedOptions?.[0]?.textContent || '-';
+    const printerNameEl = document.getElementById('serviceFtpPrinterName');
+    if (printerNameEl) printerNameEl.textContent = selectedText;
+
+    if (openModalOnSuccess) openServiceFtpModal();
+    hideServiceFtpError();
+    setServiceFtpLoading(true);
+    setServiceFtpMessage('Dateiliste wird geladen...', 'idle');
+    const statusEl = document.getElementById('service-ftp-status');
+    if (statusEl) setStatusBadge(statusEl, 'Lädt', 'status-warning');
+
+    try {
+        const response = await fetch(`/api/services/printers/${encodeURIComponent(printerId)}/ftp/browse`);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.success !== true) {
+            const detail = data.detail || data.error_detail || data.message || `HTTP ${response.status}`;
+            throw new Error(detail);
+        }
+
+        serviceFtpLastPayload = data;
+        updateServiceFtpSummary(data);
+        renderServiceFtpFiles(data.files || []);
+        setServiceFtpMessage(data.message || 'Dateiliste geladen.', 'success');
+
+        const connEl = document.getElementById('serviceFtpConnStatus');
+        const pathEl = document.getElementById('serviceFtpModalPath');
+        const methodEl = document.getElementById('serviceFtpModalMethod');
+        const infoTitle = document.getElementById('serviceFtpInfoTitle');
+        const methodLabel = (data.connection_method || '-').replaceAll('_', ' ').toUpperCase();
+
+        if (connEl) connEl.textContent = `${data.printer_name} • ${methodLabel}`;
+        if (pathEl) pathEl.textContent = data.path || '-';
+        if (methodEl) methodEl.textContent = methodLabel;
+        if (infoTitle) infoTitle.textContent = data.message || 'Dateiliste';
+    } catch (err) {
+        console.error('[services][ftp] browse failed', err);
+        updateServiceFtpSummary(null);
+        if (statusEl) setStatusBadge(statusEl, 'Fehler', 'status-error');
+        setServiceFtpMessage(err.message || 'Dateiliste konnte nicht geladen werden.', 'error');
+        showServiceFtpError('Verbindung fehlgeschlagen', err.message || '');
+    } finally {
+        setServiceFtpLoading(false);
+    }
+}
+
+function updateServicesDisplay(perf, sys, proc, stats, docker, compose) {
     // Runtime & Process
     const pidEl = document.getElementById('service-pid');
     const cpuEl = document.getElementById('service-cpu');
     const memoryEl = document.getElementById('service-memory');
     const threadsEl = document.getElementById('service-threads');
     const runtimeStatusEl = document.getElementById('service-runtime-status');
+    const dockerStatusEl = document.getElementById('service-docker-status');
 
-    if (pidEl) pidEl.textContent = 'N/A';
-    if (cpuEl && perf?.cpu_percent) cpuEl.textContent = `${perf.cpu_percent}%`;
-    if (memoryEl && perf?.ram_used_mb && perf?.ram_total_mb) {
-        const percent = ((perf.ram_used_mb / perf.ram_total_mb) * 100).toFixed(1);
-        memoryEl.textContent = `${percent}% (${perf.ram_used_mb} MB / ${perf.ram_total_mb} MB)`;
+    const environment = sys?.environment || {};
+    const serverInfo = environment.server || {};
+    const processCpu = Number(proc?.cpu_percent);
+    const fallbackCpu = Number(perf?.cpu_percent);
+    const memoryMb = Number(proc?.memory_mb);
+    const threadCount = proc?.num_threads ?? stats?.threads ?? null;
+    const uptimeSeconds =
+        Number(stats?.uptime_seconds ?? perf?.backend_uptime_s);
+    const runtimeState = sys?.api?.state === 'online' ? 'online' : 'offline';
+
+    if (pidEl) pidEl.textContent = proc?.pid ? String(proc.pid) : '-';
+    if (cpuEl) {
+        const cpuValue = Number.isFinite(processCpu) ? processCpu : fallbackCpu;
+        cpuEl.textContent = Number.isFinite(cpuValue) ? `${cpuValue.toFixed(1)}%` : '-';
     }
-    if (threadsEl) threadsEl.textContent = 'N/A';
+    if (memoryEl) {
+        memoryEl.textContent = Number.isFinite(memoryMb) ? `${memoryMb.toFixed(2)} MB` : '-';
+    }
+    if (threadsEl) threadsEl.textContent = threadCount !== null && threadCount !== undefined ? String(threadCount) : '-';
 
     if (runtimeStatusEl) {
-        runtimeStatusEl.className = 'status-badge status-ok';
-        runtimeStatusEl.textContent = 'Running';
+        setStatusBadge(
+            runtimeStatusEl,
+            runtimeState === 'online' ? 'Running' : 'Offline',
+            runtimeState === 'online' ? 'status-ok' : 'status-error'
+        );
     }
 
     // Server & Environment
@@ -3217,69 +3477,217 @@ function updateServicesDisplay(perf, sys) {
     const hostnameEl = document.getElementById('service-hostname');
     const pythonEl = document.getElementById('service-python');
     const portEl = document.getElementById('service-port');
-    const environment = sys?.environment || {};
-    const serverInfo = environment.server || {};
-    const uptimeSeconds = Number(perf?.backend_uptime_s);
 
     if (startedEl) {
-        if (Number.isFinite(uptimeSeconds)) {
-            const startedAtMs = Date.now() - uptimeSeconds * 1000;
-            startedEl.textContent = new Date(startedAtMs).toLocaleString();
-        } else {
-            startedEl.textContent = '-';
-        }
+        startedEl.textContent = stats?.start_time || '-';
     }
-    if (uptimeEl && Number.isFinite(uptimeSeconds)) {
-        const hours = Math.floor(uptimeSeconds / 3600);
-        const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-        const seconds = Math.floor(uptimeSeconds % 60);
-        uptimeEl.textContent = `${hours}h ${minutes}m ${seconds}s`;
+    if (uptimeEl) {
+        uptimeEl.textContent = stats?.uptime_formatted || formatServiceUptime(uptimeSeconds);
     }
     if (platformEl) {
         const platformLabel = environment.platform
             ? environment.platform_release && environment.platform_release !== environment.platform
                 ? `${environment.platform} ${environment.platform_release}`
                 : environment.platform
-            : environment.platform_details || '-';
+            : stats?.platform || environment.platform_details || '-';
         platformEl.textContent = platformLabel;
     }
-    if (hostnameEl) hostnameEl.textContent = environment.hostname || '-';
+    if (hostnameEl) hostnameEl.textContent = stats?.hostname || environment.hostname || '-';
     if (pythonEl) {
-        const pythonLine = environment.python_version ? environment.python_version.split('\n')[0] : '-';
+        const pythonSource = proc?.python_version || environment.python_version || stats?.python_version || '-';
+        const pythonLine = pythonSource ? pythonSource.split('\n')[0] : '-';
         pythonEl.textContent = pythonLine;
     }
     if (portEl) {
         portEl.textContent =
-            serverInfo.port !== undefined && serverInfo.port !== null ? String(serverInfo.port) : '-';
+            serverInfo.port !== undefined && serverInfo.port !== null
+                ? String(serverInfo.port)
+                : stats?.port !== undefined && stats?.port !== null
+                    ? String(stats.port)
+                    : '-';
+    }
+
+    if (dockerStatusEl) {
+        const dockerAvailable = docker?.available === true;
+        const composeAvailable = docker?.compose_available === true;
+        const composeRunning = compose?.success === true;
+
+        if (!dockerAvailable) {
+            setStatusBadge(dockerStatusEl, 'Docker missing', 'status-error');
+        } else if (!composeAvailable) {
+            setStatusBadge(dockerStatusEl, 'Compose missing', 'status-warning');
+        } else if (composeRunning) {
+            setStatusBadge(dockerStatusEl, 'Compose ready', 'status-ok');
+        } else {
+            setStatusBadge(dockerStatusEl, 'Docker available', 'status-idle');
+        }
     }
 }
 
 function initServicesButtons() {
+    const ftpOpenBtn = document.getElementById('service-ftp-open-btn');
+    const ftpRefreshBtn = document.getElementById('service-ftp-refresh-btn');
+    const ftpSelect = document.getElementById('service-ftp-printer');
+    const ftpSearch = document.getElementById('serviceFtpSearch');
+    const ftpRetryBtn = document.getElementById('serviceFtpRetryBtn');
+    const ftpModalRefreshBtn = document.getElementById('serviceFtpModalRefreshBtn');
+    const ftpModal = document.getElementById('serviceFtpModal');
+
+    if (ftpOpenBtn) {
+        ftpOpenBtn.addEventListener('click', async () => {
+            await fetchServiceFtpListing(document.getElementById('service-ftp-printer')?.value, true);
+        });
+    }
+
+    if (ftpRefreshBtn) {
+        ftpRefreshBtn.addEventListener('click', async () => {
+            await populateServiceFtpPrinters(true);
+            if (serviceFtpLastPrinterId) {
+                const select = document.getElementById('service-ftp-printer');
+                if (select) select.value = serviceFtpLastPrinterId;
+                await fetchServiceFtpListing(serviceFtpLastPrinterId, false);
+            } else {
+                setServiceFtpMessage('Druckerliste aktualisiert.', 'success');
+            }
+        });
+    }
+
+    if (ftpSelect) {
+        ftpSelect.addEventListener('change', () => {
+            serviceFtpLastPrinterId = ftpSelect.value;
+            serviceFtpLastPayload = null;
+            updateServiceFtpSummary(null);
+            setServiceFtpMessage(ftpSelect.value ? 'Drucker ausgewählt. Dateien können jetzt geladen werden.' : '', 'idle');
+        });
+    }
+
+    if (ftpSearch) {
+        ftpSearch.addEventListener('input', () => {
+            renderServiceFtpFiles(serviceFtpLastPayload?.files || []);
+        });
+    }
+
+    if (ftpRetryBtn) {
+        ftpRetryBtn.addEventListener('click', async () => {
+            await fetchServiceFtpListing(serviceFtpLastPrinterId || document.getElementById('service-ftp-printer')?.value, true);
+        });
+    }
+
+    if (ftpModalRefreshBtn) {
+        ftpModalRefreshBtn.addEventListener('click', async () => {
+            await fetchServiceFtpListing(serviceFtpLastPrinterId || document.getElementById('service-ftp-printer')?.value, true);
+        });
+    }
+
+    ['serviceFtpCloseBtn', 'serviceFtpModalCloseBtn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', closeServiceFtpModal);
+    });
+
+    if (ftpModal) {
+        ftpModal.addEventListener('click', (event) => {
+            if (event.target === ftpModal) closeServiceFtpModal();
+        });
+    }
+
     const restartBtn = document.getElementById('service-restart-btn');
     if (restartBtn) {
-        restartBtn.addEventListener('click', () => {
-            alert('Backend restart functionality not implemented yet.');
+        restartBtn.addEventListener('click', async () => {
+            if (restartBtn.disabled) return;
+            restartBtn.disabled = true;
+            const originalLabel = restartBtn.textContent;
+            restartBtn.textContent = 'Restarting…';
+
+            try {
+                let response = await fetch('/api/services/server/reload-trigger', { method: 'POST' });
+                if (response.status === 404) {
+                    response = await fetch('/api/services/server/restart', { method: 'POST' });
+                }
+                const data = await response.json();
+
+                if (!response.ok || data.success !== true) {
+                    throw new Error(data.detail || data.message || 'Backend-Restart fehlgeschlagen');
+                }
+
+                if (window.showToast) window.showToast(data.message || 'Backend-Restart getriggert', 'success');
+            } catch (error) {
+                if (window.showToast) window.showToast(error.message || 'Backend-Restart fehlgeschlagen', 'error');
+            } finally {
+                window.setTimeout(() => {
+                    restartBtn.disabled = false;
+                    restartBtn.textContent = originalLabel;
+                }, 2500);
+            }
         });
     }
 
     const dockerUpBtn = document.getElementById('service-docker-up-btn');
     if (dockerUpBtn) {
         dockerUpBtn.addEventListener('click', async () => {
-            alert('Docker up functionality not implemented yet.');
+            if (dockerUpBtn.disabled) return;
+            dockerUpBtn.disabled = true;
+            const originalLabel = dockerUpBtn.textContent;
+            dockerUpBtn.textContent = 'Starting…';
+
+            try {
+                const response = await fetch('/api/services/docker/compose/up', { method: 'POST' });
+                const data = await response.json();
+                if (!response.ok || data.success !== true) {
+                    throw new Error(data.message || 'Docker Compose Up fehlgeschlagen');
+                }
+                if (window.showToast) window.showToast(data.message || 'Docker Compose gestartet', 'success');
+                await loadServicesData();
+            } catch (error) {
+                if (window.showToast) window.showToast(error.message || 'Docker Compose Up fehlgeschlagen', 'error');
+            } finally {
+                dockerUpBtn.disabled = false;
+                dockerUpBtn.textContent = originalLabel;
+            }
         });
     }
 
     const dockerDownBtn = document.getElementById('service-docker-down-btn');
     if (dockerDownBtn) {
         dockerDownBtn.addEventListener('click', async () => {
-            alert('Docker down functionality not implemented yet.');
+            if (dockerDownBtn.disabled) return;
+            dockerDownBtn.disabled = true;
+            const originalLabel = dockerDownBtn.textContent;
+            dockerDownBtn.textContent = 'Stopping…';
+
+            try {
+                const response = await fetch('/api/services/docker/compose/down', { method: 'POST' });
+                const data = await response.json();
+                if (!response.ok || data.success !== true) {
+                    throw new Error(data.message || 'Docker Compose Down fehlgeschlagen');
+                }
+                if (window.showToast) window.showToast(data.message || 'Docker Compose gestoppt', 'success');
+                await loadServicesData();
+            } catch (error) {
+                if (window.showToast) window.showToast(error.message || 'Docker Compose Down fehlgeschlagen', 'error');
+            } finally {
+                dockerDownBtn.disabled = false;
+                dockerDownBtn.textContent = originalLabel;
+            }
         });
     }
 
     const dockerStatusBtn = document.getElementById('service-docker-status-btn');
     if (dockerStatusBtn) {
         dockerStatusBtn.addEventListener('click', async () => {
-            alert('Docker status functionality not implemented yet.');
+            if (dockerStatusBtn.disabled) return;
+            dockerStatusBtn.disabled = true;
+            const originalLabel = dockerStatusBtn.textContent;
+            dockerStatusBtn.textContent = 'Refreshing…';
+
+            try {
+                await loadServicesData();
+                if (window.showToast) window.showToast('Service-Status aktualisiert', 'success');
+            } catch (error) {
+                if (window.showToast) window.showToast(error.message || 'Service-Status konnte nicht geladen werden', 'error');
+            } finally {
+                dockerStatusBtn.disabled = false;
+                dockerStatusBtn.textContent = originalLabel;
+            }
         });
     }
 
@@ -3369,6 +3777,105 @@ function initServicesButtons() {
             });
         }
     });
+
+    const fileInput = document.getElementById('spoolman-import-file');
+    const previewBtn = document.getElementById('spoolman-preview-btn');
+    const applyBtn = document.getElementById('spoolman-apply-btn');
+    let lastPreviewData = null;
+
+    const renderSpoolmanPreview = (data) => {
+        lastPreviewData = data;
+        setText('spoolman-summary-format', data?.format || '-');
+        setText('spoolman-summary-rows', data?.detected_rows ?? '-');
+        setText('spoolman-summary-new', data?.new_spools ?? '-');
+        setText('spoolman-summary-updates', data?.matched_existing ?? '-');
+
+        const previewEl = document.getElementById('spoolman-import-preview');
+        if (!previewEl) return;
+
+        const rows = Array.isArray(data?.preview) ? data.preview : [];
+        if (!rows.length) {
+            previewEl.innerHTML = 'Keine importierbaren Spulen erkannt.';
+            return;
+        }
+
+        const html = rows.map(row => `
+            <div style="display:grid;grid-template-columns:90px 1fr 120px 100px;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+                <div>#${row.spoolman_id ?? '-'}</div>
+                <div>${row.material_name || '-'}${row.vendor ? ` · ${row.vendor}` : ''}${row.label ? ` · ${row.label}` : ''}</div>
+                <div>${row.remaining_weight != null ? `${row.remaining_weight}g` : '-'}</div>
+                <div>${row.status === 'update' ? 'Update' : 'Neu'}</div>
+            </div>
+        `).join('');
+        previewEl.innerHTML = html;
+    };
+
+    const buildFormData = () => {
+        const file = fileInput?.files?.[0];
+        if (!file) {
+            if (window.showToast) window.showToast('Bitte zuerst eine JSON- oder CSV-Datei auswählen.', 'warning');
+            return null;
+        }
+        const form = new FormData();
+        form.append('file', file);
+        return form;
+    };
+
+    if (previewBtn) {
+        previewBtn.addEventListener('click', async () => {
+            const form = buildFormData();
+            if (!form) return;
+
+            previewBtn.disabled = true;
+            try {
+                const res = await fetch('/api/debug/spoolman/import/preview', {
+                    method: 'POST',
+                    body: form,
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Preview fehlgeschlagen');
+                renderSpoolmanPreview(data);
+                if (window.showToast) window.showToast('Spoolman-Vorschau geladen.', 'success');
+            } catch (err) {
+                if (window.showToast) window.showToast(err.message || 'Preview fehlgeschlagen.', 'error');
+            } finally {
+                previewBtn.disabled = false;
+            }
+        });
+    }
+
+    if (applyBtn) {
+        applyBtn.addEventListener('click', async () => {
+            const form = buildFormData();
+            if (!form) return;
+
+            if (!lastPreviewData) {
+                if (window.showToast) window.showToast('Bitte erst Preview Import ausführen.', 'warning');
+                return;
+            }
+
+            form.append('confirm', 'true');
+            applyBtn.disabled = true;
+            try {
+                const res = await fetch('/api/debug/spoolman/import/apply', {
+                    method: 'POST',
+                    body: form,
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Import fehlgeschlagen');
+                if (window.showToast) {
+                    window.showToast(
+                        `Import fertig: ${data.created || 0} neu, ${data.updated || 0} aktualisiert, ${data.skipped || 0} übersprungen.`,
+                        'success'
+                    );
+                }
+            } catch (err) {
+                if (window.showToast) window.showToast(err.message || 'Import fehlgeschlagen.', 'error');
+            } finally {
+                applyBtn.disabled = false;
+            }
+        });
+    }
 }
 
 window.loadServicesData = loadServicesData;

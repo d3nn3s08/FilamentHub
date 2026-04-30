@@ -97,6 +97,26 @@ def get_mmu_printers():
     return {"printers": result}
 
 
+@router.get("/has_mmu", response_model=dict)
+def get_global_has_mmu():
+    """
+    Globaler Presence-Check für Happy Hare MMU.
+    True sobald mindestens ein Klipper-Drucker MMU erkannt hat.
+    """
+    mmu_svc = get_mmu_service()
+
+    with Session(engine) as session:
+        klipper_printers = session.exec(
+            select(Printer).where(Printer.printer_type == "klipper")
+        ).all()
+
+    value = any(
+        bool(p.has_mmu) or (mmu_svc.is_mmu_present(str(p.id)) is True)
+        for p in klipper_printers
+    )
+    return {"value": value}
+
+
 @router.get("/{printer_id}/status")
 def get_mmu_status(printer_id: str):
     """

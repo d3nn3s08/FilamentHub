@@ -10,9 +10,13 @@ import psutil
 import zipfile
 from datetime import datetime
 import tempfile
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
+from sqlmodel import Session
+
+from app.database import get_session
+from app.models.printer import Printer
 
 router = APIRouter(prefix="/api/services", tags=["Service Control"])
 
@@ -27,6 +31,19 @@ class CommandResult(BaseModel):
     message: str
     output: Optional[str] = None
     exit_code: Optional[int] = None
+
+
+class FtpBrowseResponse(BaseModel):
+    success: bool
+    printer_id: str
+    printer_name: str
+    printer_type: str
+    path: str
+    connection_method: str
+    files: list[dict]
+    file_count: int
+    message: Optional[str] = None
+    error_detail: Optional[str] = None
 
 
 # -----------------------------
@@ -120,6 +137,25 @@ def create_test_response(status: str, message: str, details: Optional[str] = Non
     return response
 
 
+def _service_file_obj(name: str, size: int = 0, mtime: str = "", file_type: str = "file") -> dict:
+    return {
+        "name": name,
+        "size": size,
+        "mtime_str": mtime,
+        "type": file_type,
+    }
+
+
+def _sort_files(files: list[dict]) -> list[dict]:
+    return sorted(
+        files,
+        key=lambda item: (
+            0 if item.get("type") == "dir" else 1,
+            str(item.get("name") or "").lower(),
+        ),
+    )
+
+
 # -----------------------------
 # PROCESS INFO
 # -----------------------------
@@ -159,6 +195,122 @@ def list_python_processes():
             continue
     
     return {"processes": processes, "count": len(processes)}
+
+
+@router.get("/printers/{printer_id}/ftp/browse", response_model=FtpBrowseResponse)
+def browse_printer_ftp(printer_id: str, session: Session = Depends(get_session)):
+    printer = session.get(Printer, printer_id)
+    if not printer:
+        raise HTTPException(status_code=404, detail="Drucker nicht gefunden")
+
+    printer_type = (printer.printer_type or "").lower()
+
+    if not printer.ip_address:
+        raise HTTPException(status_code=400, detail="Drucker hat keine IP-Adresse hinterlegt")
+
+    if printer_type == "klipper":
+        import httpx
+
+        base_url = f"http://{printer.ip_address}:{printer.port or 7125}"
+        headers = {}
+        if printer.api_key:
+            headers["X-Api-Key"] = printer.api_key
+
+        try:
+            with httpx.Client(timeout=10.0, headers=headers) as client:
+                response = client.get(f"{base_url}/server/files/list", params={"root": "gcodes"})
+                response.raise_for_status()
+                payload = response.json() or {}
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"Klipper-Dateiliste konnte nicht geladen werden: {exc}")
+
+        raw_files = (payload.get("result") or {}).get("files") or []
+        files = []
+        for item in raw_files:
+            path = str(item.get("path") or item.get("filename") or item.get("display") or "")
+            if not path:
+                continue
+            files.append(
+                _service_file_obj(
+                    name=path,
+                    size=int(item.get("size") or 0),
+                    mtime=str(item.get("modified") or item.get("date") or ""),
+                    file_type="dir" if item.get("type") == "directory" else "file",
+                )
+            )
+
+        files = _sort_files(files)
+        return FtpBrowseResponse(
+            success=True,
+            printer_id=printer.id,
+            printer_name=printer.name,
+            printer_type=printer_type,
+            path="gcodes",
+            connection_method="moonraker_http",
+            files=files,
+            file_count=len(files),
+            message=f"{len(files)} Datei(en) geladen",
+        )
+
+    if printer_type != "bambu":
+        raise HTTPException(status_code=400, detail="FTP-Browse wird aktuell nur für Bambu und Klipper unterstützt")
+
+    if not printer.api_key:
+        raise HTTPException(status_code=400, detail="Bambu-Drucker hat keinen Access Code hinterlegt")
+
+    from app.services.gcode_ftp_service import SimpleFTPS, FTPLibFTPS
+
+    ftps_files = []
+    connection_method = "ftps"
+    last_error = None
+
+    try:
+        ftps = SimpleFTPS(timeout=12)
+        ftps.connect(printer.ip_address, 990, retries=1)
+        ftps.login("bblp", printer.api_key)
+        ftps.cwd("/cache")
+        ftps_files = ftps.list_dir(with_metadata=True)
+        ftps.quit()
+    except Exception as exc:
+        last_error = str(exc)
+        try:
+            ftps = FTPLibFTPS(timeout=12)
+            ftps.connect(printer.ip_address, 990)
+            ftps.login("bblp", printer.api_key)
+            ftps.cwd("/cache")
+            ftps_files = ftps.list_dir(with_metadata=True)
+            ftps.quit()
+            connection_method = "ftps_ftplib"
+            last_error = None
+        except Exception as fallback_exc:
+            detail = f"SimpleFTPS: {last_error} | FTPLibFTPS: {fallback_exc}"
+            raise HTTPException(status_code=502, detail=f"FTPS-Verbindung fehlgeschlagen: {detail}")
+
+    files = _sort_files(
+        [
+            _service_file_obj(
+                name=str(item.get("name") or ""),
+                size=int(item.get("size") or 0),
+                mtime=str(item.get("mtime_str") or ""),
+                file_type="dir" if str(item.get("name") or "").endswith("/") else "file",
+            )
+            for item in ftps_files
+            if item.get("name")
+        ]
+    )
+
+    return FtpBrowseResponse(
+        success=True,
+        printer_id=printer.id,
+        printer_name=printer.name,
+        printer_type=printer_type,
+        path="/cache",
+        connection_method=connection_method,
+        files=files,
+        file_count=len(files),
+        message=f"{len(files)} Datei(en) geladen",
+        error_detail=last_error,
+    )
 
 
 # -----------------------------
@@ -545,6 +697,31 @@ def docker_compose_ps():
     """Zeigt laufende Container"""
     result = run_command("docker compose ps --format json")
     return {"output": result.output, "success": result.success}
+
+
+@router.post("/server/reload-trigger")
+async def trigger_server_reload():
+    """Triggert einen Uvicorn-Reload ueber einen Dateitimestamp."""
+    trigger_path = os.path.abspath("VERSION")
+
+    try:
+        if not os.path.exists(trigger_path):
+            with open(trigger_path, "a", encoding="utf-8"):
+                pass
+        os.utime(trigger_path, None)
+    except OSError as exc:
+        logger.exception("Failed to trigger reload via %s", trigger_path)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Reload-Trigger fehlgeschlagen: {exc}"
+        ) from exc
+
+    return {
+        "success": True,
+        "message": "Server-Neustart wurde ueber Datei-Timestamp getriggert",
+        "note": "Bei reload=True startet uvicorn automatisch neu",
+        "trigger_file": trigger_path
+    }
 
 
 # -----------------------------

@@ -610,6 +610,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.style.background  = 'radial-gradient(circle at 20% 20%, rgba(255,193,101,.05), transparent 40%), var(--panel)';
                 statEl.textContent     = '↑ ' + d.latest + ' verfügbar';
                 statEl.style.color     = '#ffc165';
+            } else if (d.current_is_newer) {
+                card.style.borderColor = 'rgba(52,152,219,.35)';
+                card.style.background  = 'radial-gradient(circle at 20% 20%, rgba(52,152,219,.05), transparent 40%), var(--panel)';
+                statEl.textContent     = 'Lokaler Build';
+                statEl.style.color     = '#5dade2';
             } else if (d.latest) {
                 statEl.textContent = '✓ Aktuell';
                 statEl.style.color = '#6ae485';

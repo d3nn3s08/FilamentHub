@@ -4,9 +4,12 @@
 
 ### Neu
 - **Mobile Layout** - Hauptnavigation als echtes Mobile-Drawer-Menue umgesetzt. Header, Karten und zentrale Layout-Bloecke verhalten sich auf Handy jetzt deutlich sauberer.
+- **Klipper Spool-Autoerkennung** - Fuer Klipper gilt jetzt `MMU > Moonraker-Spoolman > manuell`. Happy Hare/MMU-Gate-Spulen oder aktive Moonraker-Spoolman-IDs koennen laufende Jobs automatisch an die passende FilamentHub-Spule binden, wenn ein eindeutiges Mapping existiert.
+- **Spulenformular: Spoolman ID** - In der Spulenverwaltung kann jetzt eine `Spoolman ID` gepflegt werden, damit Klipper/Moonraker aktive Spulen sauber auf lokale FilamentHub-Spulen gemappt werden koennen.
 
 ### Fixes
 - **AMS Lite Sichtbarkeit** - `/ams-lite` und zugehoerige Navigation werden nur noch angezeigt, wenn wirklich ein aktiver Bambu-Drucker mit AMS Lite erkannt wird.
+- **MMU Sichtbarkeit** - `MMU-Klipper` Navigation und MMU-Seite werden jetzt wie AMS nur noch angezeigt, wenn mindestens ein Klipper-Drucker mit erkannter Happy Hare MMU vorhanden ist.
 - **Bambu Cloud Login** - Doppelter Versand von Verifikationsmails behoben. Der Login-Flow fordert den Email-Code nicht mehr doppelt an und blockiert parallele Login-/Verify-Requests.
 - **Bambu Cloud Sync-Fehler** - Token-Entschluesselungsfehler werden beim manuellen Sync jetzt gezielt erkannt und als klare Fehlermeldung statt generischem 500er an die UI zurueckgegeben.
 - **Lokale Debug-Credentials** - `/api/printers/{printer_id}/credentials` liefert keinen `api_key` mehr im Klartext aus. Der Endpoint gibt nur noch Metadaten plus `has_api_key` zurueck.

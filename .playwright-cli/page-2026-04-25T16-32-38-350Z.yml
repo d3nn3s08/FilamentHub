@@ -1,0 +1,130 @@
+- generic [active] [ref=e1]:
+  - complementary [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: FH
+      - generic [ref=e5]: FilamentHub
+    - navigation [ref=e6]:
+      - link "Dashboard" [ref=e7] [cursor=pointer]:
+        - /url: /
+      - link "Spulenverwaltung" [ref=e8] [cursor=pointer]:
+        - /url: /spools
+      - link "AMS Übersicht" [ref=e9] [cursor=pointer]:
+        - /url: /ams
+      - link "AMS Lite" [ref=e10] [cursor=pointer]:
+        - /url: /ams-lite
+      - link "MMU-Klipper" [ref=e11] [cursor=pointer]:
+        - /url: /mmu-klipper
+      - link "Externe Spule" [ref=e12] [cursor=pointer]:
+        - /url: /externe-spule
+      - link "Spulen Hersteller" [ref=e13] [cursor=pointer]:
+        - /url: /materials
+      - link "Druckerverwaltung" [ref=e14] [cursor=pointer]:
+        - /url: /printers
+      - link "Druckaufträge" [ref=e15] [cursor=pointer]:
+        - /url: /jobs
+      - link "Statistiken" [ref=e16] [cursor=pointer]:
+        - /url: /statistics
+      - link "Lexikon" [ref=e17] [cursor=pointer]:
+        - /url: /lexikon
+      - link "Material-Datenbank" [ref=e18] [cursor=pointer]:
+        - /url: /material-database
+      - link "📊 History" [ref=e19] [cursor=pointer]:
+        - /url: /history
+    - generic [ref=e21]: Stable 1.6 - FilamentHub
+  - main [ref=e22]:
+    - generic [ref=e23]:
+      - generic [ref=e25]:
+        - paragraph [ref=e26]: FilamentHub
+        - heading "Filament Inventar" [level=1] [ref=e27]
+        - paragraph [ref=e28]: Verwalten Sie Ihre Filament-Spulen und Materialbestände
+      - generic [ref=e29]:
+        - button "Bambu Cloud Status" [ref=e30] [cursor=pointer]:
+          - img [ref=e31]
+          - generic [ref=e33]: Cloud
+        - button "FH Local User FilamentHub Instance =" [ref=e35] [cursor=pointer]:
+          - generic [ref=e36]: FH
+          - generic [ref=e37]:
+            - generic [ref=e38]: Local User
+            - generic [ref=e39]: FilamentHub Instance
+          - generic [ref=e40]: =
+    - generic [ref=e41]:
+      - generic [ref=e42]:
+        - img [ref=e44]
+        - generic [ref=e46]:
+          - paragraph [ref=e47]: Spulen gesamt
+          - paragraph [ref=e48]: "2"
+      - generic [ref=e49]:
+        - img [ref=e51]
+        - generic [ref=e53]:
+          - paragraph [ref=e54]: Gesamtvorrat
+          - paragraph [ref=e55]: 1.58 kg
+      - generic [ref=e56]:
+        - img [ref=e58]
+        - generic [ref=e61]:
+          - paragraph [ref=e62]: Gesamtwert
+          - paragraph [ref=e63]: €0.00
+      - generic "Klicken um Spulen mit niedrigem Bestand anzuzeigen" [ref=e64] [cursor=pointer]:
+        - img [ref=e66]
+        - generic [ref=e68]:
+          - paragraph [ref=e69]: Niedriger Bestand
+          - paragraph [ref=e70]: "0"
+    - generic [ref=e72]:
+      - heading "Materialverteilung" [level=3] [ref=e73]
+      - generic [ref=e74]:
+        - generic [ref=e78]:
+          - generic [ref=e80]: PLA Basic
+          - generic [ref=e81]: (2)
+        - generic [ref=e83]: 1.58 kg
+    - generic [ref=e84]:
+      - generic [ref=e85]:
+        - button "Spule hinzufügen" [ref=e86] [cursor=pointer]:
+          - img [ref=e87]
+          - text: Spule hinzufügen
+        - button "Filter" [ref=e88] [cursor=pointer]:
+          - img [ref=e89]
+          - text: Filter
+      - generic [ref=e91]:
+        - button "Karten" [ref=e92] [cursor=pointer]:
+          - img [ref=e93]
+          - text: Karten
+        - button "Tabelle" [ref=e98] [cursor=pointer]:
+          - img [ref=e99]
+          - text: Tabelle
+    - generic [ref=e100]:
+      - generic [ref=e101]: "Material:"
+      - generic [ref=e102]:
+        - button "Alle (2)" [ref=e103] [cursor=pointer]
+        - button "PLA Basic (2)" [ref=e104] [cursor=pointer]
+    - generic [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - button "Bearbeiten" [ref=e108] [cursor=pointer]:
+            - img [ref=e109]
+          - button "Löschen" [ref=e112] [cursor=pointer]:
+            - img [ref=e113]
+        - generic [ref=e117]:
+          - generic [ref=e118]:
+            - generic [ref=e119]:
+              - heading [level=4]
+              - paragraph [ref=e120]: Bambu Lab
+            - generic [ref=e121]: PLA Basic
+          - generic [ref=e123]:
+            - generic [ref=e124]: Verbleibend
+            - generic [ref=e125]: 791g / 791g
+          - generic [ref=e129]: 100%
+      - generic [ref=e130]:
+        - generic [ref=e131]:
+          - button "Bearbeiten" [ref=e132] [cursor=pointer]:
+            - img [ref=e133]
+          - button "Löschen" [ref=e136] [cursor=pointer]:
+            - img [ref=e137]
+        - generic [ref=e141]:
+          - generic [ref=e142]:
+            - generic [ref=e143]:
+              - heading [level=4]
+              - paragraph [ref=e144]: Bambu Lab
+            - generic [ref=e145]: PLA Basic
+          - generic [ref=e147]:
+            - generic [ref=e148]: Verbleibend
+            - generic [ref=e149]: 791g / 791g
+          - generic [ref=e153]: 100%

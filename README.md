@@ -63,13 +63,72 @@ Danach erreichbar unter: `http://YOUR_NAS_IP:8085`
 
 ## Installation (Python direkt)
 
+### Windows
+
+Voraussetzungen:
+- Python 3.13 installiert und in `PATH`
+- Git optional, wenn das Projekt geklont werden soll
+
+1. Projektordner oeffnen
+
+```powershell
+cd C:\Pfad\zu\FilamentHub
+```
+
+2. Virtuelle Umgebung anlegen
+
+```powershell
+python -m venv .venv
+```
+
+3. Virtuelle Umgebung aktivieren
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Falls PowerShell die Ausfuehrung blockiert:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+4. Abhaengigkeiten installieren
+
+```powershell
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+5. Optional `.env` anlegen
+
+```powershell
+copy .env.example .env
+```
+
+Wenn ein Admin-Passwort gesetzt werden soll, `ADMIN_PASSWORD_HASH` in `.env` eintragen:
+
+```powershell
+python -c "import bcrypt; print(bcrypt.hashpw(b'DEIN_PASSWORT', bcrypt.gensalt()).decode())"
+```
+
+6. FilamentHub starten
+
+```powershell
+python run.py
+```
+
+Danach erreichbar unter:
+- lokal: `http://127.0.0.1:8081`
+- im Netzwerk: `http://DEINE_IP:8081`
+
+### Linux / macOS
+
 ```bash
 python -m venv .venv
-# Windows:
-.venv\Scripts\pip install -r requirements.txt
-.venv\Scripts\python run.py
-# Linux/Mac:
-source .venv/bin/activate && pip install -r requirements.txt && python run.py
+source .venv/bin/activate
+pip install -r requirements.txt
+python run.py
 ```
 
 ---

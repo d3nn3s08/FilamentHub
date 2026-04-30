@@ -5,12 +5,14 @@
     border-radius: 8px;
     padding: 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 8px 12px;
+    align-items: start;
     min-height: 80px;
     transition: all 0.2s ease;
     position: relative;
+    padding-right: 44px;
 }
 .card:hover {
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
@@ -37,19 +39,21 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    flex: 1;
+    grid-column: 2;
     min-width: 0;
 }
 .card__title {
     font-weight: 700;
     font-size: 0.95rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    line-height: 1.25;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    padding-right: 8px;
 }
 .card__badges {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 6px;
     font-size: 0.75rem;
     color: var(--text-dim);
@@ -122,12 +126,14 @@
 
 .card__body {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 12px;
-    flex: 1;
+    grid-column: 2;
     min-width: 0;
 }
 .card__image {
+    grid-column: 1;
+    grid-row: 1 / span 2;
     width: 50px;
     height: 50px;
     border-radius: 8px;
@@ -147,6 +153,8 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    width: 100%;
+    min-width: 0;
     color: var(--text);
     font-size: 0.75rem;
 }
@@ -161,13 +169,44 @@
 
 .temp {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 6px;
+    min-width: 0;
 }
 .temp .label { color: var(--text-dim); font-size: 0.9rem; }
-.temp .value { color: var(--text); font-weight: 600; }
+.temp .value {
+    color: var(--text);
+    font-weight: 600;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
 
 .card__progress {
     display: none;
+}
+
+@media (max-width: 900px) {
+    .card {
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 8px 10px;
+        padding-right: 40px;
+    }
+
+    .card__image {
+        width: 44px;
+        height: 44px;
+    }
+
+    .card__image img {
+        width: 36px;
+        height: 36px;
+    }
+
+    .temp .label,
+    .temp .value {
+        font-size: 0.82rem;
+    }
 }
 
 .card__foot {

@@ -471,6 +471,10 @@ function initUserMenu() {
                     modalVerLatest.style.color = '#ffc165';
                     if (modalVerResult) modalVerResult.textContent = 'Update verfügbar!';
                     if (modalVerUpdateLink) modalVerUpdateLink.style.display = 'block';
+                } else if (d.current_is_newer) {
+                    modalVerLatest.style.background = 'rgba(52,152,219,.15)';
+                    modalVerLatest.style.color = '#5dade2';
+                    if (modalVerResult) modalVerResult.textContent = 'Lokaler Build ist neuer als Stable.';
                 } else {
                     modalVerLatest.style.background = 'rgba(106,228,133,.15)';
                     modalVerLatest.style.color = '#6ae485';

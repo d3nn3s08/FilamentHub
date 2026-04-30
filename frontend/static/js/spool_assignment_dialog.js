@@ -7,6 +7,7 @@
 
 (function() {
     console.log("[SpoolAssignmentDialog] Initializing...");
+    const PENDING_AMS_CREATE_STORAGE_KEY = 'pending_manual_ams_create';
 
     let currentDetection = null;
     let storageSpools = [];
@@ -138,7 +139,7 @@
         }
         // Pending-Eintrag entfernen damit der Dialog nicht bei jedem Seitenaufruf erneut erscheint
         if (currentDetection) {
-            removeFromStorage(currentDetection.tray_uuid || currentDetection.tag_uid);
+            removeFromStorage(detection.tray_uuid || detection.tag_uid);
         }
         currentDetection = null;
         selectedTargetId = null;
@@ -245,6 +246,7 @@
             return;
         }
 
+        const detection = { ...currentDetection };
         const sourceId = currentDetection.spool_id;  // null wenn keine Auto-Spule erstellt
 
         // Disable buttons
@@ -273,17 +275,17 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        tray_uuid: currentDetection.tray_uuid || null,
-                        tag_uid: currentDetection.tag_uid || null,
-                        ams_slot: currentDetection.ams_slot,
-                        ams_id: currentDetection.ams_id || null,
-                        printer_id: currentDetection.printer_id || null,
-                        remain_percent: currentDetection.remain_percent,
-                        tray_type: currentDetection.tray_type || null,
-                        tray_color: currentDetection.tray_color || null,
-                        weight_current: currentDetection.weight_current || null,
-                        weight_full: currentDetection.weight_full || null,
-                        weight_empty: currentDetection.weight_empty || null,
+                        tray_uuid: detection.tray_uuid || null,
+                        tag_uid: detection.tag_uid || null,
+                        ams_slot: detection.ams_slot,
+                        ams_id: detection.ams_id || null,
+                        printer_id: detection.printer_id || null,
+                        remain_percent: detection.remain_percent,
+                        tray_type: detection.tray_type || null,
+                        tray_color: detection.tray_color || null,
+                        weight_current: detection.weight_current || null,
+                        weight_full: detection.weight_full || null,
+                        weight_empty: detection.weight_empty || null,
                     }),
                 });
             }
@@ -297,7 +299,7 @@
             console.log("[SpoolAssignmentDialog] Zuordnung erfolgreich:", result);
 
             // Remove from localStorage
-            removeFromStorage(currentDetection.tray_uuid || currentDetection.tag_uid);
+            removeFromStorage(detection.tray_uuid || detection.tag_uid);
 
             const spoolNum = result.spool?.spool_number ? `#${result.spool.spool_number}` : '';
             const material = result.spool?.material || result.spool?.name || '';
@@ -333,14 +335,26 @@
     async function createNew() {
         if (!currentDetection) return;
 
-        const createBtn = document.getElementById('sa-btn-create-new');
-        createBtn.disabled = true;
-        createBtn.textContent = 'Wird angelegt...';
+        const detection = { ...currentDetection };
+        if (window.location.pathname === '/spools' &&
+            typeof window.openAddModalFromAmsDetection === 'function') {
+            close();
+            window.openAddModalFromAmsDetection(detection);
+            return;
+        }
+
+        if (typeof window.persistPendingAmsCreatePrefill === 'function') {
+            window.persistPendingAmsCreatePrefill(detection);
+        }
+
+        close();
+        window.location.href = '/spools';
+        return;
 
         try {
-            if (currentDetection.spool_id) {
+            if (detection.spool_id) {
                 // Auto-Spule existiert bereits → einfach schließen (Spule bleibt wie sie ist)
-                removeFromStorage(currentDetection.tray_uuid || currentDetection.tag_uid);
+                removeFromStorage(detection.tray_uuid || detection.tag_uid);
                 close();
                 return;
             }
@@ -350,20 +364,20 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    tray_uuid: currentDetection.tray_uuid || null,
-                    tag_uid: currentDetection.tag_uid || null,
-                    ams_slot: currentDetection.ams_slot,
-                    ams_id: currentDetection.ams_id || null,
-                    printer_id: currentDetection.printer_id || null,
-                    remain_percent: currentDetection.remain_percent,
-                    tray_type: currentDetection.tray_type || null,
-                    tray_sub_brands: currentDetection.tray_sub_brands || null,
-                    tray_color: currentDetection.tray_color || null,
-                    weight_current: currentDetection.weight_current || null,
-                    weight_full: currentDetection.weight_full || null,
-                    weight_empty: currentDetection.weight_empty || null,
-                    material_id: currentDetection.material_id || null,
-                    vendor: currentDetection.vendor || null,
+                    tray_uuid: detection.tray_uuid || null,
+                    tag_uid: detection.tag_uid || null,
+                    ams_slot: detection.ams_slot,
+                    ams_id: detection.ams_id || null,
+                    printer_id: detection.printer_id || null,
+                    remain_percent: detection.remain_percent,
+                    tray_type: detection.tray_type || null,
+                    tray_sub_brands: detection.tray_sub_brands || null,
+                    tray_color: detection.tray_color || null,
+                    weight_current: detection.weight_current || null,
+                    weight_full: detection.weight_full || null,
+                    weight_empty: detection.weight_empty || null,
+                    material_id: detection.material_id || null,
+                    vendor: detection.vendor || null,
                 }),
             });
 
@@ -375,7 +389,7 @@
             const result = await resp.json();
             console.log("[SpoolAssignmentDialog] Neue Spule angelegt:", result);
 
-            removeFromStorage(currentDetection.tray_uuid || currentDetection.tag_uid);
+            removeFromStorage(detection.tray_uuid || detection.tag_uid);
             close();
 
             if (typeof window.GlobalNotifications !== 'undefined' &&
@@ -383,7 +397,7 @@
                 window.GlobalNotifications.triggerAlert({
                     type: 'success',
                     label: 'Neue Spule angelegt',
-                    message: `Neue Spule für Slot ${Number(currentDetection.ams_slot) + 1} wurde angelegt.`,
+                    message: `Neue Spule für Slot ${detection.ams_slot != null ? Number(detection.ams_slot) + 1 : '?'} wurde angelegt.`,
                     persistent: false,
                 });
             }
@@ -411,6 +425,30 @@
             console.error("[SpoolAssignmentDialog] Failed to update storage:", err);
         }
     }
+
+    createNew = async function() {
+        if (!currentDetection) return;
+
+        const detection = { ...currentDetection };
+        if (window.location.pathname === '/spools' &&
+            typeof window.openAddModalFromAmsDetection === 'function') {
+            close();
+            window.openAddModalFromAmsDetection(detection);
+            return;
+        }
+
+        if (typeof window.persistPendingAmsCreatePrefill === 'function') {
+            window.persistPendingAmsCreatePrefill(detection);
+        } else {
+            try {
+                localStorage.setItem(PENDING_AMS_CREATE_STORAGE_KEY, JSON.stringify(detection));
+            } catch (err) {
+                console.error("[SpoolAssignmentDialog] Failed to persist AMS prefill:", err);
+            }
+        }
+
+        window.location.assign('/spools?openAmsCreate=1');
+    };
 
     // Export
     window.SpoolAssignmentDialog = {

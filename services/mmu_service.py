@@ -351,7 +351,20 @@ class MmuService:
     # ------------------------------------------------------------------
     def get_mmu_live_state(self, printer_id: str) -> Optional[Dict]:
         """Gibt den aktuellen MMU-Zustand aus dem live_state zurück."""
-        return get_live_state(f"mmu_{printer_id}")
+        entry = get_live_state(f"mmu_{printer_id}")
+        if not isinstance(entry, dict):
+            return None
+
+        payload = entry.get("payload")
+        if isinstance(payload, dict):
+            merged = dict(payload)
+            if entry.get("ts") and "ts" not in merged:
+                merged["ts"] = entry.get("ts")
+            if entry.get("device") and "device" not in merged:
+                merged["device"] = entry.get("device")
+            return merged
+
+        return None
 
 
 # ---------------------------------------------------------------------------

@@ -154,6 +154,267 @@
                 grid-template-columns: 1fr !important;
             }
         }
+
+        .service-ftp-modal {
+            width: min(1180px, 96vw);
+            min-width: 860px;
+            max-width: 1180px;
+            padding: 0;
+            overflow: hidden;
+            resize: none;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 18px;
+            background:
+                radial-gradient(circle at top left, rgba(52,152,219,0.14), transparent 28%),
+                linear-gradient(180deg, rgba(16,20,30,0.98), rgba(8,10,16,0.98));
+            box-shadow: 0 32px 80px rgba(0,0,0,0.55);
+        }
+
+        .service-ftp-header {
+            padding: 18px 20px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
+        }
+
+        .service-ftp-title-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .service-ftp-subline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .service-ftp-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.04);
+            color: rgba(255,255,255,0.88);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .service-ftp-body {
+            display: grid;
+            grid-template-columns: minmax(0, 1.7fr) 300px;
+            gap: 18px;
+            padding: 18px 20px 20px;
+            align-items: start;
+        }
+
+        .service-ftp-left {
+            min-width: 0;
+        }
+
+        .service-ftp-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .service-ftp-search {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .service-ftp-count-badge {
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(52,152,219,0.22);
+            background: rgba(52,152,219,0.1);
+            color: #9fd3ff;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .service-ftp-table-wrap {
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .service-ftp-scroll {
+            max-height: 500px;
+            overflow: auto;
+        }
+
+        .service-ftp-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 12px;
+        }
+
+        .service-ftp-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.58);
+            background: rgba(19,24,36,0.98);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .service-ftp-table tbody td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            vertical-align: middle;
+        }
+
+        .service-ftp-table tbody tr:hover {
+            background: rgba(255,255,255,0.04);
+        }
+
+        .service-ftp-type {
+            width: 64px;
+        }
+
+        .service-ftp-name {
+            width: auto;
+        }
+
+        .service-ftp-size {
+            width: 96px;
+            text-align: right;
+        }
+
+        .service-ftp-time {
+            width: 118px;
+        }
+
+        .service-ftp-type-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 46px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.78);
+        }
+
+        .service-ftp-type-badge.dir {
+            background: rgba(241,196,15,0.12);
+            color: #ffd666;
+        }
+
+        .service-ftp-type-badge.file {
+            background: rgba(52,152,219,0.12);
+            color: #9fd3ff;
+        }
+
+        .service-ftp-name-text {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: rgba(255,255,255,0.92);
+        }
+
+        .service-ftp-side {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .service-ftp-card {
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02));
+            padding: 14px 15px;
+        }
+
+        .service-ftp-card-label {
+            margin-bottom: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.45);
+        }
+
+        .service-ftp-path-display {
+            font-size: 30px;
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            word-break: break-word;
+        }
+
+        .service-ftp-method-display {
+            font-size: 17px;
+            font-weight: 700;
+            color: rgba(255,255,255,0.92);
+        }
+
+        .service-ftp-helper {
+            font-size: 12px;
+            line-height: 1.45;
+            color: rgba(255,255,255,0.62);
+        }
+
+        .service-ftp-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        #serviceFtpErrorPanel {
+            text-align: center;
+            padding: 28px 20px;
+            border: 1px solid rgba(231,76,60,0.3);
+            border-radius: 12px;
+            background: rgba(231,76,60,0.06);
+            margin: 0 20px 18px;
+        }
+
+        #serviceFtpErrorPanel .error-icon { font-size: 28px; margin-bottom: 8px; }
+        #serviceFtpErrorPanel .error-title { font-weight: 700; font-size: 15px; color: #e74c3c; margin-bottom: 6px; }
+        #serviceFtpErrorPanel .error-detail { font-size: 11px; color: var(--text-dim); margin-bottom: 14px; font-family: monospace; white-space: pre-wrap; }
+        #serviceFtpErrorPanel .error-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+        @media (max-width: 980px) {
+            .service-ftp-modal {
+                min-width: 0;
+                width: 96vw;
+            }
+
+            .service-ftp-body {
+                grid-template-columns: 1fr;
+            }
+
+            .service-ftp-side {
+                order: -1;
+            }
+
+            .service-ftp-path-display {
+                font-size: 24px;
+            }
+        }
     </style>
 
     <div class="debug-tabs">
@@ -790,6 +1051,155 @@
                         <button id="service-deps-outdated-btn" class="btn btn-secondary">Outdated Packages</button>
                     </div>
                 </div>
+
+                <div class="panel">
+                    <div class="card-header">
+                        <h3>Printer FTP Browser</h3>
+                        <span id="service-ftp-status" class="status-badge status-idle">Idle</span>
+                    </div>
+                    <p class="subtitle" style="margin-top:0;">
+                        Direkter Lesezugriff auf den Dateibereich des Druckers. Bambu nutzt FTPS `/cache`, Klipper nutzt Moonraker `gcodes`.
+                    </p>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <div>
+                            <div class="info-label">Drucker</div>
+                            <select id="service-ftp-printer" class="form-input" style="width:100%;">
+                                <option value="">-- Drucker wählen --</option>
+                            </select>
+                        </div>
+                        <div class="info-grid">
+                            <div>
+                                <div class="info-label">Pfad</div>
+                                <div class="info-value" id="service-ftp-path">-</div>
+                            </div>
+                            <div>
+                                <div class="info-label">Methode</div>
+                                <div class="info-value" id="service-ftp-method">-</div>
+                            </div>
+                            <div>
+                                <div class="info-label">Dateien</div>
+                                <div class="info-value" id="service-ftp-count">-</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button id="service-ftp-open-btn" class="btn btn-primary">Dateien öffnen</button>
+                            <button id="service-ftp-refresh-btn" class="btn btn-secondary">Status aktualisieren</button>
+                        </div>
+                        <div id="service-ftp-message" style="font-size:12px;color:var(--text-dim);min-height:1.4em;"></div>
+                    </div>
+                </div>
+
+                <!-- Panel 5: Spoolman Import -->
+                <div class="panel">
+                    <div class="card-header">
+                        <h3>Spoolman Import</h3>
+                        <span class="status-badge status-idle">Debug only</span>
+                    </div>
+                    <p class="subtitle" style="margin-top:0;">
+                        Isolierter Import für Spoolman-Spulen im Debug Center. Unterstützt JSON und CSV.
+                    </p>
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+                        <input type="file" id="spoolman-import-file" accept=".json,.csv,application/json,text/csv">
+                        <button id="spoolman-preview-btn" class="btn btn-secondary">Preview Import</button>
+                        <button id="spoolman-apply-btn" class="btn btn-primary">Import anwenden</button>
+                    </div>
+                    <div id="spoolman-import-summary" class="info-grid" style="margin-bottom:12px;">
+                        <div>
+                            <div class="info-label">Format</div>
+                            <div class="info-value" id="spoolman-summary-format">–</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Rows</div>
+                            <div class="info-value" id="spoolman-summary-rows">–</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Neue Spulen</div>
+                            <div class="info-value" id="spoolman-summary-new">–</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Updates</div>
+                            <div class="info-value" id="spoolman-summary-updates">–</div>
+                        </div>
+                    </div>
+                    <div id="spoolman-import-preview" style="max-height:240px;overflow:auto;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;background:rgba(0,0,0,0.12);font-size:12px;color:var(--text-dim);">
+                        Noch keine Vorschau geladen.
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="serviceFtpModal" class="modal modal-gcode-outer" style="display:none;">
+            <div class="modal-content modal-content-gcode service-ftp-modal">
+                <div class="service-ftp-header">
+                    <div class="service-ftp-title-row">
+                        <div>
+                            <h2 style="margin:0;">Drucker-Dateien</h2>
+                            <div class="service-ftp-subline">
+                                <span class="service-ftp-chip" id="serviceFtpInfoTitle">Dateiliste</span>
+                                <span>Drucker: <span id="serviceFtpPrinterName" style="font-weight:700;color:rgba(255,255,255,0.95);">-</span></span>
+                                <span id="serviceFtpConnStatus">-</span>
+                            </div>
+                        </div>
+                        <button class="modal-close" id="serviceFtpCloseBtn">&times;</button>
+                    </div>
+                </div>
+
+                <div id="serviceFtpErrorPanel" style="display:none;">
+                    <div class="error-icon">!</div>
+                    <div class="error-title" id="serviceFtpErrorTitle">Verbindung fehlgeschlagen</div>
+                    <div class="error-detail" id="serviceFtpErrorDetail"></div>
+                    <div class="error-actions">
+                        <button type="button" class="btn btn-secondary" id="serviceFtpRetryBtn" style="padding:7px 14px;font-size:13px;">Erneut versuchen</button>
+                    </div>
+                </div>
+
+                <div class="service-ftp-body">
+                    <div id="serviceFtpFilePanel" class="service-ftp-left">
+                        <div class="service-ftp-toolbar">
+                            <input type="text" id="serviceFtpSearch" class="form-control service-ftp-search" placeholder="Dateien filtern...">
+                            <div id="serviceFtpCountBadge" class="service-ftp-count-badge">0 Dateien</div>
+                        </div>
+                        <div class="service-ftp-table-wrap">
+                            <div class="service-ftp-scroll">
+                            <table class="service-ftp-table">
+                                <thead>
+                                    <tr>
+                                        <th class="service-ftp-type">Typ</th>
+                                        <th class="service-ftp-name">Name</th>
+                                        <th class="service-ftp-size">Größe</th>
+                                        <th class="service-ftp-time">Zeit</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="serviceFtpFilesBody"></tbody>
+                            </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="service-ftp-side">
+                        <div id="serviceFtpLoading" class="service-ftp-card" style="display:none;text-align:center;padding:30px 10px;">
+                            <div style="font-size:26px;margin-bottom:8px;">...</div>
+                            <div style="font-weight:500;font-size:13px;margin-bottom:4px;">Lade Dateien</div>
+                            <div id="serviceFtpLoadingStatus" style="font-size:11px;color:var(--text-dim);">Verbinde mit dem Drucker...</div>
+                        </div>
+                        <div class="service-ftp-card">
+                            <div class="service-ftp-card-label">Aktueller Pfad</div>
+                            <div id="serviceFtpModalPath" class="service-ftp-path-display">-</div>
+                        </div>
+                        <div class="service-ftp-card">
+                            <div class="service-ftp-card-label">Verbindung</div>
+                            <div id="serviceFtpModalMethod" class="service-ftp-method-display">-</div>
+                        </div>
+                        <div class="service-ftp-card">
+                            <div class="service-ftp-card-label">Hinweis</div>
+                            <div class="service-ftp-helper">
+                                Lange Dateinamen werden gekürzt dargestellt. Der vollständige Name bleibt per Hover sichtbar.
+                            </div>
+                        </div>
+                        <div class="service-ftp-actions">
+                            <button type="button" id="serviceFtpModalRefreshBtn" class="btn btn-primary" style="width:100%;">Neu laden</button>
+                            <button type="button" id="serviceFtpModalCloseBtn" class="btn btn-secondary" style="width:100%;">Schließen</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
                 <div id="panel-logs" class="debug-panel" data-mode="pro" style="display:none;">
@@ -878,7 +1288,8 @@
                         mqtt: document.getElementById('panel-mqtt'),
                         json: document.getElementById('panel-json'),
                         logs: document.getElementById('panel-logs'),
-                        config: document.getElementById('panel-config')
+                        config: document.getElementById('panel-config'),
+                        services: document.getElementById('panel-services')
                     };
                     const switchPanel = (name) => {
                         Object.values(panels).forEach(p => { if (p) { p.style.display = 'none'; p.classList.remove('active-panel'); } });
@@ -888,11 +1299,17 @@
                         document.querySelectorAll('.debug-tab').forEach(t => t.classList.remove('active'));
                         const currentTab = Array.from(document.querySelectorAll('.debug-tab')).find(t => t.getAttribute('data-tab') === name);
                         if (currentTab) currentTab.classList.add('active');
+                        if (name === 'services' && (window.DEBUG_MODE || document.body.dataset.mode) === 'pro' && typeof loadServicesData === 'function') {
+                            loadServicesData();
+                        }
+                        if (name === 'logs' && (window.DEBUG_MODE || document.body.dataset.mode) === 'pro' && typeof loadLogViewer === 'function') {
+                            loadLogViewer();
+                        }
                     };
                     const setBodyTab = (name) => {
                         const b = document.body;
                         // Entferne alte Klassen
-                        ['system','performance','scanner','mqtt','json','logs','config'].forEach(t => b.classList.remove('tab-' + t));
+                        ['system','performance','scanner','mqtt','json','logs','config','services'].forEach(t => b.classList.remove('tab-' + t));
                         // Setze neue
                         if (name) b.classList.add('tab-' + name);
                     };
@@ -942,6 +1359,7 @@
                      * ═══════════════════════════════════════════════════════════════════════════════ */
                     const setMode = async (mode) => {
                         const b = document.body;
+                        window.DEBUG_MODE = mode;
 
                         // Setze data-mode Attribut auf body (wird von CSS-Regeln genutzt)
                         b.dataset.mode = mode;
@@ -2691,6 +3109,7 @@ setTimeout(() => {
 {% block extra_scripts %}
 <!-- MQTT Connect Panel-Handler: debug.js wird bereits in layout.html geladen -->
 <script src="/static/js/mqtt-connect-handler.js"></script>
+<script src="/static/debug_v2.js?v=20260418-services-live"></script>
 <script>
 // Export MQTT functions globally (they are defined in the page's main script block)
 // This runs after all other scripts are loaded

@@ -21,6 +21,7 @@ from app.database import get_session
 from app.models.spool import Spool
 from app.models.material import Material
 from app.models.printer import Printer
+from app.services.spool_number_service import assign_spool_number
 
 logger = logging.getLogger("services")
 
@@ -468,11 +469,52 @@ def create_spool_from_ams(
         any_mat = session.exec(select(Material)).first()
         mat_id = any_mat.id if any_mat else None
 
+    material = session.get(Material, mat_id) if mat_id else None
+
     if not mat_id:
         raise HTTPException(
             status_code=400,
             detail="Kein Material gefunden. Bitte zuerst ein Material anlegen.",
         )
+
+    weight_full = req.weight_full
+    if weight_full is None and material and material.spool_weight_full is not None:
+        weight_full = material.spool_weight_full
+    if weight_full is None:
+        weight_full = 750
+
+    weight_empty = req.weight_empty
+    if weight_empty is None and material and material.spool_weight_empty is not None:
+        weight_empty = material.spool_weight_empty
+    if weight_empty is None:
+        weight_empty = 20
+
+    weight_current = req.weight_current
+    if weight_current is None and req.remain_percent is not None:
+        try:
+            weight_current = (float(weight_full) - float(weight_empty)) * (float(req.remain_percent) / 100.0)
+        except Exception:
+            weight_current = None
+    if weight_current is None:
+        try:
+            weight_current = max(0.0, float(weight_full) - float(weight_empty))
+        except Exception:
+            weight_current = None
+
+    printer = session.get(Printer, req.printer_id) if req.printer_id else None
+    is_bambu_printer = bool(printer and str(printer.printer_type).lower() == "bambu")
+
+    derived_name = (
+        req.tray_sub_brands
+        or req.tray_type
+        or (material.name if material else None)
+        or "AMS Spule"
+    )
+    derived_vendor = (
+        req.vendor
+        or (material.brand if material else None)
+        or ("Bambu Lab" if is_bambu_printer else None)
+    )
 
     now = datetime.utcnow().isoformat()
     spool_data = {
@@ -487,22 +529,23 @@ def create_spool_from_ams(
         "tray_color": req.tray_color,
         "tray_type": req.tray_type,
         "remain_percent": req.remain_percent,
-        "weight_current": req.weight_current,
-        "weight_full": req.weight_full,
-        "weight_empty": req.weight_empty,
+        "weight_current": weight_current,
+        "weight_full": weight_full,
+        "weight_empty": weight_empty,
         "last_seen": now,
         "first_seen": now,
         "used_count": 0,
         "status": "Aktiv",
         "is_open": True,
         "color": req.tray_color,
-        "name": req.tray_sub_brands or req.tray_type,
-        "vendor": req.vendor,
+        "name": derived_name,
+        "vendor": derived_vendor,
         "created_at": now,
         "updated_at": now,
     }
 
     spool = Spool(**spool_data)
+    assign_spool_number(spool, session)
     session.add(spool)
     session.commit()
     session.refresh(spool)
@@ -513,10 +556,8 @@ def create_spool_from_ams(
     )
 
     material_name = None
-    if spool.material_id:
-        mat = session.get(Material, spool.material_id)
-        if mat:
-            material_name = f"{mat.brand or ''} {mat.name or ''}".strip()
+    if material:
+        material_name = f"{material.brand or ''} {material.name or ''}".strip()
 
     return {
         "success": True,

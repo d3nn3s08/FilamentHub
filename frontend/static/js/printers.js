@@ -8,6 +8,14 @@ const _klipperTempHistory = new Map();
 // [BETA] Klipper-Support: Chart-Instanz
 let _kdmChart = null;
 
+function getPrinterLiveKey(printer) {
+    if (!printer) return null;
+    if (printer.printer_type === "klipper") {
+        return `klipper_${printer.id}`;
+    }
+    return printer.cloud_serial || null;
+}
+
 async function loadPrinters() {
     if (!cardsContainer) return;
     cardsContainer.innerHTML = '<div class="empty">Lade Drucker…</div>';
@@ -25,8 +33,7 @@ async function loadPrinters() {
         // [BETA] Klipper-Support: Cache und liveKey pro Drucker bestimmen
         _klipperPrinterCache.clear();
         cardsContainer.innerHTML = printers.map(printer => {
-            // [BETA] Klipper-Support: Klipper hat keine cloud_serial → Fallback auf "klipper_{id}"
-            const liveKey = printer.cloud_serial || `klipper_${printer.id}`;
+            const liveKey = getPrinterLiveKey(printer);
             const liveEntry = liveMap[liveKey] || null;
             const enriched = {
                 ...printer,
@@ -72,10 +79,10 @@ function extractLivePayload(entry) {
         return live;
     }
 
-    // [BETA] Klipper-Support: Moonraker-Payload ist doppelt verschachtelt:
-    // entry.payload = { ts, payload: { klippy_state, status: { extruder, heater_bed, ... } } }
-    // Daher: payload.payload.status (nicht payload.status)
-    const klipperInner = payload.payload;
+    // Klipper kann je nach Endpoint bereits entpackt sein:
+    // - direkt: payload = { klippy_state, status: {...} }
+    // - verschachtelt: payload = { payload: { klippy_state, status: {...} } }
+    const klipperInner = payload?.status ? payload : payload.payload;
     if (klipperInner?.status) {
         const s = klipperInner.status;
         return {
@@ -100,8 +107,8 @@ function extractLivePayload(entry) {
 function renderCard(printer) {
     const liveState = printer.live_state || {};
     const autoConnectEnabled = liveState.auto_connect_enabled ?? printer.auto_connect;
-    const mqttConnected = liveState.mqtt_connected === true;
-    const online = liveState.printer_online === true;
+    const mqttConnected = liveState.mqtt_connected === true || printer.online === true;
+    const online = liveState.printer_online === true || (printer.online === true && liveState.printer_online == null);
     const warning = !!(autoConnectEnabled && mqttConnected && !online);
     const statusClass = warning ? "warning" : (online ? "" : "offline");
     const onlineLabel = warning ? "Warning" : (online ? "Online" : "Offline");

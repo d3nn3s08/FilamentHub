@@ -20,6 +20,7 @@ from sqlmodel import Session, select
 from app.database import engine
 from app.models.printer import Printer
 from app.services.live_state import set_live_state
+from services.spoolman_service import build_active_spool_hint, fetch_active_spoolman_id
 
 logger = logging.getLogger("klipper_poller")
 
@@ -161,16 +162,33 @@ async def _poll_single(printer: Printer, client: httpx.AsyncClient, printer_serv
         except Exception as obj_exc:
             logger.debug("[Klipper Poller] Objects-Query Fehler für %s: %s", printer.name, obj_exc)
 
-        # 3. Payload zusammenbauen und in live_state schreiben
+        _status = objects_data.get("status", {})
+
+        # Aktive Spule additiv erkennen:
+        # Priorität MMU > Moonraker-Spoolman > none.
+        moonraker_spoolman_id = None
+        mmu_obj = _status.get("mmu") or {}
+        mmu_gate_spool_ids = mmu_obj.get("gate_spool_id") if isinstance(mmu_obj, dict) else None
+        if not isinstance(mmu_gate_spool_ids, list) or not mmu_gate_spool_ids:
+            moonraker_spoolman_id = await fetch_active_spoolman_id(client, base_url, _HTTP_TIMEOUT)
+
+        active_spool_hint = build_active_spool_hint(
+            printer_id=str(printer.id),
+            objects_status=_status,
+            moonraker_spoolman_id=moonraker_spoolman_id,
+        )
+
         payload = {
             "klippy_state": klippy_state,
             **objects_data,
+            "filamenthub": {
+                "active_spool": active_spool_hint,
+            },
         }
         set_live_state(key, {"ts": now_iso, "payload": payload})
 
         # --- 4b. [BETA] Klipper-Support: Temperatur-Verlauf für Detail-Modal Chart speichern ---
         # Enthält auch Heizleistung (power 0.0–1.0) für zusätzliche Chart-Linien
-        _status       = objects_data.get("status", {})
         _nozzle       = _status.get("extruder", {}).get("temperature")
         _bed          = _status.get("heater_bed", {}).get("temperature")
         _nozzle_power = _status.get("extruder", {}).get("power")
@@ -199,7 +217,7 @@ async def _poll_single(printer: Printer, client: httpx.AsyncClient, printer_serv
         # --- 6. Job-Tracking ---
         try:
             from services.klipper_job_tracking import get_job_tracker
-            get_job_tracker().process_poll(printer, _status)
+            get_job_tracker().process_poll(printer, payload)
         except Exception:
             pass  # Job-Tracking ist optional, Fehler sollen den Poller nicht stoppen
 

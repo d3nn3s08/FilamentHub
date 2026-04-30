@@ -26,6 +26,10 @@
             display: none !important;
         }
 
+        body.no-mmu:not(.admin-show-hidden) .requires-mmu {
+            display: none !important;
+        }
+
         /* Optional: sichtbar aber deaktiviert */
         body.no-ams:not(.admin-show-hidden) .requires-ams--disabled {
             pointer-events: none;
@@ -137,6 +141,12 @@
             font-weight: 500;
             white-space: nowrap;
         }
+        .printer-status-btn {
+            text-decoration: none;
+        }
+        .printer-status-btn svg {
+            flex-shrink: 0;
+        }
 
         /* Bambu Cloud Modal Styles */
         .bambu-tab:hover:not(.active) {
@@ -204,7 +214,7 @@
     </style>
     {% block extra_styles %}{% endblock %}
 </head>
-<body class="page no-ams no-ams-lite" data-active-page="{{ active_page|default('dashboard') }}">
+<body class="page no-ams no-ams-lite no-mmu" data-active-page="{{ active_page|default('dashboard') }}">
     <div class="sidebar-backdrop" data-sidebar-close></div>
     {% include "sidebar.html" %}
 
@@ -258,6 +268,16 @@
                     </svg>
                     <span class="bambu-cloud-status" id="bambuCloudStatus">Cloud</span>
                 </button>
+                <a class="bambu-cloud-btn printer-status-btn" id="klipperStatusBtn" href="/printers" title="Klipper Status" aria-label="Klipper Druckerstatus">
+                    <svg class="bambu-cloud-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 9V5a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v4"></path>
+                        <path d="M4 13h16"></path>
+                        <rect x="3" y="9" width="18" height="11" rx="2"></rect>
+                        <path d="M8 17h.01"></path>
+                        <path d="M16 17h.01"></path>
+                    </svg>
+                    <span class="bambu-cloud-status" id="klipperStatusLabel">Klipper</span>
+                </a>
                 <div class="user-menu" data-component="user-menu">
                     <button class="user-menu__trigger" aria-haspopup="true" aria-expanded="false">
                         <div class="user-menu__avatar">FH</div>
@@ -1051,13 +1071,14 @@
     <script src="{{ url_for('frontend_static', path='js/global_notifications.js') }}"></script>
     <script src="{{ url_for('frontend_static', path='js/weight_conflict_dialog.js') }}"></script>
     <script src="{{ url_for('frontend_static', path='js/weight_conflict_listener.js') }}"></script>
-    <script src="{{ url_for('frontend_static', path='js/spool_assignment_dialog.js') }}"></script>
-    <script src="{{ url_for('frontend_static', path='js/spool_assignment_listener.js') }}"></script>
+    <script src="{{ url_for('frontend_static', path='js/spool_assignment_dialog.js') }}?v=20260418-amsfix6"></script>
+    <script src="{{ url_for('frontend_static', path='js/spool_assignment_listener.js') }}?v=20260418-amsfix6"></script>
     <script src="{{ url_for('frontend_static', path='js/navbar.js') }}"></script>
     <script>
     (() => {
         let lastAmsValue = null;
         let lastAmsLiteValue = null;
+        let lastMmuValue = null;
 
         const applyAmsState = (value) => {
             if (lastAmsValue === value) return;
@@ -1073,18 +1094,28 @@
             window.dispatchEvent(new CustomEvent("ams-lite-status-changed", { detail: { value } }));
         };
 
+        const applyMmuState = (value) => {
+            if (lastMmuValue === value) return;
+            lastMmuValue = value;
+            document.body.classList.toggle("no-mmu", !value);
+            window.dispatchEvent(new CustomEvent("mmu-status-changed", { detail: { value } }));
+        };
+
         const refreshAmsState = async () => {
             try {
-                const [amsRes, amsLiteRes] = await Promise.all([
+                const [amsRes, amsLiteRes, mmuRes] = await Promise.all([
                     fetch("/api/printers/has_real_ams"),
                     fetch("/api/printers/has_ams_lite"),
+                    fetch("/api/mmu/has_mmu"),
                 ]);
-                const [amsData, amsLiteData] = await Promise.all([
+                const [amsData, amsLiteData, mmuData] = await Promise.all([
                     amsRes.json(),
                     amsLiteRes.json(),
+                    mmuRes.json(),
                 ]);
                 applyAmsState(Boolean(amsData.value));
                 applyAmsLiteState(Boolean(amsLiteData.value));
+                applyMmuState(Boolean(mmuData.value));
             } catch (e) {
                 // silent by design
             }
@@ -2488,6 +2519,74 @@
         };
         setTimeout(_updateCloudBtn, 500);
         setInterval(_updateCloudBtn, 15000);
+    })();
+    </script>
+
+    <script>
+    (function() {
+        const btn = document.getElementById('klipperStatusBtn');
+        const label = document.getElementById('klipperStatusLabel');
+        if (!btn || !label) return;
+
+        const baseTitle = 'Klipper Druckerstatus';
+
+        const updateKlipperStatus = async () => {
+            try {
+                const response = await fetch('/api/printers/');
+                if (!response.ok) return;
+
+                const printers = await response.json();
+                const klipperPrinters = Array.isArray(printers)
+                    ? printers.filter((printer) => printer?.printer_type === 'klipper' && printer?.active !== false)
+                    : [];
+
+                btn.classList.remove('connected', 'paused', 'error');
+
+                if (!klipperPrinters.length) {
+                    label.textContent = 'Klipper';
+                    btn.title = `${baseTitle}: keine Drucker hinterlegt`;
+                    return;
+                }
+
+                const onlinePrinters = klipperPrinters.filter((printer) => printer?.online === true);
+                const offlinePrinters = klipperPrinters.filter((printer) => printer?.online !== true);
+                const totalCount = klipperPrinters.length;
+                const onlineCount = onlinePrinters.length;
+                const offlineCount = offlinePrinters.length;
+
+                if (onlineCount === totalCount) {
+                    btn.classList.add('connected');
+                    label.textContent = `Klipper ${onlineCount}/${totalCount}`;
+                    btn.title = `${baseTitle}: alle ${totalCount} Drucker online`;
+                    return;
+                }
+
+                if (onlineCount === 0) {
+                    btn.classList.add('error');
+                    label.textContent = `Klipper 0/${totalCount}`;
+                    btn.title = `${baseTitle}: alle ${totalCount} Drucker offline`;
+                    return;
+                }
+
+                btn.classList.add('paused');
+                label.textContent = `Klipper ${onlineCount}/${totalCount}`;
+                const offlineNames = offlinePrinters
+                    .map((printer) => printer?.name)
+                    .filter(Boolean)
+                    .join(', ');
+                btn.title = offlineNames
+                    ? `${baseTitle}: ${offlineCount} offline (${offlineNames})`
+                    : `${baseTitle}: ${offlineCount} von ${totalCount} offline`;
+            } catch (error) {
+                btn.classList.remove('connected', 'paused');
+                btn.classList.add('error');
+                label.textContent = 'Klipper ?';
+                btn.title = `${baseTitle}: Status nicht erreichbar`;
+            }
+        };
+
+        setTimeout(updateKlipperStatus, 600);
+        setInterval(updateKlipperStatus, 15000);
     })();
     </script>
 

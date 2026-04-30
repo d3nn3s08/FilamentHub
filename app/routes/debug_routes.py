@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 import logging
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -7,10 +7,17 @@ import yaml
 import os
 import logging
 import inspect
-from sqlmodel import Session
+import csv
+import io
+import json
+from sqlmodel import Session, select
 from app.database import get_session
 from app.models.settings import Setting
+from app.models.material import Material
+from app.models.spool import Spool
+from app.services.spool_number_service import assign_spool_number
 from typing import List, Dict, Any
+from datetime import datetime
 
 router = APIRouter(prefix="/api/debug", tags=["Debug & Config"])
 
@@ -32,6 +39,316 @@ class LogLevelUpdate(BaseModel):
 class LogRotationUpdate(BaseModel):
     max_size_mb: int
     backup_count: int
+
+
+class SpoolmanImportSummary(BaseModel):
+    format: str
+    detected_rows: int
+    matched_existing: int
+    new_spools: int
+    skipped_rows: int
+    preview: List[Dict[str, Any]]
+
+
+def _safe_float(value: Any) -> float | None:
+    if value in (None, "", "null"):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_int(value: Any) -> int | None:
+    if value in (None, "", "null"):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _normalize_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text_value = str(value).strip()
+    return text_value or None
+
+
+def _material_key(name: str | None, brand: str | None) -> tuple[str, str]:
+    return ((name or "").strip().lower(), (brand or "").strip().lower())
+
+
+def _extract_spoolman_rows(payload: Any) -> list[dict[str, Any]]:
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+
+    if isinstance(payload, dict):
+        for key in ("spools", "data", "items", "results"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+        # single object fallback
+        if "id" in payload or "filament" in payload:
+            return [payload]
+
+    return []
+
+
+def _parse_spoolman_file(filename: str | None, raw_bytes: bytes) -> tuple[str, list[dict[str, Any]]]:
+    suffix = os.path.splitext(filename or "")[1].lower()
+    text_data = raw_bytes.decode("utf-8-sig", errors="replace")
+
+    if suffix == ".csv":
+        reader = csv.DictReader(io.StringIO(text_data))
+        return "csv", [dict(row) for row in reader]
+
+    # Default: JSON first, CSV fallback if needed
+    try:
+        payload = json.loads(text_data)
+        rows = _extract_spoolman_rows(payload)
+        if rows:
+            return "json", rows
+    except json.JSONDecodeError:
+        pass
+
+    try:
+        reader = csv.DictReader(io.StringIO(text_data))
+        rows = [dict(row) for row in reader]
+        if rows:
+            return "csv", rows
+    except Exception:
+        pass
+
+    raise HTTPException(status_code=400, detail="Dateiformat nicht erkannt. Bitte JSON oder CSV aus Spoolman hochladen.")
+
+
+def _normalize_spoolman_row(row: dict[str, Any]) -> dict[str, Any] | None:
+    spoolman_id = _safe_int(row.get("id") or row.get("spool_id") or row.get("spoolman_id"))
+    if spoolman_id is None:
+        return None
+
+    filament = row.get("filament") if isinstance(row.get("filament"), dict) else {}
+    vendor = (
+        _normalize_text(row.get("vendor"))
+        or _normalize_text(row.get("brand"))
+        or _normalize_text(filament.get("vendor_name"))
+        or _normalize_text(filament.get("manufacturer"))
+        or _normalize_text(filament.get("brand"))
+    )
+    material_name = (
+        _normalize_text(row.get("material"))
+        or _normalize_text(row.get("material_name"))
+        or _normalize_text(filament.get("name"))
+        or _normalize_text(filament.get("material"))
+        or _normalize_text(filament.get("material_name"))
+        or "Spoolman Import"
+    )
+    label = (
+        _normalize_text(row.get("label"))
+        or _normalize_text(row.get("name"))
+        or _normalize_text(row.get("display_name"))
+        or _normalize_text(row.get("lot_nr"))
+    )
+    color = (
+        _normalize_text(row.get("color_hex"))
+        or _normalize_text(row.get("color"))
+        or _normalize_text(filament.get("color_hex"))
+        or _normalize_text(filament.get("color"))
+    )
+    if color and color.startswith("#"):
+        color = color[1:]
+
+    remaining_weight = (
+        _safe_float(row.get("remaining_weight"))
+        or _safe_float(row.get("remaining_weight_g"))
+        or _safe_float(row.get("weight"))
+        or _safe_float(row.get("weight_current"))
+    )
+    empty_weight = (
+        _safe_float(row.get("spool_weight"))
+        or _safe_float(row.get("empty_weight"))
+        or _safe_float(row.get("weight_empty"))
+        or _safe_float(filament.get("spool_weight"))
+    )
+    total_weight = (
+        _safe_float(row.get("full_weight"))
+        or _safe_float(row.get("weight_full"))
+        or (_safe_float(remaining_weight) + _safe_float(empty_weight) if remaining_weight is not None and empty_weight is not None else None)
+    )
+
+    location = _normalize_text(row.get("location"))
+    status = _normalize_text(row.get("status")) or "Lager"
+
+    return {
+        "spoolman_id": spoolman_id,
+        "material_name": material_name,
+        "vendor": vendor,
+        "label": label,
+        "color": color,
+        "remaining_weight": remaining_weight,
+        "empty_weight": empty_weight,
+        "total_weight": total_weight,
+        "location": location,
+        "status": status,
+    }
+
+
+def _build_spoolman_preview(rows: list[dict[str, Any]], session: Session) -> SpoolmanImportSummary:
+    existing_map = {
+        spool.external_id: spool
+        for spool in session.exec(select(Spool)).all()
+        if spool.external_id
+    }
+    preview: list[dict[str, Any]] = []
+    matched_existing = 0
+    new_spools = 0
+    skipped_rows = 0
+
+    for idx, row in enumerate(rows):
+        normalized = _normalize_spoolman_row(row)
+        if normalized is None:
+            skipped_rows += 1
+            continue
+
+        existing = existing_map.get(str(normalized["spoolman_id"]))
+        if existing:
+            matched_existing += 1
+        else:
+            new_spools += 1
+
+        if idx < 25:
+            preview.append(
+                {
+                    "spoolman_id": normalized["spoolman_id"],
+                    "material_name": normalized["material_name"],
+                    "vendor": normalized["vendor"],
+                    "label": normalized["label"],
+                    "remaining_weight": normalized["remaining_weight"],
+                    "status": "update" if existing else "create",
+                    "existing_spool_number": existing.spool_number if existing else None,
+                }
+            )
+
+    return SpoolmanImportSummary(
+        format="unknown",
+        detected_rows=len(rows),
+        matched_existing=matched_existing,
+        new_spools=new_spools,
+        skipped_rows=skipped_rows,
+        preview=preview,
+    )
+
+
+def _get_or_create_material(
+    session: Session,
+    cache: dict[tuple[str, str], Material],
+    material_name: str,
+    vendor: str | None,
+    empty_weight: float | None,
+    total_weight: float | None,
+) -> Material:
+    key = _material_key(material_name, vendor)
+    existing = cache.get(key)
+    if existing:
+        return existing
+
+    for found in session.exec(select(Material)).all():
+        if _material_key(found.name, found.brand) == key:
+            cache[key] = found
+            return found
+
+    now = datetime.utcnow().isoformat()
+    new_material = Material(
+        name=material_name,
+        brand=vendor,
+        spool_weight_empty=empty_weight,
+        spool_weight_full=total_weight,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(new_material)
+    session.flush()
+    cache[key] = new_material
+    return new_material
+
+
+def _apply_spoolman_import(rows: list[dict[str, Any]], session: Session) -> dict[str, Any]:
+    material_cache: dict[tuple[str, str], Material] = {}
+    existing_spools = {
+        spool.external_id: spool
+        for spool in session.exec(select(Spool)).all()
+        if spool.external_id
+    }
+
+    created = 0
+    updated = 0
+    skipped = 0
+
+    for row in rows:
+        normalized = _normalize_spoolman_row(row)
+        if normalized is None:
+            skipped += 1
+            continue
+
+        material = _get_or_create_material(
+            session,
+            material_cache,
+            normalized["material_name"],
+            normalized["vendor"],
+            normalized["empty_weight"],
+            normalized["total_weight"],
+        )
+
+        now = datetime.utcnow().isoformat()
+        external_id = str(normalized["spoolman_id"])
+        spool = existing_spools.get(external_id)
+        is_new = spool is None
+
+        if spool is None:
+            spool = Spool(
+                material_id=material.id,
+                external_id=external_id,
+                name=normalized["material_name"],
+                vendor=normalized["vendor"],
+                label=normalized["label"],
+                color=normalized["color"],
+                location=normalized["location"],
+                status=normalized["status"],
+                weight_empty=normalized["empty_weight"] or material.spool_weight_empty or 20,
+                weight_full=normalized["total_weight"] or material.spool_weight_full or 750,
+                weight_current=normalized["remaining_weight"],
+                is_open=True,
+                created_at=now,
+                updated_at=now,
+            )
+            assign_spool_number(spool, session)
+            session.add(spool)
+            session.flush()
+            existing_spools[external_id] = spool
+            created += 1
+            continue
+
+        spool.material_id = material.id
+        spool.name = normalized["material_name"]
+        spool.vendor = normalized["vendor"]
+        spool.label = normalized["label"] or spool.label
+        spool.color = normalized["color"] or spool.color
+        spool.location = normalized["location"] or spool.location
+        spool.status = normalized["status"] or spool.status
+        if normalized["empty_weight"] is not None:
+            spool.weight_empty = normalized["empty_weight"]
+        if normalized["total_weight"] is not None:
+            spool.weight_full = normalized["total_weight"]
+        if normalized["remaining_weight"] is not None:
+            spool.weight_current = normalized["remaining_weight"]
+        spool.updated_at = now
+        session.add(spool)
+        if not is_new:
+            updated += 1
+
+    session.commit()
+    return {"created": created, "updated": updated, "skipped": skipped, "processed": len(rows)}
 
 
 # -----------------------------
@@ -258,6 +575,34 @@ def check_restart_required():
         "reason": "Config-Änderungen wurden vorgenommen",
         "recommendation": "Server neu starten für Änderungen",
     }
+
+
+@router.post("/spoolman/import/preview")
+async def preview_spoolman_import(
+    file: UploadFile = File(...),
+    session: Session = Depends(get_session),
+):
+    raw = await file.read()
+    fmt, rows = _parse_spoolman_file(file.filename, raw)
+    summary = _build_spoolman_preview(rows, session)
+    payload = summary.model_dump()
+    payload["format"] = fmt
+    return payload
+
+
+@router.post("/spoolman/import/apply")
+async def apply_spoolman_import(
+    file: UploadFile = File(...),
+    confirm: str = Form("false"),
+    session: Session = Depends(get_session),
+):
+    if str(confirm).lower() not in {"1", "true", "yes"}:
+        raise HTTPException(status_code=400, detail="Import muss explizit bestätigt werden.")
+
+    raw = await file.read()
+    _fmt, rows = _parse_spoolman_file(file.filename, raw)
+    result = _apply_spoolman_import(rows, session)
+    return {"success": True, **result}
 
 
 @router.get("/logs")
