@@ -437,7 +437,7 @@
             <div class="active-label">Currently Active</div>
             <div class="active-content">
                 <div class="active-info">
-                    <h3 id="activeSlotTitle">Slot 0</h3>
+                    <h3 id="activeSlotTitle">Slot 1</h3>
                     <div class="active-details" id="activeSlotDetails">Lade Daten...</div>
                 </div>
                 <div class="active-percent" id="activeSlotPercent">61%</div>
@@ -473,6 +473,11 @@
     let amsData = null;
     let spools = [];
     let materials = [];
+
+    function getDisplaySlotNumber(slotId, fallbackIndex = 0) {
+        const numericSlotId = Number(slotId);
+        return Number.isFinite(numericSlotId) ? numericSlotId + 1 : fallbackIndex + 1;
+    }
 
     // Lade Spulen und Materialien (wie normales AMS)
     async function loadSpools() {
@@ -658,7 +663,7 @@
 
                 card.innerHTML = `
                     ${i === activeSlot ? '<div class="slot-checkmark">✓</div>' : ''}
-                    <div class="slot-number">Slot ${slot.slotId}${slot.spoolNumber != null ? ` · <span style="opacity:0.7;font-size:0.85em;">#${slot.spoolNumber}</span>` : ''}</div>
+                    <div class="slot-number">Slot ${getDisplaySlotNumber(slot.slotId, i)}${slot.spoolNumber != null ? ` · <span style="opacity:0.7;font-size:0.85em;">#${slot.spoolNumber}</span>` : ''}</div>
                     <div class="slot-bar-bg">
                         <div class="slot-bar-fill" style="width: ${slot.percent}%; background: linear-gradient(90deg, ${barColor}, ${barColor}dd);"></div>
                     </div>
@@ -692,7 +697,7 @@
         const slot = slots[activeSlot];
         if (!slot) return;
 
-        document.getElementById('activeSlotTitle').textContent = `Slot ${slot.slotId}${slot.spoolNumber != null ? ` · Spule #${slot.spoolNumber}` : ''}`;
+        document.getElementById('activeSlotTitle').textContent = `Slot ${getDisplaySlotNumber(slot.slotId, activeSlot)}${slot.spoolNumber != null ? ` · Spule #${slot.spoolNumber}` : ''}`;
         document.getElementById('activeSlotDetails').textContent = `${slot.type} • ${Math.round(slot.weight)}g`;
 
         const percentEl = document.getElementById('activeSlotPercent');
