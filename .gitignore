@@ -36,6 +36,8 @@ Thumbs.db
 .codex/
 CLAUDE.md
 .playwright-mcp
+.planning
+.planning-cli
 
 # Database
 *.db

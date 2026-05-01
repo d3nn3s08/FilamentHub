@@ -35,7 +35,7 @@ ENV FILAMENTHUB_DB_PATH=/app/data/filamenthub.db
 ENV PYTHONPATH=/app
 
 # Standard-Versionsbezeichnungen (überschreibbar via docker-compose.yml)
-ENV APP_VERSION="Stable v1.6 · FilamentHub"
+ENV APP_VERSION="Stable v1.6.5 · FilamentHub"
 ENV DESIGN_VERSION="Design 1.0"
 
 RUN mkdir -p /app/data /app/logs /app/app/logging && \
