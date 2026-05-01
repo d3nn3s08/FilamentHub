@@ -230,7 +230,15 @@
     </div>
     <script>
     (function(){
+        function updateSidebarVersion(current, channel) {
+            var sidebarVersion = document.getElementById('sidebarVersion');
+            if (!sidebarVersion || !current) return;
+            var channelLabel = channel === 'beta' ? 'Beta' : 'Stable';
+            sidebarVersion.textContent = channelLabel + ' ' + current + ' - FilamentHub';
+        }
+
         fetch('/api/version/check').then(function(r){ return r.json(); }).then(function(d){
+            updateSidebarVersion(d.current, d.channel);
             if(!d.update_available) return;
             var dismissed = localStorage.getItem('fh_dismissed_ver');
             if(dismissed === d.latest) return;
@@ -239,7 +247,11 @@
             txt.textContent = 'Neue Version verfügbar: ' + d.latest + ' (du hast ' + d.current + ')';
             txt.dataset.ver = d.latest;
             banner.style.display = 'flex';
-        }).catch(function(){});
+        }).catch(function(){
+            fetch('/api/version/current').then(function(r){ return r.json(); }).then(function(d){
+                updateSidebarVersion(d.version, 'stable');
+            }).catch(function(){});
+        });
     })();
     </script>
 
