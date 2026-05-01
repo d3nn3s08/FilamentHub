@@ -34,10 +34,53 @@ jobs:
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Build release notes from changelog
+        id: notes
+        shell: bash
+        run: |
+          python <<'PY'
+          import re
+          from pathlib import Path
+
+          tag = "${{ steps.vars.outputs.tag }}".strip()
+          version = tag[1:] if tag.startswith("v") else tag
+          changelog_path = Path("CHANGELOG.md")
+          output_path = Path("release-notes.md")
+          text = changelog_path.read_text(encoding="utf-8")
+
+          pattern = re.compile(r"^## \[(.+?)\].*$", re.MULTILINE)
+          matches = list(pattern.finditer(text))
+
+          def normalize(value: str) -> str:
+            return re.sub(r"[^0-9A-Za-z.]+", "", value).lower()
+
+          normalized_version = normalize(version)
+          chosen = None
+
+          for index, match in enumerate(matches):
+            heading = match.group(1).strip()
+            normalized_heading = normalize(heading)
+            if normalized_heading == normalized_version or normalized_heading.startswith(normalized_version):
+              start = match.start()
+              end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+              chosen = text[start:end].strip()
+              break
+
+          if not chosen and matches:
+            start = matches[0].start()
+            end = matches[1].start() if len(matches) > 1 else len(text)
+            chosen = text[start:end].strip()
+
+          if not chosen:
+            chosen = text.strip()
+
+          output_path.write_text(chosen + "\n", encoding="utf-8")
+          PY
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.vars.outputs.tag }}
-          body_path: CHANGELOG.md
+          body_path: release-notes.md
           prerelease: false
           make_latest: true
