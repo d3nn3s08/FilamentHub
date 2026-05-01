@@ -13,6 +13,7 @@ let configLoaded = false;
 let configSnapshot = {};
 let logViewerState = { module: 'app', lastCount: 0 };
 let serviceFtpPrintersLoaded = false;
+let serviceFtpPrintersPromise = null;
 let serviceFtpLastPrinterId = '';
 let serviceFtpLastPayload = null;
 
@@ -3284,28 +3285,58 @@ function updateServiceFtpSummary(payload = null) {
 
 async function populateServiceFtpPrinters(force = false) {
     if (serviceFtpPrintersLoaded && !force) return;
+    if (serviceFtpPrintersPromise && !force) return serviceFtpPrintersPromise;
     const select = document.getElementById('service-ftp-printer');
     if (!select) return;
 
     const previousValue = select.value || serviceFtpLastPrinterId;
-    select.innerHTML = '<option value="">-- Drucker wählen --</option>';
+    serviceFtpPrintersPromise = (async () => {
+        select.innerHTML = '<option value="">-- Drucker wählen --</option>';
 
-    try {
-        const response = await fetch('/api/printers/');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const printers = await response.json();
-        (Array.isArray(printers) ? printers : []).forEach(printer => {
-            const option = document.createElement('option');
-            option.value = printer.id;
-            option.textContent = `${printer.name} (${printer.printer_type || 'unknown'})`;
-            select.appendChild(option);
-        });
-        if (previousValue) select.value = previousValue;
-        serviceFtpPrintersLoaded = true;
-    } catch (err) {
-        console.error('[services][ftp] printer list failed', err);
-        setServiceFtpMessage('Druckerliste konnte nicht geladen werden.', 'error');
-    }
+        try {
+            const response = await fetch('/api/printers/');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const printers = await response.json();
+            const seen = new Set();
+            const eligiblePrinters = (Array.isArray(printers) ? printers : [])
+                .filter(printer => {
+                    const type = (printer?.printer_type || '').toLowerCase();
+                    return Boolean(printer?.ip_address) && (type === 'bambu' || type === 'klipper');
+                })
+                .sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || '')));
+
+            eligiblePrinters.forEach(printer => {
+                const normalizedType = (printer.printer_type || 'unknown').toLowerCase();
+                const dedupeKey = [
+                    printer.id || '',
+                    printer.name || '',
+                    printer.ip_address || '',
+                    normalizedType,
+                ].join('|');
+
+                if (seen.has(dedupeKey)) return;
+                seen.add(dedupeKey);
+
+                const option = document.createElement('option');
+                option.value = printer.id;
+                option.textContent = `${printer.name} - ${printer.ip_address} (${normalizedType})`;
+                select.appendChild(option);
+            });
+            if (previousValue) select.value = previousValue;
+            if (!select.value && eligiblePrinters.length === 1) {
+                select.value = eligiblePrinters[0].id;
+                serviceFtpLastPrinterId = eligiblePrinters[0].id;
+            }
+            serviceFtpPrintersLoaded = true;
+        } catch (err) {
+            console.error('[services][ftp] printer list failed', err);
+            setServiceFtpMessage('Druckerliste konnte nicht geladen werden.', 'error');
+        } finally {
+            serviceFtpPrintersPromise = null;
+        }
+    })();
+
+    return serviceFtpPrintersPromise;
 }
 
 function renderServiceFtpFiles(files = []) {
