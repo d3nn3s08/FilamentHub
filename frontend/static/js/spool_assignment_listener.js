@@ -11,6 +11,12 @@
     let eventSource = null;
     let reconnectAttempts = 0;
     const MAX_RECONNECT_ATTEMPTS = 5;
+    const JOB_START_DELAY_MS = 5 * 60 * 1000;
+    const PRINTER_STATUS_CACHE_MS = 15 * 1000;
+    let printerStatusCache = {
+        fetchedAt: 0,
+        printers: [],
+    };
 
     function connect() {
         console.log("[SpoolAssignmentListener] Connecting to SSE stream...");
@@ -48,14 +54,73 @@
         };
     }
 
-    // Verzoegerung nach Job-Start: 5 Minuten warten bevor Hinweis erscheint
-    const JOB_START_DELAY_MS = 5 * 60 * 1000;
+    async function fetchPrinters() {
+        const now = Date.now();
+        if ((now - printerStatusCache.fetchedAt) < PRINTER_STATUS_CACHE_MS && Array.isArray(printerStatusCache.printers)) {
+            return printerStatusCache.printers;
+        }
+
+        const response = await fetch('/api/printers/');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const printers = await response.json();
+        printerStatusCache = {
+            fetchedAt: now,
+            printers: Array.isArray(printers) ? printers : [],
+        };
+        return printerStatusCache.printers;
+    }
+
+    async function isPrinterCurrentlyOnline(data) {
+        if (!data?.printer_id) return true;
+
+        try {
+            const printers = await fetchPrinters();
+            const printer = printers.find(p => p.id === data.printer_id);
+            return printer ? Boolean(printer.online) : true;
+        } catch (err) {
+            console.warn('[SpoolAssignmentListener] Printer status check failed, showing notification anyway', err);
+            return true;
+        }
+    }
+
+    function removePending(key) {
+        if (!key) return;
+
+        try {
+            let pending = JSON.parse(localStorage.getItem('pending_spool_assignments') || '[]');
+            pending = pending.filter(p => (p.tray_uuid || p.tag_uid) !== key);
+            localStorage.setItem('pending_spool_assignments', JSON.stringify(pending));
+        } catch (err) {
+            console.error('[SpoolAssignmentListener] Failed to remove pending:', err);
+        }
+    }
+
+    function storePending(data) {
+        try {
+            let pending = JSON.parse(localStorage.getItem('pending_spool_assignments') || '[]');
+
+            const key = data.tray_uuid || data.tag_uid;
+            if (key) {
+                pending = pending.filter(p => (p.tray_uuid || p.tag_uid) !== key);
+            }
+
+            pending.push({
+                ...data,
+                timestamp: new Date().toISOString(),
+            });
+
+            localStorage.setItem('pending_spool_assignments', JSON.stringify(pending));
+        } catch (err) {
+            console.error("[SpoolAssignmentListener] Failed to store pending:", err);
+        }
+    }
 
     function handleNewSpool(data) {
-        // Store for later (immer sofort speichern, egal ob verzoegert)
         storePending(data);
 
-        // Pruefen ob ein Job gerade erst gestartet wurde (< 5 min)
         fetch('/api/jobs/active')
             .then(r => r.ok ? r.json() : [])
             .then(activeJobs => {
@@ -63,40 +128,45 @@
                 let delayMs = 0;
 
                 if (Array.isArray(activeJobs) && activeJobs.length > 0) {
-                    // Juengsten Job finden
                     const recentJob = activeJobs.reduce((best, job) => {
                         if (!job.started_at) return best;
-                        const t = new Date(job.started_at).getTime();
-                        return (!best || t > new Date(best.started_at).getTime()) ? job : best;
+                        const timestamp = new Date(job.started_at).getTime();
+                        return (!best || timestamp > new Date(best.started_at).getTime()) ? job : best;
                     }, null);
 
                     if (recentJob && recentJob.started_at) {
                         const elapsed = now - new Date(recentJob.started_at).getTime();
                         if (elapsed < JOB_START_DELAY_MS) {
                             delayMs = JOB_START_DELAY_MS - elapsed;
-                            console.log(`[SpoolAssignmentListener] Job kuerzlich gestartet (${Math.round(elapsed / 1000)}s), Hinweis in ${Math.round(delayMs / 1000)}s`);
+                            console.log(`[SpoolAssignmentListener] Job recently started (${Math.round(elapsed / 1000)}s), showing hint in ${Math.round(delayMs / 1000)}s`);
                         }
                     }
                 }
 
-                setTimeout(() => showNewSpoolNotification(data), delayMs);
+                setTimeout(() => {
+                    showNewSpoolNotification(data);
+                }, delayMs);
             })
             .catch(() => {
-                // Fehler beim API-Aufruf: sofort anzeigen
                 showNewSpoolNotification(data);
             });
     }
 
-    function showNewSpoolNotification(data) {
-        // Build description
+    async function showNewSpoolNotification(data) {
+        const key = data?.tray_uuid || data?.tag_uid;
+        const printerOnline = await isPrinterCurrentlyOnline(data);
+        if (!printerOnline) {
+            console.log('[SpoolAssignmentListener] Skip notification because printer is offline:', data?.printer_name || data?.printer_id);
+            removePending(key);
+            return;
+        }
+
         const material = data.tray_sub_brands || data.tray_type || 'Unbekannt';
         const slot = data.ams_slot != null ? `Slot ${Number(data.ams_slot) + 1}` : 'AMS';
         const printer = data.printer_name ? ` (${data.printer_name})` : '';
 
-        // Show toast
         if (typeof window.GlobalNotifications !== 'undefined' &&
             typeof window.GlobalNotifications.triggerAlert === 'function') {
-
             window.GlobalNotifications.triggerAlert({
                 id: `new_spool_${data.tray_uuid || data.tag_uid || Date.now()}`,
                 type: 'warning',
@@ -120,73 +190,48 @@
         }
     }
 
-    function storePending(data) {
-        try {
-            let pending = JSON.parse(localStorage.getItem('pending_spool_assignments') || '[]');
-
-            // Deduplicate by tray_uuid or tag_uid
-            const key = data.tray_uuid || data.tag_uid;
-            if (key) {
-                pending = pending.filter(p => (p.tray_uuid || p.tag_uid) !== key);
-            }
-
-            pending.push({
-                ...data,
-                timestamp: new Date().toISOString(),
-            });
-
-            localStorage.setItem('pending_spool_assignments', JSON.stringify(pending));
-        } catch (err) {
-            console.error("[SpoolAssignmentListener] Failed to store pending:", err);
-        }
-    }
-
-    /**
-     * Prüft beim Seitenaufruf ob ausstehende Spulen-Zuordnungen existieren.
-     * Falls ja, wird nach 2s automatisch der Dialog geöffnet.
-     * So wird sichergestellt dass der Dialog erscheint, auch wenn der Benutzer
-     * die SSE-Benachrichtigung verpasst hat.
-     */
     function checkPendingOnPageLoad() {
         try {
             const pending = JSON.parse(localStorage.getItem('pending_spool_assignments') || '[]');
             if (!pending.length) return;
 
             const first = pending[0];
+            const key = first.tray_uuid || first.tag_uid;
 
-            if (!first.spool_id) {
-                // Kein spool_id → keine Auto-Spule erstellt (neues Verhalten).
-                // Einfach den Dialog wieder anzeigen damit User noch zuordnen kann.
-                console.log('[SpoolAssignmentListener] Ausstehende Zuordnung (kein spool_id) gefunden, öffne Dialog...');
-                setTimeout(() => showNewSpoolNotification(first), 2000);
-                return;
-            }
-
-            // spool_id vorhanden → prüfe ob die Spule noch in der DB existiert
-            fetch(`/api/spools/${first.spool_id}`)
-                .then(r => {
-                    if (!r.ok) {
-                        // Spule existiert nicht mehr → Eintrag bereinigen
-                        let p = JSON.parse(localStorage.getItem('pending_spool_assignments') || '[]');
-                        const key = first.tray_uuid || first.tag_uid;
-                        p = p.filter(x => (x.tray_uuid || x.tag_uid) !== key);
-                        localStorage.setItem('pending_spool_assignments', JSON.stringify(p));
+            isPrinterCurrentlyOnline(first)
+                .then(isOnline => {
+                    if (!isOnline) {
+                        console.log('[SpoolAssignmentListener] Remove pending assignment for offline printer');
+                        removePending(key);
                         return;
                     }
-                    // Spule existiert noch → Dialog nach kurzer Verzögerung öffnen
-                    console.log('[SpoolAssignmentListener] Ausstehende Zuordnung gefunden, öffne Dialog...');
-                    setTimeout(() => showNewSpoolNotification(first), 2000);
+
+                    if (!first.spool_id) {
+                        console.log('[SpoolAssignmentListener] Pending assignment without spool_id found, reopening dialog...');
+                        setTimeout(() => showNewSpoolNotification(first), 2000);
+                        return;
+                    }
+
+                    fetch(`/api/spools/${first.spool_id}`)
+                        .then(r => {
+                            if (!r.ok) {
+                                removePending(key);
+                                return;
+                            }
+
+                            console.log('[SpoolAssignmentListener] Pending assignment found, reopening dialog...');
+                            setTimeout(() => showNewSpoolNotification(first), 2000);
+                        })
+                        .catch(() => {});
                 })
                 .catch(() => {});
         } catch (err) {
-            console.error('[SpoolAssignmentListener] Fehler beim Pending-Check:', err);
+            console.error('[SpoolAssignmentListener] Error while checking pending assignments:', err);
         }
     }
 
-    // Initialize
     function init() {
         connect();
-        // Pending-Zuordnungen nach kurzem Delay prüfen (warte bis UI bereit ist)
         setTimeout(checkPendingOnPageLoad, 3000);
     }
 
@@ -196,14 +241,12 @@
         init();
     }
 
-    // Cleanup
     window.addEventListener('beforeunload', function() {
         if (eventSource) {
             eventSource.close();
         }
     });
 
-    // Export
     window.SpoolAssignmentListener = {
         reconnect: connect,
         getPending: () => JSON.parse(localStorage.getItem('pending_spool_assignments') || '[]'),

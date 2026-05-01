@@ -139,7 +139,7 @@
         }
         // Pending-Eintrag entfernen damit der Dialog nicht bei jedem Seitenaufruf erneut erscheint
         if (currentDetection) {
-            removeFromStorage(detection.tray_uuid || detection.tag_uid);
+            removeFromStorage(currentDetection.tray_uuid || currentDetection.tag_uid);
         }
         currentDetection = null;
         selectedTargetId = null;

@@ -4,6 +4,7 @@ import logging
 import yaml
 import os
 import asyncio
+import re
 from app.logging_setup import configure_logging
 
 # ============================================================
@@ -597,6 +598,28 @@ async def health():
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
 
+
+def _read_current_version_label() -> str:
+    try:
+        version_path = os.path.join(BASE_DIR, "VERSION")
+        with open(version_path, "r", encoding="utf-8") as handle:
+            version = handle.read().strip()
+    except Exception:
+        version = "0.0.0"
+
+    raw_app_version = (os.environ.get("APP_VERSION") or "").strip()
+    lowered = raw_app_version.lower()
+    if "beta" in lowered:
+        channel = "Beta"
+    elif "stable" in lowered:
+        channel = "Stable"
+    else:
+        channel = "Stable"
+
+    normalized = re.search(r"(\d+(?:\.\d+){0,2})", version)
+    resolved_version = normalized.group(1) if normalized else version
+    return f"{channel} {resolved_version} - FilamentHub"
+
 class NoCacheStaticFiles(StaticFiles):
     """StaticFiles ohne Browser-Caching — stellt sicher dass JS/CSS-Änderungen sofort aktiv sind."""
     async def get_response(self, path: str, scope):
@@ -610,6 +633,7 @@ app.mount("/static", NoCacheStaticFiles(directory=os.path.join(BASE_DIR, "app", 
 app.mount("/frontend", NoCacheStaticFiles(directory=os.path.join(FRONTEND_DIR, "static")), name="frontend_static")
 templates = Jinja2Templates(directory=os.path.join(FRONTEND_DIR, "templates"))
 templates.env.globals["app_version"] = os.environ.get("APP_VERSION", "Stable 1.6 - FilamentHub").replace("Beta v1.6 · FilamentHub", "Stable 1.6 - FilamentHub").replace("Beta 1.6 - FilamentHub", "Stable 1.6 - FilamentHub")
+templates.env.globals["app_version"] = _read_current_version_label()
 templates.env.globals["design_version"] = os.environ.get("DESIGN_VERSION", "Design 1.0").replace("Design Beta-1.0", "Design 1.0")
 import time as _time
 templates.env.globals["build_ts"] = int(_time.time())  # Cache-Buster für JS/CSS
