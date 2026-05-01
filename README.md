@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/dashboard.png" width="300" alt="FilamentHub Dashboard" />
+  <img src="docs/filamenthub-logo.png" width="300" alt="FilamentHub Logo" />
 </p>
 
 <h1 align="center">FilamentHub</h1>
