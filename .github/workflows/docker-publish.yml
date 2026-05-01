@@ -24,4 +24,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: d3nn3s/beta_test:latest
+          tags: d3nn3s/filamenthub:latest
