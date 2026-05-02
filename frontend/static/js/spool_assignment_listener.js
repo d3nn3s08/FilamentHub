@@ -8,15 +8,110 @@
 (function() {
     console.log("[SpoolAssignmentListener] Initializing...");
 
-    let eventSource = null;
-    let reconnectAttempts = 0;
+    const PENDING_STORAGE_KEY = 'pending_spool_assignments';
     const MAX_RECONNECT_ATTEMPTS = 5;
     const JOB_START_DELAY_MS = 5 * 60 * 1000;
     const PRINTER_STATUS_CACHE_MS = 15 * 1000;
+    const SPOOLS_CACHE_MS = 10 * 1000;
+
+    let eventSource = null;
+    let reconnectAttempts = 0;
     let printerStatusCache = {
         fetchedAt: 0,
         printers: [],
     };
+    let spoolsCache = {
+        fetchedAt: 0,
+        spools: [],
+    };
+
+    function normalizeIdentifier(value) {
+        if (value == null) return null;
+        const normalized = String(value).trim();
+        if (!normalized || /^0+$/.test(normalized)) return null;
+        return normalized;
+    }
+
+    function normalizeFeederKey(data) {
+        if (!data) return null;
+
+        const rawAmsId = data.ams_id;
+        if (rawAmsId == null) return null;
+
+        const amsId = String(rawAmsId).trim();
+        if (!amsId) return null;
+        if (amsId.includes(':')) return amsId;
+
+        const feederType = String(data.feeder_type || '').trim().toUpperCase();
+        return feederType ? `${feederType}:${amsId}` : amsId;
+    }
+
+    function getDetectionKey(data) {
+        if (!data) return null;
+
+        const trayUuid = normalizeIdentifier(data.tray_uuid);
+        if (trayUuid) return `tray:${trayUuid}`;
+
+        const tagUid = normalizeIdentifier(data.tag_uid);
+        if (tagUid) return `tag:${tagUid}`;
+
+        const printerId = data.printer_id ? String(data.printer_id).trim() : '';
+        const feederKey = data.feeder_key ? String(data.feeder_key).trim() : normalizeFeederKey(data);
+        const amsSlot = data.ams_slot != null ? Number(data.ams_slot) : null;
+        if (printerId && amsSlot != null && !Number.isNaN(amsSlot)) {
+            return `slot:${printerId}:${feederKey || 'unknown'}:${amsSlot}`;
+        }
+
+        return null;
+    }
+
+    function detectionMatchesSpool(data, spool) {
+        if (!data || !spool) return false;
+
+        const trayUuid = normalizeIdentifier(data.tray_uuid);
+        if (trayUuid && String(spool.tray_uuid || '') === trayUuid) return true;
+
+        const tagUid = normalizeIdentifier(data.tag_uid);
+        if (tagUid && String(spool.tag_uid || spool.rfid_uid || '') === tagUid) return true;
+
+        const printerId = data.printer_id ? String(data.printer_id).trim() : '';
+        const feederKey = normalizeFeederKey(data);
+        const spoolFeederKey = normalizeFeederKey({
+            ams_id: spool.ams_id,
+            feeder_type: spool.last_seen_in_ams_type
+        });
+        const amsSlot = data.ams_slot != null ? Number(data.ams_slot) : null;
+
+        return Boolean(
+            printerId &&
+            amsSlot != null &&
+            !Number.isNaN(amsSlot) &&
+            String(spool.printer_id || '').trim() === printerId &&
+            Number(spool.ams_slot) === amsSlot &&
+            (!feederKey || feederKey === spoolFeederKey)
+        );
+    }
+
+    function getPendingAssignments() {
+        try {
+            const pending = JSON.parse(localStorage.getItem(PENDING_STORAGE_KEY) || '[]');
+            return Array.isArray(pending) ? pending : [];
+        } catch (err) {
+            console.error('[SpoolAssignmentListener] Failed to read pending assignments:', err);
+            return [];
+        }
+    }
+
+    function setPendingAssignments(pending) {
+        localStorage.setItem(PENDING_STORAGE_KEY, JSON.stringify(Array.isArray(pending) ? pending : []));
+    }
+
+    function clearSpoolCache() {
+        spoolsCache = {
+            fetchedAt: 0,
+            spools: [],
+        };
+    }
 
     function connect() {
         console.log("[SpoolAssignmentListener] Connecting to SSE stream...");
@@ -34,6 +129,7 @@
 
                 if (data.type === 'new_spool_detected') {
                     console.log("[SpoolAssignmentListener] New spool detected:", data);
+                    clearSpoolCache();
                     handleNewSpool(data);
                 }
             } catch (err) {
@@ -73,6 +169,35 @@
         return printerStatusCache.printers;
     }
 
+    async function fetchSpools() {
+        const now = Date.now();
+        if ((now - spoolsCache.fetchedAt) < SPOOLS_CACHE_MS && Array.isArray(spoolsCache.spools)) {
+            return spoolsCache.spools;
+        }
+
+        const response = await fetch('/api/spools/');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const spools = await response.json();
+        spoolsCache = {
+            fetchedAt: now,
+            spools: Array.isArray(spools) ? spools : [],
+        };
+        return spoolsCache.spools;
+    }
+
+    async function isDetectionAlreadyAssigned(data) {
+        try {
+            const spools = await fetchSpools();
+            return spools.some(spool => detectionMatchesSpool(data, spool));
+        } catch (err) {
+            console.warn('[SpoolAssignmentListener] Assigned-state check failed, showing notification anyway', err);
+            return false;
+        }
+    }
+
     async function isPrinterCurrentlyOnline(data) {
         if (!data?.printer_id) return true;
 
@@ -86,13 +211,13 @@
         }
     }
 
-    function removePending(key) {
+    function removePending(keyOrDetection) {
+        const key = typeof keyOrDetection === 'string' ? keyOrDetection : getDetectionKey(keyOrDetection);
         if (!key) return;
 
         try {
-            let pending = JSON.parse(localStorage.getItem('pending_spool_assignments') || '[]');
-            pending = pending.filter(p => (p.tray_uuid || p.tag_uid) !== key);
-            localStorage.setItem('pending_spool_assignments', JSON.stringify(pending));
+            const pending = getPendingAssignments().filter(item => getDetectionKey(item) !== key);
+            setPendingAssignments(pending);
         } catch (err) {
             console.error('[SpoolAssignmentListener] Failed to remove pending:', err);
         }
@@ -100,19 +225,19 @@
 
     function storePending(data) {
         try {
-            let pending = JSON.parse(localStorage.getItem('pending_spool_assignments') || '[]');
-
-            const key = data.tray_uuid || data.tag_uid;
+            const key = getDetectionKey(data);
+            let pending = getPendingAssignments();
             if (key) {
-                pending = pending.filter(p => (p.tray_uuid || p.tag_uid) !== key);
+                pending = pending.filter(item => getDetectionKey(item) !== key);
             }
 
             pending.push({
                 ...data,
+                identity_key: key,
                 timestamp: new Date().toISOString(),
             });
 
-            localStorage.setItem('pending_spool_assignments', JSON.stringify(pending));
+            setPendingAssignments(pending);
         } catch (err) {
             console.error("[SpoolAssignmentListener] Failed to store pending:", err);
         }
@@ -153,11 +278,17 @@
     }
 
     async function showNewSpoolNotification(data) {
-        const key = data?.tray_uuid || data?.tag_uid;
+        const key = getDetectionKey(data);
         const printerOnline = await isPrinterCurrentlyOnline(data);
         if (!printerOnline) {
             console.log('[SpoolAssignmentListener] Skip notification because printer is offline:', data?.printer_name || data?.printer_id);
-            removePending(key);
+            removePending(data);
+            return;
+        }
+
+        if (await isDetectionAlreadyAssigned(data)) {
+            console.log('[SpoolAssignmentListener] Skip notification because slot is already assigned:', data);
+            removePending(data);
             return;
         }
 
@@ -168,7 +299,7 @@
         if (typeof window.GlobalNotifications !== 'undefined' &&
             typeof window.GlobalNotifications.triggerAlert === 'function') {
             window.GlobalNotifications.triggerAlert({
-                id: `new_spool_${data.tray_uuid || data.tag_uid || Date.now()}`,
+                id: `new_spool_${key || Date.now()}`,
                 type: 'warning',
                 label: 'Neue Spule erkannt',
                 message: `${material} in ${slot}${printer} - Klicken zum Zuordnen`,
@@ -190,19 +321,33 @@
         }
     }
 
-    function checkPendingOnPageLoad() {
+    async function checkPendingOnPageLoad() {
         try {
-            const pending = JSON.parse(localStorage.getItem('pending_spool_assignments') || '[]');
+            let pending = getPendingAssignments();
+            if (!pending.length) return;
+
+            const unresolved = [];
+            for (const item of pending) {
+                if (!(await isDetectionAlreadyAssigned(item))) {
+                    unresolved.push(item);
+                }
+            }
+
+            if (unresolved.length !== pending.length) {
+                setPendingAssignments(unresolved);
+            }
+
+            pending = unresolved;
             if (!pending.length) return;
 
             const first = pending[0];
-            const key = first.tray_uuid || first.tag_uid;
+            const key = getDetectionKey(first);
 
             isPrinterCurrentlyOnline(first)
                 .then(isOnline => {
                     if (!isOnline) {
                         console.log('[SpoolAssignmentListener] Remove pending assignment for offline printer');
-                        removePending(key);
+                        removePending(first);
                         return;
                     }
 
@@ -215,14 +360,16 @@
                     fetch(`/api/spools/${first.spool_id}`)
                         .then(r => {
                             if (!r.ok) {
-                                removePending(key);
+                                removePending(first);
                                 return;
                             }
 
                             console.log('[SpoolAssignmentListener] Pending assignment found, reopening dialog...');
                             setTimeout(() => showNewSpoolNotification(first), 2000);
                         })
-                        .catch(() => {});
+                        .catch(() => {
+                            if (key) removePending(key);
+                        });
                 })
                 .catch(() => {});
         } catch (err) {
@@ -249,9 +396,10 @@
 
     window.SpoolAssignmentListener = {
         reconnect: connect,
-        getPending: () => JSON.parse(localStorage.getItem('pending_spool_assignments') || '[]'),
-        clearPending: () => localStorage.removeItem('pending_spool_assignments'),
+        getPending: getPendingAssignments,
+        clearPending: () => localStorage.removeItem(PENDING_STORAGE_KEY),
         checkPending: checkPendingOnPageLoad,
+        getIdentityKey: getDetectionKey,
     };
 
     console.log("[SpoolAssignmentListener] Initialized");

@@ -69,9 +69,16 @@ function clearPendingAmsAssignmentStorage(detection) {
     if (!detection) return;
     try {
         let pending = JSON.parse(localStorage.getItem('pending_spool_assignments') || '[]');
-        const key = detection.tray_uuid || detection.tag_uid;
+        const key = window.SpoolAssignmentListener?.getIdentityKey
+            ? window.SpoolAssignmentListener.getIdentityKey(detection)
+            : (detection.tray_uuid || detection.tag_uid);
         if (!key) return;
-        pending = pending.filter(p => (p.tray_uuid || p.tag_uid) !== key);
+        pending = pending.filter(p => {
+            const pendingKey = window.SpoolAssignmentListener?.getIdentityKey
+                ? window.SpoolAssignmentListener.getIdentityKey(p)
+                : (p.tray_uuid || p.tag_uid);
+            return pendingKey !== key;
+        });
         localStorage.setItem('pending_spool_assignments', JSON.stringify(pending));
     } catch (error) {
         console.error('Fehler beim Bereinigen der AMS-Pending-Daten:', error);

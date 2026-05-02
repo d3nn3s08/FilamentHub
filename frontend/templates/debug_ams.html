@@ -7,6 +7,24 @@
 {% endblock %}
 
 {% block content %}
+<section class="debug-hero">
+    <div class="panel">
+        <h1 class="debug-hero__title">Debug Center</h1>
+        <p class="debug-hero__subtitle">AMS Diagnose, Rohdaten und Zuordnungen an einem Ort.</p>
+    </div>
+</section>
+
+<section class="debug-services">
+    <div class="service-card">
+        <div>
+            <div class="service-card__eyebrow">Services</div>
+            <h2 class="service-card__title">Diagnose-Panel</h2>
+            <p class="service-card__text">Vergleicht Live-State roh, normalisierte AMS-Daten und die aktuelle DB-Zuordnung der Spulen.</p>
+        </div>
+        <button type="button" class="btn" id="openDiagnosticsModalBtn">Diagnose-Panel öffnen</button>
+    </div>
+</section>
+
 {% if debug_center_mode == 'pro' %}
 <section>
     <div class="raw-toggle">
@@ -31,6 +49,39 @@
     </div>
 </section>
 {% endif %}
+
+<div id="diagnosticsModal" class="debug-modal">
+    <div class="debug-modal__backdrop" data-close-diagnostics></div>
+    <div class="debug-modal__dialog">
+        <div class="debug-modal__header">
+            <div>
+                <h2>Diagnose-Panel</h2>
+                <p>Live-State roh vs. normalisiert vs. DB-Match</p>
+            </div>
+            <div class="debug-modal__actions">
+                <button type="button" class="btn ghost" id="refreshDiagnosticsBtn">Aktualisieren</button>
+                <button type="button" class="debug-modal__close" data-close-diagnostics>&times;</button>
+            </div>
+        </div>
+        <div class="debug-modal__body">
+            <div class="diagnostics-meta" id="diagnosticsMeta">Lade Diagnosedaten ...</div>
+            <div class="diagnostics-grid">
+                <section class="diagnostics-panel">
+                    <h3>Live-State Roh</h3>
+                    <pre id="diagnosticsRaw">Lade ...</pre>
+                </section>
+                <section class="diagnostics-panel">
+                    <h3>Normalisiert</h3>
+                    <pre id="diagnosticsNormalized">Lade ...</pre>
+                </section>
+                <section class="diagnostics-panel">
+                    <h3>DB-Match</h3>
+                    <pre id="diagnosticsDbMatch">Lade ...</pre>
+                </section>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}

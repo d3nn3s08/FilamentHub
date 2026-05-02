@@ -377,6 +377,96 @@
             color: rgba(255,255,255,0.62);
         }
 
+        .diagnostics-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.68);
+            backdrop-filter: blur(4px);
+        }
+
+        .diagnostics-modal.show {
+            display: flex;
+        }
+
+        .diagnostics-dialog {
+            width: min(1500px, 96vw);
+            max-height: 92vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.10);
+            background: linear-gradient(180deg, rgba(18,23,34,0.98), rgba(10,12,18,0.98));
+            box-shadow: 0 32px 80px rgba(0,0,0,0.55);
+        }
+
+        .diagnostics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 20px 22px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .diagnostics-header h3 {
+            margin: 0 0 6px;
+            font-size: 24px;
+        }
+
+        .diagnostics-header p {
+            margin: 0;
+            color: var(--text-dim);
+        }
+
+        .diagnostics-body {
+            padding: 18px 22px 22px;
+            overflow: auto;
+        }
+
+        .diagnostics-meta {
+            margin-bottom: 14px;
+            color: var(--text-dim);
+            font-size: 13px;
+        }
+
+        .diagnostics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(280px, 1fr));
+            gap: 14px;
+        }
+
+        .diagnostics-pane {
+            min-width: 0;
+        }
+
+        .diagnostics-pane h4 {
+            margin: 0 0 8px;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .diagnostics-pre {
+            margin: 0;
+            min-height: 420px;
+            max-height: 62vh;
+            overflow: auto;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.28);
+            color: #e8ecf2;
+            font-size: 12px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
         .service-ftp-actions {
             display: flex;
             flex-direction: column;
@@ -1054,6 +1144,30 @@
 
                 <div class="panel">
                     <div class="card-header">
+                        <h3>Diagnose-Panel</h3>
+                        <span class="status-badge status-ok">Live</span>
+                    </div>
+                    <p class="subtitle" style="margin-top:0;">
+                        Kleines Diagnose-Panel für Live-State roh, normalisierte AMS-Daten und aktuelle DB-Matches.
+                    </p>
+                    <div class="info-grid" style="margin-bottom:12px;">
+                        <div>
+                            <div class="info-label">Ansicht</div>
+                            <div class="info-value">3-fach Vergleich</div>
+                        </div>
+                        <div>
+                            <div class="info-label">Quelle</div>
+                            <div class="info-value">/api/debug/diagnostics</div>
+                        </div>
+                    </div>
+                    <div>
+                        <button id="service-diagnostics-open-btn" class="btn btn-primary">Diagnose-Panel öffnen</button>
+                        <button id="service-diagnostics-refresh-btn" class="btn btn-secondary">Daten vorladen</button>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="card-header">
                         <h3>Printer FTP Browser</h3>
                         <span id="service-ftp-status" class="status-badge status-idle">Idle</span>
                     </div>
@@ -1123,6 +1237,37 @@
                     </div>
                     <div id="spoolman-import-preview" style="max-height:240px;overflow:auto;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;background:rgba(0,0,0,0.12);font-size:12px;color:var(--text-dim);">
                         Noch keine Vorschau geladen.
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="diagnosticsModal" class="diagnostics-modal">
+            <div class="diagnostics-dialog">
+                <div class="diagnostics-header">
+                    <div>
+                        <h3>Diagnose-Panel</h3>
+                        <p>Live-State roh vs. normalisiert vs. DB-Match</p>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button id="diagnosticsRefreshBtn" class="btn btn-secondary">Aktualisieren</button>
+                        <button id="diagnosticsCloseBtn" class="btn btn-secondary">Schließen</button>
+                    </div>
+                </div>
+                <div class="diagnostics-body">
+                    <div id="diagnosticsMeta" class="diagnostics-meta">Lade Diagnosedaten ...</div>
+                    <div class="diagnostics-grid">
+                        <div class="diagnostics-pane">
+                            <h4>Live-State Roh</h4>
+                            <pre id="diagnosticsRaw" class="diagnostics-pre">Lade ...</pre>
+                        </div>
+                        <div class="diagnostics-pane">
+                            <h4>Normalisiert</h4>
+                            <pre id="diagnosticsNormalized" class="diagnostics-pre">Lade ...</pre>
+                        </div>
+                        <div class="diagnostics-pane">
+                            <h4>DB-Match</h4>
+                            <pre id="diagnosticsDbMatch" class="diagnostics-pre">Lade ...</pre>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3111,6 +3256,64 @@ setTimeout(() => {
 <script src="/static/js/mqtt-connect-handler.js"></script>
 <script src="/static/debug_v2.js?v=20260418-services-live"></script>
 <script>
+async function loadDiagnosticsPanelData() {
+    const metaEl = document.getElementById('diagnosticsMeta');
+    const rawEl = document.getElementById('diagnosticsRaw');
+    const normalizedEl = document.getElementById('diagnosticsNormalized');
+    const dbEl = document.getElementById('diagnosticsDbMatch');
+
+    if (!metaEl || !rawEl || !normalizedEl || !dbEl) return;
+
+    metaEl.textContent = 'Lade Diagnosedaten ...';
+    rawEl.textContent = 'Lade ...';
+    normalizedEl.textContent = 'Lade ...';
+    dbEl.textContent = 'Lade ...';
+
+    try {
+        const response = await fetch('/api/debug/diagnostics', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        metaEl.textContent = `Stand: ${data.captured_at || '-'} • Geräte: ${data.device_count || 0} • DB-Zuordnungen: ${(data.db_matches || []).length}`;
+        rawEl.textContent = JSON.stringify(data.devices || [], null, 2);
+        normalizedEl.textContent = JSON.stringify(data.normalized || {}, null, 2);
+        dbEl.textContent = JSON.stringify(data.db_matches || [], null, 2);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        metaEl.textContent = 'Diagnosedaten konnten nicht geladen werden.';
+        rawEl.textContent = message;
+        normalizedEl.textContent = message;
+        dbEl.textContent = message;
+        console.error('Diagnose-Panel Fehler:', error);
+    }
+}
+
+function openDiagnosticsPanelModal() {
+    const modal = document.getElementById('diagnosticsModal');
+    if (!modal) return;
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    loadDiagnosticsPanelData();
+}
+
+function closeDiagnosticsPanelModal() {
+    const modal = document.getElementById('diagnosticsModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('DOMContentLoaded', function bindDiagnosticsPanelModal() {
+    document.getElementById('service-diagnostics-open-btn')?.addEventListener('click', openDiagnosticsPanelModal);
+    document.getElementById('service-diagnostics-refresh-btn')?.addEventListener('click', loadDiagnosticsPanelData);
+    document.getElementById('diagnosticsRefreshBtn')?.addEventListener('click', loadDiagnosticsPanelData);
+    document.getElementById('diagnosticsCloseBtn')?.addEventListener('click', closeDiagnosticsPanelModal);
+    document.getElementById('diagnosticsModal')?.addEventListener('click', (event) => {
+        if (event.target && event.target.id === 'diagnosticsModal') {
+            closeDiagnosticsPanelModal();
+        }
+    });
+});
+
 // Export MQTT functions globally (they are defined in the page's main script block)
 // This runs after all other scripts are loaded
 setTimeout(function() {

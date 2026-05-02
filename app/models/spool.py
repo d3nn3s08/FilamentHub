@@ -233,6 +233,7 @@ class SpoolReadSchema(BaseModel):
     external_id: str | None = None
     printer_slot: int | None = None
     ams_slot: int | None = None
+    ams_id: str | None = None
     printer_id: str | None = None
     printer_name: str | None = None  # Drucker-Name für UI-Anzeige
     tag_uid: str | None = None

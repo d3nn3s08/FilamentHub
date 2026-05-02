@@ -24,7 +24,17 @@ from app.services.ams_weight_manager import (
     AMSType,
 )
 from app.services.ams_normalizer import has_ams_lite_from_payload
-from app.services.ams_identity import feeder_key, feeder_type_for_ams_unit, AMS_TYPE_LITE
+from app.services.ams_identity import (
+    feeder_key,
+    feeder_type_for_ams_unit,
+    AMS_TYPE_LITE,
+    normalize_ams_identifier,
+)
+from app.services.non_rfid_slot_bindings import (
+    get_non_rfid_binding,
+    clear_non_rfid_binding_for_slot,
+    upsert_non_rfid_binding,
+)
 import asyncio
 
 logger = logging.getLogger("services")
@@ -184,6 +194,34 @@ def _compute_spool_weights_from_tray(tray: Dict[str, Any]) -> tuple[Optional[flo
 
     # Fallback: Standard Bambu 1kg filament spool
     return 1000.0, None
+
+
+def _tray_has_physical_spool(
+    tray: Dict[str, Any],
+    *,
+    tag_uid: Optional[str],
+    tray_uuid: Optional[str],
+) -> bool:
+    if tag_uid or tray_uuid:
+        return True
+    if str(tray.get("tray_type") or "").strip():
+        return True
+    if str(tray.get("tray_sub_brands") or "").strip():
+        return True
+
+    color = normalize_ams_identifier(tray.get("tray_color") or tray.get("color"))
+    if color:
+        return True
+
+    for key in ("tray_weight", "remain_weight", "remaining_grams", "remain_percent"):
+        value = tray.get(key)
+        try:
+            if value is not None and float(value) > 0:
+                return True
+        except Exception:
+            continue
+
+    return False
 
 
 def _has_valid_ams_payload(ams_units: List[Dict[str, Any]]) -> bool:
@@ -473,8 +511,9 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
 
             trays = ams.get("trays") or []
             for tray in trays:
-                tag_uid = tray.get("tag_uid") or tray.get("tag")
-                tray_uuid = tray.get("tray_uuid")
+                tag_uid = normalize_ams_identifier(tray.get("tag_uid") or tray.get("tag"))
+                tray_uuid = normalize_ams_identifier(tray.get("tray_uuid"))
+                tray_has_spool = _tray_has_physical_spool(tray, tag_uid=tag_uid, tray_uuid=tray_uuid)
                 tray_state = tray.get("state")  # state 11 = OK, andere = Fehler
                 # slot robust auslesen, ohne 0 zu verwerfen
                 raw_slot = tray.get("tray_id")
@@ -509,7 +548,13 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
                 weight_current = None
 
                 # === UNLOAD-LOGIK: Leerer Slot → Spule ins Lager verschieben ===
-                if not tag_uid and not tray_uuid and ams_slot is not None:
+                if not tray_has_spool and ams_slot is not None:
+                    clear_non_rfid_binding_for_slot(
+                        session,
+                        printer_id=printer_id,
+                        feeder_key=feeder_identity,
+                        slot_index=ams_slot,
+                    )
                     # Slot ist leer, prüfe ob Spule mit diesem Slot existiert
                     unload_stmt = select(Spool).where(
                         Spool.printer_id == printer_id,
@@ -564,6 +609,24 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
                 # Wenn kein Match gefunden wird, suche im Lager nach Spulen die
                 # wegen Offline von genau diesem Drucker entladen wurden (gleicher Slot)
                 matches = session.exec(stmt).all()
+                if matches and not tag_uid and not tray_uuid:
+                    matches = [
+                        s for s in matches
+                        if not normalize_ams_identifier(s.tag_uid)
+                        and not normalize_ams_identifier(s.tray_uuid)
+                        and not normalize_ams_identifier(s.rfid_chip_id)
+                    ]
+                if not matches and not tag_uid and not tray_uuid and ams_slot is not None and printer_id:
+                    binding = get_non_rfid_binding(
+                        session,
+                        printer_id=printer_id,
+                        feeder_key=feeder_identity,
+                        slot_index=ams_slot,
+                    )
+                    if binding:
+                        bound_spool = session.get(Spool, binding.spool_id)
+                        if bound_spool:
+                            matches = [bound_spool]
                 if not matches and not tag_uid and not tray_uuid and ams_slot is not None and printer_id:
                     offline_marker = f"offline_release:{printer_id}"
                     offline_stmt = select(Spool).where(
@@ -595,6 +658,28 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
                 else:
                     spool = None
                 if not spool:
+                    if not tag_uid and not tray_uuid and ams_slot is not None and printer_id:
+                        stale_stmt = select(Spool).where(
+                            Spool.printer_id == printer_id,
+                            Spool.ams_slot == ams_slot,
+                            Spool.ams_id == feeder_identity,
+                        )
+                        stale_spools = session.exec(stale_stmt).all()
+                        for stale_spool in stale_spools:
+                            logger.info(
+                                "[AMS SYNC] Clearing stale non-RFID slot assignment spool=%s printer=%s feeder=%s slot=%s",
+                                stale_spool.id,
+                                printer_id,
+                                feeder_identity,
+                                ams_slot,
+                            )
+                            stale_spool.ams_slot = None
+                            stale_spool.ams_id = None
+                            stale_spool.location = "storage"
+                            stale_spool.status = "Verfügbar"
+                            stale_spool.is_open = False
+                            stale_spool.last_seen = _now_iso()
+                            session.add(stale_spool)
                     if not auto_create:
                         continue
                     mat_id = material_id or _ensure_material(session, tray_type, tray_color, tray_sub_brands)
@@ -775,16 +860,30 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
                 spool.ams_id = feeder_identity
                 spool.ams_slot = ams_slot
                 spool.last_slot = ams_slot
+                if not tag_uid and not tray_uuid and printer_id and ams_slot is not None:
+                    upsert_non_rfid_binding(
+                        session,
+                        printer_id=printer_id,
+                        feeder_key=feeder_identity,
+                        slot_index=ams_slot,
+                        spool_id=spool.id,
+                    )
 
                 # FIX Bug #10: Update RFID-Felder wenn vorhanden (migriert alte rfid_chip_id zu tray_uuid)
                 if tag_uid:
                     spool.tag_uid = tag_uid
+                elif normalize_ams_identifier(spool.tag_uid) is None:
+                    spool.tag_uid = None
                 if tray_uuid:
                     spool.tray_uuid = tray_uuid
                     spool.rfid_chip_id = tray_uuid  # Sync: beide Felder halten
                     if not spool.tag_uid:
                         # Legacy: Falls tag_uid fehlt aber tray_uuid vorhanden, nutze tray_uuid als tag_uid
                         logger.debug(f"[AMS SYNC] Migrating tray_uuid to tag_uid for spool {spool.id}")
+                elif normalize_ams_identifier(spool.tray_uuid) is None:
+                    spool.tray_uuid = None
+                    if normalize_ams_identifier(spool.rfid_chip_id) is None:
+                        spool.rfid_chip_id = None
 
                 spool.tray_color = tray_color or spool.tray_color
                 spool.tray_type = tray_type or spool.tray_type

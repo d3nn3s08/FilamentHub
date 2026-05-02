@@ -23,7 +23,13 @@ from app.models.material import Material
 from app.models.printer import Printer
 from app.services.spool_number_service import assign_spool_number
 from app.services.ams_weight_manager import AMSType
-from app.services.ams_identity import feeder_key, AMS_TYPE_LITE
+from app.services.ams_identity import normalize_feeder_key, AMS_TYPE_LITE, normalize_ams_identifier
+from app.services.non_rfid_slot_bindings import (
+    upsert_non_rfid_binding,
+    clear_non_rfid_binding_for_slot,
+    clear_non_rfid_bindings_for_spool,
+    get_non_rfid_binding,
+)
 
 logger = logging.getLogger("services")
 
@@ -34,31 +40,81 @@ router = APIRouter(prefix="/api/spools", tags=["spool-assignment"])
 # ========================================
 connected_clients: set = set()
 
-# Cooldown: Don't re-broadcast same tray_uuid within 60 seconds
-# (war 300s/5min – zu lang: wenn Benutzer Dialog verpasst, muss er 5min warten)
+# Cooldown: don't spam the same detection repeatedly.
 _broadcast_cooldown: dict = {}
 BROADCAST_COOLDOWN_SECONDS = 60
 
 
-def clear_broadcast_cooldown(tray_uuid: str) -> None:
-    """Löscht Cooldown für eine tray_uuid (z.B. wenn Spule gelöscht wird)."""
-    _broadcast_cooldown.pop(tray_uuid, None)
+def _broadcast_identity_key(spool_data: dict) -> str | None:
+    tray_uuid = normalize_ams_identifier(spool_data.get("tray_uuid"))
+    if tray_uuid:
+        return f"tray:{tray_uuid}"
+
+    tag_uid = normalize_ams_identifier(spool_data.get("tag_uid"))
+    if tag_uid:
+        return f"tag:{tag_uid}"
+
+    printer_id = spool_data.get("printer_id")
+    ams_id = normalize_feeder_key(spool_data.get("feeder_type"), spool_data.get("ams_id"))
+    ams_slot = spool_data.get("ams_slot")
+    if printer_id and ams_slot is not None:
+        return f"slot:{printer_id}:{ams_id or 'unknown'}:{ams_slot}"
+
+    return None
+
+
+def clear_broadcast_cooldown(key: str) -> None:
+    """Löscht Cooldown für den Broadcast-Key (z.B. wenn Spule gelöscht wird)."""
+    _broadcast_cooldown.pop(key, None)
 
 
 async def broadcast_new_spool(spool_data: dict):
     """Broadcast new spool detection to all connected SSE clients."""
-    tray_uuid = spool_data.get("tray_uuid")
+    normalized_ams_id = normalize_feeder_key(spool_data.get("feeder_type"), spool_data.get("ams_id"))
+    if normalized_ams_id != spool_data.get("ams_id"):
+        spool_data = dict(spool_data)
+        spool_data["ams_id"] = normalized_ams_id
+    cooldown_key = _broadcast_identity_key(spool_data)
+
+    try:
+        from app.database import engine
+        with Session(engine) as session:
+            printer_id = spool_data.get("printer_id")
+            ams_slot = spool_data.get("ams_slot")
+            is_non_rfid = not normalize_ams_identifier(spool_data.get("tray_uuid")) and not normalize_ams_identifier(spool_data.get("tag_uid"))
+            binding = get_non_rfid_binding(
+                session,
+                printer_id=printer_id,
+                feeder_key=normalized_ams_id,
+                slot_index=ams_slot,
+            )
+            if binding and is_non_rfid:
+                return
+
+            if is_non_rfid and printer_id and ams_slot is not None:
+                existing_spools = session.exec(
+                    select(Spool).where(
+                        Spool.printer_id == printer_id,
+                        Spool.ams_slot == ams_slot,
+                    )
+                ).all()
+                for existing in existing_spools:
+                    existing_key = normalize_feeder_key(None, existing.ams_id)
+                    if normalized_ams_id is None or existing_key == normalized_ams_id:
+                        return
+    except Exception:
+        logger.exception("[SPOOL ASSIGN] Failed to inspect non-RFID slot binding before broadcast")
 
     # Cooldown check
-    if tray_uuid and tray_uuid in _broadcast_cooldown:
-        elapsed = time.time() - _broadcast_cooldown[tray_uuid]
+    if cooldown_key and cooldown_key in _broadcast_cooldown:
+        elapsed = time.time() - _broadcast_cooldown[cooldown_key]
         if elapsed < BROADCAST_COOLDOWN_SECONDS:
             return
         else:
-            del _broadcast_cooldown[tray_uuid]
+            del _broadcast_cooldown[cooldown_key]
 
-    if tray_uuid:
-        _broadcast_cooldown[tray_uuid] = time.time()
+    if cooldown_key:
+        _broadcast_cooldown[cooldown_key] = time.time()
 
     logger.info(f"[SPOOL ASSIGN] Broadcasting new spool to {len(connected_clients)} clients")
 
@@ -367,22 +423,55 @@ def assign_spool_from_ams(
     if not spool:
         raise HTTPException(status_code=404, detail="Spule nicht gefunden")
 
+    normalized_tray_uuid = normalize_ams_identifier(req.tray_uuid)
+    normalized_tag_uid = normalize_ams_identifier(req.tag_uid)
+    normalized_ams_id = normalize_feeder_key(req.feeder_type, req.ams_id)
+
     logger.info(
         f"[SPOOL ASSIGN] assign-from-ams: spool={spool_id[:8]} "
-        f"slot={req.ams_slot} tray={req.tray_uuid[:8] if req.tray_uuid else None}"
+        f"slot={req.ams_slot} tray={normalized_tray_uuid[:8] if normalized_tray_uuid else None}"
     )
 
+    if req.printer_id and req.ams_slot is not None:
+        slot_stmt = select(Spool).where(
+            Spool.id != spool.id,
+            Spool.printer_id == req.printer_id,
+            Spool.ams_slot == req.ams_slot,
+        )
+        if normalized_ams_id is not None:
+            slot_stmt = slot_stmt.where(Spool.ams_id == normalized_ams_id)
+        conflicting_spools = session.exec(slot_stmt).all()
+        for conflicting in conflicting_spools:
+            logger.info(
+                f"[SPOOL ASSIGN] Clearing conflicting slot occupant spool={conflicting.id[:8]} "
+                f"printer={req.printer_id} ams_id={normalized_ams_id} slot={req.ams_slot}"
+            )
+            conflicting.ams_slot = None
+            conflicting.ams_id = None
+            conflicting.location = "storage"
+            conflicting.status = "Verfügbar"
+            conflicting.is_open = False
+            conflicting.updated_at = datetime.utcnow().isoformat()
+            session.add(conflicting)
+
+    clear_non_rfid_bindings_for_spool(session, spool.id)
+
     # AMS-Erkennungsdaten auf die Spule übertragen
-    if req.tray_uuid:
-        spool.tray_uuid = req.tray_uuid
-        spool.rfid_chip_id = req.tray_uuid
-    if req.tag_uid:
-        spool.tag_uid = req.tag_uid
+    if normalized_tray_uuid:
+        spool.tray_uuid = normalized_tray_uuid
+        spool.rfid_chip_id = normalized_tray_uuid
+    elif normalized_tag_uid is None:
+        spool.tray_uuid = None
+        spool.rfid_chip_id = None
+    if normalized_tag_uid:
+        spool.tag_uid = normalized_tag_uid
+    elif normalized_tray_uuid is None:
+        spool.tag_uid = None
     if req.ams_slot is not None:
         spool.ams_slot = req.ams_slot
         spool.last_slot = req.ams_slot
-    if req.ams_id is not None:
-        spool.ams_id = feeder_key(req.feeder_type, req.ams_id)
+    if normalized_ams_id is not None:
+        spool.ams_id = normalized_ams_id
     if req.printer_id:
         spool.printer_id = req.printer_id
         normalized_type = str(req.feeder_type or "").upper()
@@ -415,6 +504,23 @@ def assign_spool_from_ams(
     spool.last_seen = now
     spool.last_seen_timestamp = now
     spool.updated_at = now
+
+    if req.printer_id and normalized_ams_id is not None and req.ams_slot is not None:
+        if normalized_tray_uuid is None and normalized_tag_uid is None:
+            upsert_non_rfid_binding(
+                session,
+                printer_id=req.printer_id,
+                feeder_key=normalized_ams_id,
+                slot_index=req.ams_slot,
+                spool_id=spool.id,
+            )
+        else:
+            clear_non_rfid_binding_for_slot(
+                session,
+                printer_id=req.printer_id,
+                feeder_key=normalized_ams_id,
+                slot_index=req.ams_slot,
+            )
 
     session.add(spool)
     session.commit()
@@ -535,12 +641,12 @@ def create_spool_from_ams(
     spool_data = {
         "material_id": mat_id,
         "printer_id": req.printer_id,
-        "ams_id": feeder_key(req.feeder_type, req.ams_id) if req.ams_id else None,
+        "ams_id": normalize_feeder_key(req.feeder_type, req.ams_id),
         "ams_slot": req.ams_slot,
         "last_slot": req.ams_slot,
-        "tag_uid": req.tag_uid,
-        "tray_uuid": req.tray_uuid,
-        "rfid_chip_id": req.tray_uuid,
+        "tag_uid": normalize_ams_identifier(req.tag_uid),
+        "tray_uuid": normalize_ams_identifier(req.tray_uuid),
+        "rfid_chip_id": normalize_ams_identifier(req.tray_uuid),
         "tray_color": req.tray_color,
         "tray_type": req.tray_type,
         "remain_percent": req.remain_percent,
@@ -562,6 +668,18 @@ def create_spool_from_ams(
     spool = Spool(**spool_data)
     assign_spool_number(spool, session)
     session.add(spool)
+    session.flush()
+    if req.printer_id and spool_data.get("ams_id") and req.ams_slot is not None:
+        normalized_tray_uuid = normalize_ams_identifier(req.tray_uuid)
+        normalized_tag_uid = normalize_ams_identifier(req.tag_uid)
+        if normalized_tray_uuid is None and normalized_tag_uid is None:
+            upsert_non_rfid_binding(
+                session,
+                printer_id=req.printer_id,
+                feeder_key=spool_data["ams_id"],
+                slot_index=req.ams_slot,
+                spool_id=spool.id,
+            )
     session.commit()
     session.refresh(spool)
 

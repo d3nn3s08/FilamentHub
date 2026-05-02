@@ -241,13 +241,13 @@ function findMatchingSpool(dev, amsUnit, tray, slotIndex, isAmsLite) {
     const feederKey = amsUnit?.feeder_key != null
         ? String(amsUnit.feeder_key)
         : (amsUnit?.ams_id != null ? String(amsUnit.ams_id) : null);
-    const trayTagUid = tray?.tag_uid || null;
-    const trayUuid = tray?.tray_uuid || null;
+    const trayTagUid = isValidIdentifier(tray?.tag_uid) ? String(tray.tag_uid).trim() : null;
+    const trayUuid = isValidIdentifier(tray?.tray_uuid) ? String(tray.tray_uuid).trim() : null;
     const slotForDb = isAmsLite ? 254 : slotIndex;
     const expectedAmsType = isAmsLite ? 'AMS_LITE' : 'AMS_FULL';
 
     return spools.find((s) => {
-        if (trayTagUid && s.rfid_uid && s.rfid_uid === trayTagUid) return true;
+        if (trayTagUid && ((s.rfid_uid && s.rfid_uid === trayTagUid) || (s.tag_uid && s.tag_uid === trayTagUid))) return true;
         if (trayUuid && s.tray_uuid && s.tray_uuid === trayUuid) return true;
 
         if (s.ams_slot == null || Number(s.ams_slot) !== Number(slotForDb)) return false;
@@ -256,6 +256,46 @@ function findMatchingSpool(dev, amsUnit, tray, slotIndex, isAmsLite) {
         if (s.last_seen_in_ams_type && s.last_seen_in_ams_type !== expectedAmsType) return false;
         return true;
     });
+}
+
+function isValidIdentifier(value) {
+    if (value == null) return false;
+    const normalized = String(value).trim();
+    if (!normalized) return false;
+    return !/^0+$/.test(normalized);
+}
+
+function hasOccupiedTrayData(tray) {
+    if (!tray) return false;
+    if (isValidIdentifier(tray.tag_uid) || isValidIdentifier(tray.tray_uuid)) return true;
+
+    const trayType = typeof tray.tray_type === 'string' ? tray.tray_type.trim() : '';
+    const traySubBrands = typeof tray.tray_sub_brands === 'string' ? tray.tray_sub_brands.trim() : '';
+    if (trayType || traySubBrands) return true;
+
+    const trayColor = typeof tray.tray_color === 'string' ? tray.tray_color.trim().toUpperCase() : '';
+    if (trayColor && trayColor !== '00000000' && trayColor !== 'FFFFFF00') return true;
+
+    const totalLen = Number(tray.total_len);
+    if (Number.isFinite(totalLen) && totalLen > 0) return true;
+
+    const remainingGrams = Number(tray.remaining_grams);
+    if (Number.isFinite(remainingGrams) && remainingGrams > 0) return true;
+
+    const trayWeight = Number(tray.tray_weight);
+    if (Number.isFinite(trayWeight) && trayWeight > 0) return true;
+
+    const remainPercent = Number(tray.remain_percent);
+    if (Number.isFinite(remainPercent) && remainPercent > 0) return true;
+
+    return false;
+}
+
+function isUnassignedWithoutRfidTray(tray, matchingSpool) {
+    if (matchingSpool || !tray) return false;
+    return hasOccupiedTrayData(tray)
+        && !isValidIdentifier(tray.tag_uid)
+        && !isValidIdentifier(tray.tray_uuid);
 }
 
 function loadAMSData() {
@@ -285,6 +325,8 @@ function loadAMSData() {
                 {
                     id: 1,
                     ams_id: amsUnit?.ams_id ?? 0,
+                    feeder_type: amsUnit?.feeder_type || null,
+                    feeder_key: amsUnit?.feeder_key || null,
                     printer_id: dev?.printer_id || null,
                     online: !!dev?.online,
                     slots: [],
@@ -308,9 +350,12 @@ function loadAMSData() {
                     
                     // Material aus tray_sub_brands oder tray_type extrahieren
                     const trayMaterialName = tray.tray_sub_brands || tray.tray_type || tray.material || 'Unbekannt';
+                    const unassignedWithoutRfid = isUnassignedWithoutRfidTray(tray, matchingSpool);
                     const material = matchingSpool
                         ? materials.find(m => m.id === matchingSpool.material_id)
-                        : { name: trayMaterialName, brand: 'Bambu Lab' };
+                        : (unassignedWithoutRfid
+                            ? { name: 'Ohne RFID', brand: 'Bitte zuweisen', vendor: 'Bitte zuweisen' }
+                            : { name: trayMaterialName, brand: 'Bambu Lab', vendor: 'Bambu Lab' });
                     
                     // Farbe aus tray_color extrahieren (Format: RRGGBBAA)
                     const trayColor = tray.tray_color || tray.color || '999999FF';
@@ -329,7 +374,8 @@ function loadAMSData() {
                             weight_total: tray.tray_weight || null,
                             rfid_uid: tray.tag_uid,
                             tray_uuid: tray.tray_uuid,
-                            from_live_state: true
+                            from_live_state: true,
+                            unassigned_without_rfid: unassignedWithoutRfid
                         },
                         material: material,
                         liveData: tray
@@ -345,6 +391,8 @@ function loadAMSData() {
                     const amsEntry = {
                         id: idx,
                         ams_id: u?.ams_id ?? idx,
+                        feeder_type: u?.feeder_type || null,
+                        feeder_key: u?.feeder_key || null,
                         printer_id: dev?.printer_id || null,
                         online: !!dev?.online,
                         slots: [],
@@ -362,9 +410,12 @@ function loadAMSData() {
                             
                             // Material aus tray_sub_brands oder tray_type extrahieren
                             const trayMaterialName = tray.tray_sub_brands || tray.tray_type || tray.material || 'Unbekannt';
+                            const unassignedWithoutRfid = isUnassignedWithoutRfidTray(tray, matchingSpool);
                             const material = matchingSpool
                                 ? materials.find(m => m.id === matchingSpool.material_id)
-                                : { name: trayMaterialName, brand: 'Bambu Lab' };
+                                : (unassignedWithoutRfid
+                                    ? { name: 'Ohne RFID', brand: 'Bitte zuweisen', vendor: 'Bitte zuweisen' }
+                                    : { name: trayMaterialName, brand: 'Bambu Lab', vendor: 'Bambu Lab' });
                             
                             // Farbe aus tray_color extrahieren (Format: RRGGBBAA)
                             const trayColor = tray.tray_color || tray.color || '999999FF';
@@ -383,7 +434,8 @@ function loadAMSData() {
                                     weight_total: tray.tray_weight || null,
                                     rfid_uid: tray.tag_uid,
                                     tray_uuid: tray.tray_uuid,
-                                    from_live_state: true
+                                    from_live_state: true,
+                                    unassigned_without_rfid: unassignedWithoutRfid
                                 },
                                 material: material,
                                 liveData: tray
@@ -503,6 +555,7 @@ function renderAMSFromOverview(overviewData) {
                 const remaining = slot.remaining || {};
                 const percent = remaining.percent != null ? Math.round(remaining.percent) : null;
                 const grams = remaining.grams != null ? Math.round(remaining.grams) : null;
+                const unassignedWithoutRfid = !!slot.spool?.unassigned_without_rfid;
 
                 const isLow = percent != null ? (percent <= 20) : (grams != null && grams < 200);
                 const progressClass = isLow ? 'low' : '';
@@ -525,8 +578,8 @@ function renderAMSFromOverview(overviewData) {
                             Slot ${slotNumber}
                             ${slot.rfid ? '<span class="slot-icon" title="RFID erkannt">TAG</span>' : ''}
                         </div>
-                        <div class="slot-material">${material.name || 'Unbekannt'}</div>
-                        ${material.vendor ? `<div class="slot-brand">${material.vendor}</div>` : ''}
+                        <div class="slot-material">${unassignedWithoutRfid ? 'Ohne RFID' : (material.name || 'Unbekannt')}</div>
+                        <div class="slot-brand">${unassignedWithoutRfid ? 'Bitte zuweisen' : (material.vendor || '')}</div>
                         <div class="slot-weight">
                             ${percent != null ? `${percent}%` : ''}
                             ${grams != null ? ` (${grams}g)` : ''}
@@ -620,6 +673,7 @@ function renderAMSUnits() {
                 const material = slot.material;
                 const remaining = getRemaining(spool);
                 const percentage = getPercentage(spool);
+                const unassignedWithoutRfid = !!spool.unassigned_without_rfid;
 
                 // Ghost-Slot: kein erkennbares Material und kein Gewicht → als leer zeigen
                 const ghostMaterial = !material.name || material.name === 'Unbekannt';
@@ -654,19 +708,36 @@ function renderAMSUnits() {
                             ${spool.tray_uuid ? '<span class="slot-icon" title="RFID erkannt">TAG</span>' : ''}
                         </div>
                         ${spoolNumberDisplay ? `<div class="slot-spool-number" style="font-weight: 600; color: var(--primary); margin: 4px 0;">${spoolNumberDisplay}</div>` : ''}
-                        <div class="slot-material">${material.name}</div>
-                        ${material.brand ? `<div class="slot-brand">${material.brand}</div>` : ''}
+                        <div class="slot-material">${unassignedWithoutRfid ? 'Ohne RFID' : material.name}</div>
+                        ${(unassignedWithoutRfid || material.brand) ? `<div class="slot-brand">${unassignedWithoutRfid ? 'Bitte zuweisen' : material.brand}</div>` : ''}
                         <div class="slot-weight">${(percentage != null) ? `${Math.round(percentage)}% (${Math.round(remaining)}g)` : (remaining ? `${Math.round(remaining)}g` : 'N/A')}</div>
                         <div class="slot-progress">
                             ${percentage != null ? `<div class="slot-progress-bar ${progressClass}" style="width: ${percentage}%;"></div>` : ''}
                         </div>
                         <div class="slot-actions requires-ams">
-                            <button class="slot-action-btn" onclick="event.stopPropagation(); goToSpool('${spool.id}')" title="Spule oeffnen">
+                            <button class="slot-action-btn" ${spool.id ? `onclick="event.stopPropagation(); goToSpool('${spool.id}')"` : 'disabled'} title="Spule oeffnen">
                                 <span>Open</span>
                             </button>
-                            <button class="slot-action-btn requires-ams" onclick="event.stopPropagation(); unassignSpool('${spool.id}')" title="Spule entfernen">
+                            <button class="slot-action-btn requires-ams" ${spool.id ? `onclick="event.stopPropagation(); unassignSpool('${spool.id}')"` : 'disabled'} title="Spule entfernen">
                                 <span>Del</span>
                             </button>
+                            ${unassignedWithoutRfid ? `<button class="slot-action-btn requires-ams"
+                                data-detected-ams="1"
+                                data-printer-id="${ams.printer_id || ''}"
+                                data-display-slot="${slotNumber}"
+                                data-slot-number="${slotNumber}"
+                                data-ams-slot="${slot.spool?.ams_slot ?? ''}"
+                                data-ams-id="${ams.ams_id ?? ''}"
+                                data-feeder-type="${ams.feeder_type || ''}"
+                                data-tray-type="${slot.spool?.material_type || ''}"
+                                data-tray-color="${slot.spool?.tray_color || ''}"
+                                data-remain-percent="${slot.spool?.remaining_percent ?? ''}"
+                                data-weight-current="${slot.spool?.remaining_grams ?? ''}"
+                                data-weight-full="${slot.spool?.weight_total ?? ''}"
+                                data-weight-empty="${slot.spool?.weight_empty ?? ''}"
+                                onclick="event.stopPropagation(); openAssignModalFromButton(this)" title="Spule zuweisen">
+                                <span>Assign</span>
+                            </button>` : ''}
                             <button class="slot-action-btn requires-ams" onclick="event.stopPropagation(); refreshRFID(${amsId}, ${slotNumber})" title="RFID neu einlesen">
                                 <span>RFID</span>
                             </button>
@@ -729,8 +800,9 @@ function renderMultiAms(units) {
             if (slot && slot.spool && slot.material) {
                 const spool = slot.spool;
                 const material = slot.material || {};
-                const materialName = material.name || 'Unbekannt';
-                const materialBrand = material.brand || '';
+                const unassignedWithoutRfid = !!spool.unassigned_without_rfid;
+                const materialName = unassignedWithoutRfid ? 'Ohne RFID' : (material.name || 'Unbekannt');
+                const materialBrand = unassignedWithoutRfid ? 'Bitte zuweisen' : (material.brand || '');
                 const color = spool.tray_color ? `#${String(spool.tray_color).substring(0, 6)}` : '#999';
                 const percent = getPercentage(spool);
                 const grams = getRemaining(spool);
@@ -783,6 +855,23 @@ function renderMultiAms(units) {
                             <button class="slot-action-btn requires-ams" ${spoolId ? `onclick="event.stopPropagation(); unassignSpool('${spoolId}')"` : 'disabled'} title="Spule entfernen">
                                 <span>Del</span>
                             </button>
+                            ${unassignedWithoutRfid ? `<button class="slot-action-btn requires-ams"
+                                data-detected-ams="1"
+                                data-printer-id="${unit.printer_id || ''}"
+                                data-display-slot="${idx + 1}"
+                                data-slot-number="${slotNumber}"
+                                data-ams-slot="${slot.spool?.ams_slot ?? ''}"
+                                data-ams-id="${unit.ams_id ?? ''}"
+                                data-feeder-type="${unit.feeder_type || ''}"
+                                data-tray-type="${slot.spool?.material_type || ''}"
+                                data-tray-color="${slot.spool?.tray_color || ''}"
+                                data-remain-percent="${slot.spool?.remaining_percent ?? ''}"
+                                data-weight-current="${slot.spool?.remaining_grams ?? ''}"
+                                data-weight-full="${slot.spool?.weight_total ?? ''}"
+                                data-weight-empty="${slot.spool?.weight_empty ?? ''}"
+                                onclick="event.stopPropagation(); openAssignModalFromButton(this)" title="Spule zuweisen">
+                                <span>Assign</span>
+                            </button>` : ''}
                             <button class="slot-action-btn requires-ams" onclick="event.stopPropagation(); refreshRFID(${unitIndex + 1}, ${slotNumber})" title="RFID neu einlesen">
                                 <span>RFID</span>
                             </button>
@@ -974,6 +1063,7 @@ function changeSpoolDialog(amsId, slotNumber) {
 // === QUICK-ASSIGN SYSTEM ===
 let currentAssignPrinter = null;
 let currentAssignSlot = null;
+let currentAssignContext = null;
 let searchTimeout = null;
 
 function openAssignModal(printerId, slotNumber) {
@@ -1002,6 +1092,25 @@ function closeAssignModal() {
     document.getElementById('assignModal').classList.remove('show');
     currentAssignPrinter = null;
     currentAssignSlot = null;
+    currentAssignContext = null;
+}
+
+function openAssignModalFromButton(button) {
+    if (!button) return;
+    const data = button.dataset || {};
+    currentAssignContext = {
+        detectedAms: data.detectedAms === '1',
+        amsSlot: data.amsSlot !== undefined && data.amsSlot !== '' ? Number(data.amsSlot) : null,
+        amsId: data.amsId || null,
+        feederType: data.feederType || null,
+        trayType: data.trayType || null,
+        trayColor: data.trayColor || null,
+        remainPercent: data.remainPercent !== undefined && data.remainPercent !== '' ? Number(data.remainPercent) : null,
+        weightCurrent: data.weightCurrent !== undefined && data.weightCurrent !== '' ? Number(data.weightCurrent) : null,
+        weightFull: data.weightFull !== undefined && data.weightFull !== '' ? Number(data.weightFull) : null,
+        weightEmpty: data.weightEmpty !== undefined && data.weightEmpty !== '' ? Number(data.weightEmpty) : null,
+    };
+    openAssignModal(data.printerId || null, Number(data.displaySlot || data.slotNumber || 0));
 }
 
 async function searchSpools(searchTerm) {
@@ -1153,10 +1262,32 @@ function renderSpoolSearchResults(spools) {
 async function assignSpool(spoolId) {
     if (document.body && document.body.classList.contains('no-ams')) return;
     try {
-        const response = await fetch(
-            `/api/spools/${spoolId}/assign?printer_id=${currentAssignPrinter}&slot_number=${currentAssignSlot}`,
-            { method: 'POST' }
-        );
+        let response;
+        if (currentAssignContext && currentAssignContext.detectedAms) {
+            response = await fetch(`/api/spools/${spoolId}/assign-from-ams`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tray_uuid: null,
+                    tag_uid: null,
+                    ams_slot: currentAssignContext.amsSlot,
+                    ams_id: currentAssignContext.amsId,
+                    feeder_type: currentAssignContext.feederType,
+                    printer_id: currentAssignPrinter,
+                    tray_type: currentAssignContext.trayType,
+                    tray_color: currentAssignContext.trayColor,
+                    remain_percent: currentAssignContext.remainPercent,
+                    weight_current: currentAssignContext.weightCurrent,
+                    weight_full: currentAssignContext.weightFull,
+                    weight_empty: currentAssignContext.weightEmpty,
+                }),
+            });
+        } else {
+            response = await fetch(
+                `/api/spools/${spoolId}/assign?printer_id=${currentAssignPrinter}&slot_number=${currentAssignSlot}`,
+                { method: 'POST' }
+            );
+        }
 
         if (!response.ok) {
             const error = await response.json();

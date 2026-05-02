@@ -15,7 +15,7 @@ async function loadAmsDebug() {
 
         renderAmsUnits(root, data.parsed || []);
 
-        toggles.forEach(btn => {
+        toggles.forEach((btn) => {
             btn.addEventListener("click", () => toggleBlock(btn.dataset.toggle));
         });
     } catch (e) {
@@ -81,4 +81,67 @@ function renderTray(t, active) {
     `;
 }
 
-document.addEventListener("DOMContentLoaded", loadAmsDebug);
+async function loadDiagnostics() {
+    const meta = document.getElementById("diagnosticsMeta");
+    const raw = document.getElementById("diagnosticsRaw");
+    const normalized = document.getElementById("diagnosticsNormalized");
+    const dbMatch = document.getElementById("diagnosticsDbMatch");
+
+    if (!meta || !raw || !normalized || !dbMatch) return;
+
+    meta.textContent = "Lade Diagnosedaten ...";
+    raw.textContent = "Lade ...";
+    normalized.textContent = "Lade ...";
+    dbMatch.textContent = "Lade ...";
+
+    try {
+        const res = await fetch("/api/debug/diagnostics");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        meta.textContent = `Stand: ${data.captured_at || "-"} • Geräte: ${data.device_count || 0} • DB-Zuordnungen: ${(data.db_matches || []).length}`;
+        raw.textContent = JSON.stringify(data.devices || [], null, 2);
+        normalized.textContent = JSON.stringify(data.normalized || {}, null, 2);
+        dbMatch.textContent = JSON.stringify(data.db_matches || [], null, 2);
+    } catch (error) {
+        console.error("Fehler beim Laden der Diagnosedaten:", error);
+        meta.textContent = "Diagnosedaten konnten nicht geladen werden.";
+        raw.textContent = String(error);
+        normalized.textContent = String(error);
+        dbMatch.textContent = String(error);
+    }
+}
+
+function openDiagnosticsModal() {
+    const modal = document.getElementById("diagnosticsModal");
+    if (!modal) return;
+    modal.classList.add("show");
+    document.body.style.overflow = "hidden";
+    loadDiagnostics();
+}
+
+function closeDiagnosticsModal() {
+    const modal = document.getElementById("diagnosticsModal");
+    if (!modal) return;
+    modal.classList.remove("show");
+    document.body.style.overflow = "";
+}
+
+function initDiagnosticsModal() {
+    document.getElementById("openDiagnosticsModalBtn")?.addEventListener("click", openDiagnosticsModal);
+    document.getElementById("refreshDiagnosticsBtn")?.addEventListener("click", loadDiagnostics);
+    document.querySelectorAll("[data-close-diagnostics]").forEach((el) => {
+        el.addEventListener("click", closeDiagnosticsModal);
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            closeDiagnosticsModal();
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    loadAmsDebug();
+    initDiagnosticsModal();
+});

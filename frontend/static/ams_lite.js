@@ -77,6 +77,13 @@ function shouldRenderOccupiedLiteTray(tray, matchingSpool) {
     return false;
 }
 
+function isUnassignedWithoutRfidTray(tray, matchingSpool) {
+    if (matchingSpool || !tray) return false;
+    return shouldRenderOccupiedLiteTray(tray, null)
+        && !isValidIdentifier(tray.tag_uid)
+        && !isValidIdentifier(tray.tray_uuid);
+}
+
 // === HELPER FUNKTIONEN ===
 
 /**
@@ -195,15 +202,20 @@ function renderAmsLiteSlots(unit, deviceSerial, spools = [], materials = []) {
     
     // Matching Spool finden
     const devicePrinterId = unit?.printer_id || null;
+    const deviceFeederKey = unit?.feeder_key != null
+        ? String(unit.feeder_key)
+        : (unit?.ams_id != null ? String(unit.ams_id) : null);
+    const trayTagUid = isValidIdentifier(tray?.tag_uid) ? String(tray.tag_uid).trim() : null;
+    const trayUuid = isValidIdentifier(tray?.tray_uuid) ? String(tray.tray_uuid).trim() : null;
     const matchingSpool = spools.find(s => {
         if (devicePrinterId && s.printer_id && String(s.printer_id) !== String(devicePrinterId)) {
             return false;
         }
 
         return (
-            Number(s.ams_slot) === AMS_LITE_SLOT_ID ||
-            (s.rfid_uid && s.rfid_uid === tray.tag_uid) ||
-            (s.tray_uuid && s.tray_uuid === tray.tray_uuid)
+            (Number(s.ams_slot) === AMS_LITE_SLOT_ID && (!deviceFeederKey || String(s.ams_id || '') === deviceFeederKey)) ||
+            (trayTagUid && ((s.rfid_uid && s.rfid_uid === trayTagUid) || (s.tag_uid && s.tag_uid === trayTagUid))) ||
+            (trayUuid && s.tray_uuid && s.tray_uuid === trayUuid)
         );
     });
 
@@ -213,9 +225,12 @@ function renderAmsLiteSlots(unit, deviceSerial, spools = [], materials = []) {
     
     // Material bestimmen
     const materialName = tray.tray_sub_brands || tray.tray_type || 'Unbekannt';
+    const unassignedWithoutRfid = isUnassignedWithoutRfidTray(tray, matchingSpool);
     const material = matchingSpool 
         ? materials.find(m => m.id === matchingSpool.material_id)
-        : { name: materialName, brand: 'Bambu Lab' };
+        : (unassignedWithoutRfid
+            ? { name: 'Ohne RFID', brand: 'Bitte zuweisen' }
+            : { name: materialName, brand: 'Bambu Lab' });
     
     // Farbe extrahieren (Format: RRGGBBAA)
     const trayColor = tray.tray_color || '999999FF';
@@ -240,6 +255,11 @@ function renderAmsLiteSlots(unit, deviceSerial, spools = [], materials = []) {
                 <div class="slot-progress-bar ${isLow ? 'low' : ''}" style="width: ${remainPercent}%;"></div>
             </div>
             <div class="slot-actions">
+                ${unassignedWithoutRfid ? `
+                    <button class="slot-action-btn" disabled title="Bitte auf der AMS-Lite-Seite zuweisen">
+                        <span>Assign</span>
+                    </button>
+                ` : ''}
                 ${matchingSpool ? `
                     <button class="slot-action-btn" onclick="goToSpool('${matchingSpool.id}')" title="Spule \u00f6ffnen">
                         <span>Open</span>

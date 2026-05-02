@@ -200,6 +200,31 @@ def init_db() -> None:
         logger.info("[DB] Datenbank existiert nicht – erstelle leere SQLite-Datei.")
         open(DB_PATH, "a").close()
 
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS non_rfid_slot_binding (
+                    id TEXT PRIMARY KEY,
+                    printer_id TEXT NOT NULL,
+                    feeder_key TEXT NOT NULL,
+                    slot_index INTEGER NOT NULL,
+                    spool_id TEXT NOT NULL,
+                    created_at TEXT,
+                    updated_at TEXT
+                )
+            """))
+            conn.execute(text("""
+                CREATE UNIQUE INDEX IF NOT EXISTS ux_non_rfid_slot_binding_slot
+                ON non_rfid_slot_binding(printer_id, feeder_key, slot_index)
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_non_rfid_slot_binding_spool
+                ON non_rfid_slot_binding(spool_id)
+            """))
+    except Exception:
+        logger.exception("Fehler beim Initialisieren der non_rfid_slot_binding Tabelle")
+        raise
+
     # Visual loading indicator
     print("")
     print("=" * 50)

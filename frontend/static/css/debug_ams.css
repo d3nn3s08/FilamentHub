@@ -3,6 +3,48 @@
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 16px;
 }
+.debug-hero {
+    margin-bottom: 18px;
+}
+.debug-hero__title {
+    margin: 0 0 8px 0;
+    font-size: 2rem;
+}
+.debug-hero__subtitle {
+    margin: 0;
+    color: var(--text-dim);
+}
+.debug-services {
+    margin-bottom: 18px;
+}
+.service-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 18px;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(255, 152, 0, 0.08), rgba(255, 255, 255, 0.02)), var(--panel);
+    box-shadow: var(--shadow);
+}
+.service-card__eyebrow {
+    color: #ffb74d;
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.service-card__title {
+    margin: 0 0 8px 0;
+    font-size: 1.25rem;
+}
+.service-card__text {
+    margin: 0;
+    color: var(--text-dim);
+    max-width: 760px;
+}
 .ams-card {
     background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.03), transparent 40%), var(--panel);
     border: 1px solid var(--border);
@@ -77,4 +119,110 @@
     max-height: 320px;
     overflow: auto;
     font-size: 0.9rem;
+}
+.debug-modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 1200;
+}
+.debug-modal.show {
+    display: block;
+}
+.debug-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 12, 18, 0.72);
+    backdrop-filter: blur(3px);
+}
+.debug-modal__dialog {
+    position: relative;
+    width: min(1400px, calc(100vw - 48px));
+    max-height: calc(100vh - 48px);
+    margin: 24px auto;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.debug-modal__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+}
+.debug-modal__header h2 {
+    margin: 0 0 6px 0;
+}
+.debug-modal__header p {
+    margin: 0;
+    color: var(--text-dim);
+}
+.debug-modal__actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.debug-modal__close {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+.debug-modal__body {
+    padding: 20px 24px 24px 24px;
+    overflow: auto;
+}
+.diagnostics-meta {
+    margin-bottom: 16px;
+    color: var(--text-dim);
+    font-size: 0.95rem;
+}
+.diagnostics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(280px, 1fr));
+    gap: 16px;
+}
+.diagnostics-panel {
+    min-width: 0;
+}
+.diagnostics-panel h3 {
+    margin: 0 0 10px 0;
+    font-size: 1rem;
+}
+.diagnostics-panel pre {
+    margin: 0;
+    padding: 12px;
+    min-height: 420px;
+    max-height: 62vh;
+    overflow: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: #0f141c;
+    color: #e8ecf2;
+    font-size: 0.86rem;
+    line-height: 1.45;
+}
+@media (max-width: 960px) {
+    .service-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .diagnostics-grid {
+        grid-template-columns: 1fr;
+    }
+    .debug-modal__dialog {
+        width: calc(100vw - 24px);
+        max-height: calc(100vh - 24px);
+        margin: 12px auto;
+    }
 }

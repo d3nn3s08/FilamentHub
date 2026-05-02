@@ -13,6 +13,53 @@
     let storageSpools = [];
     let selectedTargetId = null;
 
+    function normalizeIdentifier(value) {
+        if (value == null) return null;
+        const normalized = String(value).trim();
+        if (!normalized || /^0+$/.test(normalized)) return null;
+        return normalized;
+    }
+
+    function normalizeFeederKey(detection) {
+        if (!detection) return null;
+        const rawAmsId = detection.ams_id;
+        if (rawAmsId == null) return null;
+        const amsId = String(rawAmsId).trim();
+        if (!amsId) return null;
+        if (amsId.includes(':')) return amsId;
+        const feederType = String(detection.feeder_type || '').trim().toUpperCase();
+        return feederType ? `${feederType}:${amsId}` : amsId;
+    }
+
+    function getDetectionKey(detection) {
+        if (!detection) return null;
+        const trayUuid = normalizeIdentifier(detection.tray_uuid);
+        if (trayUuid) return `tray:${trayUuid}`;
+        const tagUid = normalizeIdentifier(detection.tag_uid);
+        if (tagUid) return `tag:${tagUid}`;
+
+        const printerId = detection.printer_id ? String(detection.printer_id).trim() : '';
+        const feederKey = normalizeFeederKey(detection);
+        const amsSlot = detection.ams_slot != null ? Number(detection.ams_slot) : null;
+        if (printerId && amsSlot != null && !Number.isNaN(amsSlot)) {
+            return `slot:${printerId}:${feederKey || 'unknown'}:${amsSlot}`;
+        }
+
+        return null;
+    }
+
+    async function parseApiPayload(resp, fallbackMessage) {
+        const text = await resp.text();
+        if (!text) {
+            return { detail: fallbackMessage };
+        }
+        try {
+            return JSON.parse(text);
+        } catch (err) {
+            return { detail: text || fallbackMessage };
+        }
+    }
+
     function createModal() {
         const modal = document.createElement('div');
         modal.id = 'spool-assignment-modal';
@@ -139,7 +186,7 @@
         }
         // Pending-Eintrag entfernen damit der Dialog nicht bei jedem Seitenaufruf erneut erscheint
         if (currentDetection) {
-            removeFromStorage(currentDetection.tray_uuid || currentDetection.tag_uid);
+            removeFromStorage(currentDetection);
         }
         currentDetection = null;
         selectedTargetId = null;
@@ -292,15 +339,15 @@
             }
 
             if (!resp.ok) {
-                const err = await resp.json();
-                throw new Error(err.detail || 'Fehler bei der Zuordnung');
+                const err = await parseApiPayload(resp, 'Fehler bei der Zuordnung');
+                throw new Error(err.detail || err.message || 'Fehler bei der Zuordnung');
             }
 
-            result = await resp.json();
+            result = await parseApiPayload(resp, 'Fehler bei der Zuordnung');
             console.log("[SpoolAssignmentDialog] Zuordnung erfolgreich:", result);
 
             // Remove from localStorage
-            removeFromStorage(detection.tray_uuid || detection.tag_uid);
+            removeFromStorage(detection);
 
             const spoolNum = result.spool?.spool_number ? `#${result.spool.spool_number}` : '';
             const material = result.spool?.material || result.spool?.name || '';
@@ -355,7 +402,7 @@
         try {
             if (detection.spool_id) {
                 // Auto-Spule existiert bereits → einfach schließen (Spule bleibt wie sie ist)
-                removeFromStorage(detection.tray_uuid || detection.tag_uid);
+                removeFromStorage(detection);
                 close();
                 return;
             }
@@ -384,14 +431,14 @@
             });
 
             if (!resp.ok) {
-                const err = await resp.json();
-                throw new Error(err.detail || 'Fehler beim Anlegen');
+                const err = await parseApiPayload(resp, 'Fehler beim Anlegen');
+                throw new Error(err.detail || err.message || 'Fehler beim Anlegen');
             }
 
-            const result = await resp.json();
+            const result = await parseApiPayload(resp, 'Fehler beim Anlegen');
             console.log("[SpoolAssignmentDialog] Neue Spule angelegt:", result);
 
-            removeFromStorage(detection.tray_uuid || detection.tag_uid);
+            removeFromStorage(detection);
             close();
 
             if (typeof window.GlobalNotifications !== 'undefined' &&
@@ -416,12 +463,14 @@
         }
     }
 
-    function removeFromStorage(key) {
+    function removeFromStorage(detectionOrKey) {
+        const key = typeof detectionOrKey === 'string'
+            ? detectionOrKey
+            : getDetectionKey(detectionOrKey);
+        if (!key) return;
         try {
             let pending = JSON.parse(localStorage.getItem('pending_spool_assignments') || '[]');
-            pending = pending.filter(p =>
-                p.tray_uuid !== key && p.tag_uid !== key
-            );
+            pending = pending.filter(p => getDetectionKey(p) !== key);
             localStorage.setItem('pending_spool_assignments', JSON.stringify(pending));
         } catch (err) {
             console.error("[SpoolAssignmentDialog] Failed to update storage:", err);

@@ -565,6 +565,13 @@
         return false;
     }
 
+    function isUnassignedWithoutRfidTray(tray, matchingSpool) {
+        if (matchingSpool || !tray) return false;
+        return shouldRenderOccupiedLiteTray(tray, null)
+            && !isValidIdentifier(tray.tag_uid)
+            && !isValidIdentifier(tray.tray_uuid);
+    }
+
     // Lade Spulen und Materialien (wie normales AMS)
     async function loadSpools() {
         try {
@@ -628,6 +635,9 @@
                     
                     // Get printer_id from device to filter spools by printer
                     const devicePrinterId = device.printer_id || device.device_serial;
+                    const deviceFeederKey = amsUnit.feeder_key != null
+                        ? String(amsUnit.feeder_key)
+                        : (amsUnit.ams_id != null ? String(amsUnit.ams_id) : null);
                     
                     // Konvertiere Trays zu Slots
                     // A1 Mini AMS Lite hat 4 Slots (0-3) wie normales AMS, aber kompakter
@@ -654,8 +664,12 @@
                                     console.log(`[AMS LITE] ✅ Matched spool ${s.id} by tray_uuid: ${s.tray_uuid}`);
                                     return true;
                                 }
-                                // Priority 3: Match by ams_slot (fallback, exclude vt_tray)
-                                if (Number(s.ams_slot) === Number(slotNumber) && Number(s.ams_slot) !== 254) {
+                                // Priority 3: Match by slot fallback only when printer and feeder both match
+                                if (
+                                    Number(s.ams_slot) === Number(slotNumber) &&
+                                    Number(s.ams_slot) !== 254 &&
+                                    (!deviceFeederKey || String(s.ams_id || '') === deviceFeederKey)
+                                ) {
                                     console.log(`[AMS LITE] ✅ Matched spool ${s.id} by ams_slot: ${s.ams_slot}`);
                                     return true;
                                 }
@@ -691,9 +705,13 @@
                                 percentValue = full > 0 ? Math.round((remaining / full) * 100) : 0;
                             }
                             
-                            // Fallback zu Tray-Daten wenn keine Spule gefunden
-                            const materialName = material ? material.name : (tray.tray_sub_brands || tray.tray_type || 'Unbekannt');
-                            const materialBrand = material ? material.brand : '';
+                            const unassignedWithoutRfid = isUnassignedWithoutRfidTray(tray, matchingSpool);
+                            const materialName = matchingSpool
+                                ? (material ? material.name : (tray.tray_sub_brands || tray.tray_type || 'Unbekannt'))
+                                : (unassignedWithoutRfid ? 'Ohne RFID' : (tray.tray_sub_brands || tray.tray_type || 'Unbekannt'));
+                            const materialBrand = matchingSpool
+                                ? (material ? material.brand : '')
+                                : (unassignedWithoutRfid ? 'Bitte zuweisen' : '');
                             
                             slots[index] = {
                                 id: index + 1,
@@ -708,6 +726,7 @@
                                 spoolNumber: matchingSpool ? matchingSpool.spool_number : null,
                                 spoolId: matchingSpool ? matchingSpool.id : null,
                                 occupied: true,
+                                unassignedWithoutRfid: unassignedWithoutRfid,
                                 printerId: device.printer_id || null,
                                 printerName: amsUnit.printer_name || null,
                                 amsId: amsUnit.ams_id,
@@ -726,6 +745,12 @@
                     const maxActiveIndex = Math.max(0, slots.length - 1);
                     if (activeSlot > maxActiveIndex) {
                         activeSlot = 0;
+                    }
+                    if (!slots[activeSlot] || !slots[activeSlot].occupied) {
+                        const firstOccupiedIndex = slots.findIndex(slot => slot && slot.occupied);
+                        if (firstOccupiedIndex >= 0) {
+                            activeSlot = firstOccupiedIndex;
+                        }
                     }
                 }
             }
@@ -784,6 +809,7 @@
                 card.innerHTML = `
                     ${i === activeSlot ? '<div class="slot-checkmark">✓</div>' : ''}
                     <div class="slot-number">Slot ${getDisplaySlotNumber(slot.slotId, i)}${slot.spoolNumber != null ? ` · <span style="opacity:0.7;font-size:0.85em;">#${slot.spoolNumber}</span>` : ''}</div>
+                    ${slot.unassignedWithoutRfid ? '<div style="color:#ffb74d;font-size:0.78rem;font-weight:700;margin-top:6px;">Ohne RFID</div>' : ''}
                     <div class="slot-bar-bg">
                         <div class="slot-bar-fill" style="width: ${slot.percent}%; background: linear-gradient(90deg, ${barColor}, ${barColor}dd);"></div>
                     </div>
@@ -833,7 +859,9 @@
         }
 
         document.getElementById('activeSlotTitle').textContent = `Slot ${getDisplaySlotNumber(slot.slotId, activeSlot)}${slot.spoolNumber != null ? ` · Spule #${slot.spoolNumber}` : ''}`;
-        document.getElementById('activeSlotDetails').textContent = `${slot.type} • ${Math.round(slot.weight)}g`;
+        document.getElementById('activeSlotDetails').textContent = slot.unassignedWithoutRfid
+            ? 'Ohne RFID • Bitte zuweisen'
+            : `${slot.type} • ${Math.round(slot.weight)}g`;
 
         const percentEl = document.getElementById('activeSlotPercent');
         percentEl.textContent = `${Math.round(slot.percent)}%`;

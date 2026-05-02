@@ -17,6 +17,7 @@ from app.models.job import Job, JobSpoolUsage
 from app.services.spool_number_service import assign_spool_number
 from app.services.ams_normalizer import device_has_real_ams_from_live_state
 from app.services.filament_weights import compute_fill_state, compute_spool_remaining
+from app.services.non_rfid_slot_bindings import clear_non_rfid_bindings_for_spool
 
 
 class LoadExternalRequest(BaseModel):
@@ -383,6 +384,7 @@ def delete_spool(spool_id: str, session: Session = Depends(get_session)):
             clear_broadcast_cooldown(tray_uuid)
         except Exception:
             pass
+    clear_non_rfid_bindings_for_spool(session, spool.id)
 
     # FK-Abhängigkeiten bereinigen bevor Spule gelöscht wird
     try:
@@ -484,6 +486,7 @@ def unassign_spool(spool_id: str, session: Session = Depends(get_session)):
     # Merke letzten Slot
     if spool.ams_slot is not None:
         spool.last_slot = spool.ams_slot
+    clear_non_rfid_bindings_for_spool(session, spool.id)
 
     # Entferne AMS-Zuweisung
     spool.printer_id = None
