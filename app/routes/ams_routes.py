@@ -121,7 +121,13 @@ async def list_ams(session: Session = Depends(get_session)) -> Any:
     live = live_state_module.get_all_live_state()
     printer_name_map = _get_printer_name_map(session)
     printer_model_map = _get_printer_model_map(session)
-    return normalize_live_state(live, printer_name_by_serial=printer_name_map, printer_model_by_serial=printer_model_map)
+    printer_id_map = _get_printer_id_map(session)
+    return normalize_live_state(
+        live,
+        printer_name_by_serial=printer_name_map,
+        printer_model_by_serial=printer_model_map,
+        printer_id_by_serial=printer_id_map,
+    )
 
 
 @router.get("/regular")
@@ -144,8 +150,11 @@ async def list_regular_ams(session: Session = Depends(get_session)) -> Any:
         filtered_devices = []
         for device in normalized["devices"]:
             if "ams_units" in device:
-                # Keep only AMS units that are NOT lite
-                regular_units = [u for u in device["ams_units"] if not u.get("is_ams_lite", False)]
+                # Keep only true regular AMS feeders, exclude AMS Lite and external trays
+                regular_units = [
+                    u for u in device["ams_units"]
+                    if str(u.get("feeder_type") or "").upper() == "AMS_FULL"
+                ]
                 if regular_units:
                     device_copy = device.copy()
                     device_copy["ams_units"] = regular_units
@@ -256,8 +265,11 @@ async def get_ams_overview(session: Session = Depends(get_session)) -> Any:
         filtered_devices = []
         for device in devices:
             if "ams_units" in device:
-                # Keep only AMS units that are NOT lite
-                regular_units = [u for u in device["ams_units"] if not u.get("is_ams_lite", False)]
+                # Keep only true regular AMS feeders, exclude AMS Lite and external trays
+                regular_units = [
+                    u for u in device["ams_units"]
+                    if str(u.get("feeder_type") or "").upper() == "AMS_FULL"
+                ]
                 if regular_units:
                     device_copy = device.copy()
                     device_copy["ams_units"] = regular_units

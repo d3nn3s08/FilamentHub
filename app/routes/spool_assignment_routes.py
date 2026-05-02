@@ -22,6 +22,8 @@ from app.models.spool import Spool
 from app.models.material import Material
 from app.models.printer import Printer
 from app.services.spool_number_service import assign_spool_number
+from app.services.ams_weight_manager import AMSType
+from app.services.ams_identity import feeder_key, AMS_TYPE_LITE
 
 logger = logging.getLogger("services")
 
@@ -88,6 +90,7 @@ class AssignFromAmsRequest(BaseModel):
     tag_uid: str | None = None
     ams_slot: int | None = None
     ams_id: str | None = None
+    feeder_type: str | None = None
     printer_id: str | None = None
     remain_percent: float | None = None
     tray_type: str | None = None
@@ -103,6 +106,7 @@ class CreateFromAmsRequest(BaseModel):
     tag_uid: str | None = None
     ams_slot: int
     ams_id: str | None = None
+    feeder_type: str | None = None
     printer_id: str | None = None
     remain_percent: float | None = None
     tray_type: str | None = None
@@ -378,9 +382,19 @@ def assign_spool_from_ams(
         spool.ams_slot = req.ams_slot
         spool.last_slot = req.ams_slot
     if req.ams_id is not None:
-        spool.ams_id = str(req.ams_id)
+        spool.ams_id = feeder_key(req.feeder_type, req.ams_id)
     if req.printer_id:
         spool.printer_id = req.printer_id
+        normalized_type = str(req.feeder_type or "").upper()
+        if normalized_type:
+            spool.last_seen_in_ams_type = AMSType.AMS_LITE.value if normalized_type == AMS_TYPE_LITE else AMSType.AMS_FULL.value
+        else:
+            printer = session.get(Printer, req.printer_id)
+            if printer and printer.model:
+                model = str(printer.model).upper().replace(" ", "")
+                spool.last_seen_in_ams_type = (
+                    AMSType.AMS_LITE.value if model in ("A1", "A1MINI") else AMSType.AMS_FULL.value
+                )
     if req.remain_percent is not None:
         spool.remain_percent = req.remain_percent
     if req.tray_type and not spool.tray_type:
@@ -399,6 +413,7 @@ def assign_spool_from_ams(
     spool.is_open = True
     spool.location = None
     spool.last_seen = now
+    spool.last_seen_timestamp = now
     spool.updated_at = now
 
     session.add(spool)
@@ -520,7 +535,7 @@ def create_spool_from_ams(
     spool_data = {
         "material_id": mat_id,
         "printer_id": req.printer_id,
-        "ams_id": str(req.ams_id) if req.ams_id else None,
+        "ams_id": feeder_key(req.feeder_type, req.ams_id) if req.ams_id else None,
         "ams_slot": req.ams_slot,
         "last_slot": req.ams_slot,
         "tag_uid": req.tag_uid,

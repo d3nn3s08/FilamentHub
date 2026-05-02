@@ -28,6 +28,55 @@ let amsLiteDevices = [];
 const AMS_LITE_SLOT_ID = 254;  // Externe Spule bei A1/A1 Mini
 const AMS_LITE_MAX_SLOTS = 4;  // AMS Lite hat nur 1 Slot
 
+function isValidIdentifier(value) {
+    if (value == null) return false;
+    const normalized = String(value).trim();
+    if (!normalized) return false;
+    return !/^0+$/.test(normalized);
+}
+
+function shouldRenderOccupiedLiteTray(tray, matchingSpool) {
+    if (matchingSpool) return true;
+    if (!tray) return false;
+
+    if (isValidIdentifier(tray.tag_uid) || isValidIdentifier(tray.tray_uuid)) {
+        return true;
+    }
+
+    const trayType = typeof tray.tray_type === 'string' ? tray.tray_type.trim() : '';
+    const traySubBrands = typeof tray.tray_sub_brands === 'string' ? tray.tray_sub_brands.trim() : '';
+    if (trayType || traySubBrands) {
+        return true;
+    }
+
+    const trayColor = typeof tray.tray_color === 'string' ? tray.tray_color.trim().toUpperCase() : '';
+    if (trayColor && trayColor !== '00000000' && trayColor !== 'FFFFFF00') {
+        return true;
+    }
+
+    const totalLen = Number(tray.total_len);
+    if (Number.isFinite(totalLen) && totalLen > 0) {
+        return true;
+    }
+
+    const remainingGrams = Number(tray.remaining_grams);
+    if (Number.isFinite(remainingGrams) && remainingGrams > 0) {
+        return true;
+    }
+
+    const trayWeight = Number(tray.tray_weight);
+    if (Number.isFinite(trayWeight) && trayWeight > 0) {
+        return true;
+    }
+
+    const remainPercent = Number(tray.remain_percent);
+    if (Number.isFinite(remainPercent) && remainPercent > 0) {
+        return true;
+    }
+
+    return false;
+}
+
 // === HELPER FUNKTIONEN ===
 
 /**
@@ -145,11 +194,22 @@ function renderAmsLiteSlots(unit, deviceSerial, spools = [], materials = []) {
     }
     
     // Matching Spool finden
-    const matchingSpool = spools.find(s => 
-        s.ams_slot === AMS_LITE_SLOT_ID || 
-        (s.rfid_uid && s.rfid_uid === tray.tag_uid) ||
-        (s.tray_uuid && s.tray_uuid === tray.tray_uuid)
-    );
+    const devicePrinterId = unit?.printer_id || null;
+    const matchingSpool = spools.find(s => {
+        if (devicePrinterId && s.printer_id && String(s.printer_id) !== String(devicePrinterId)) {
+            return false;
+        }
+
+        return (
+            Number(s.ams_slot) === AMS_LITE_SLOT_ID ||
+            (s.rfid_uid && s.rfid_uid === tray.tag_uid) ||
+            (s.tray_uuid && s.tray_uuid === tray.tray_uuid)
+        );
+    });
+
+    if (!shouldRenderOccupiedLiteTray(tray, matchingSpool)) {
+        return renderEmptyAmsLiteSlot(unit.ams_id);
+    }
     
     // Material bestimmen
     const materialName = tray.tray_sub_brands || tray.tray_type || 'Unbekannt';

@@ -2,6 +2,7 @@ import logging
 from typing import Any, Dict, List, Optional, Mapping
 
 from app.services.ams_parser import AMSUnit, Tray, parse_ams, is_ams_lite_firmware, parse_vt_tray
+from app.services.ams_identity import AMS_TYPE_EXTERNAL, AMS_TYPE_LITE
 
 logger = logging.getLogger("services")
 
@@ -218,26 +219,23 @@ def _normalize_tray(tray: Tray) -> Dict[str, Optional[Any]]:
 
 def _normalize_ams_unit(ams_unit: AMSUnit, printer_serial: str, printer_name: str, printer_model: Optional[str] = None, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     trays = ams_unit.get("trays") or []
-    # AMS Lite detection: Check firmware name first, then fallback to printer model
-    is_ams_lite = False
-    
-    # Method 1: Check mc_for_ams_firmware.firmware[0].name
-    if payload:
-        is_ams_lite = is_ams_lite_firmware(payload)
-    
-    # Method 2: Fallback to printer model (A1MINI has AMS Lite)
-    if not is_ams_lite and printer_model:
-        is_ams_lite = printer_model.upper() in ("A1MINI", "A1 MINI")
+    feeder_type = str(ams_unit.get("feeder_type") or "")
+    feeder_id = ams_unit.get("feeder_id", ams_unit.get("ams_id"))
+    is_ams_lite = feeder_type == AMS_TYPE_LITE
     
     return {
         "printer_serial": printer_serial,
         "printer_name": printer_name,
         "ams_id": ams_unit.get("ams_id"),
+        "feeder_id": feeder_id,
+        "feeder_type": feeder_type,
+        "feeder_key": ams_unit.get("feeder_key"),
         "temp": ams_unit.get("temp"),
         "humidity": ams_unit.get("humidity"),
         "active_tray": ams_unit.get("active_tray"),
         "trays": [_normalize_tray(t) for t in trays],
         "is_ams_lite": is_ams_lite,
+        "is_external_spool": feeder_type == AMS_TYPE_EXTERNAL,
     }
 
 
@@ -269,22 +267,11 @@ def normalize_device(device_entry: Dict[str, Any], printer_name: Optional[str] =
         logger.exception("parse_vt_tray failed for device %s", device_serial)
 
     # Bestimme ob dieses Gerät ein AMS Lite Gerät ist (A1/A1 Mini)
-    is_ams_lite_device = printer_model and printer_model.upper() in ("A1MINI", "A1 MINI", "A1")
-    
     normalized_ams = []
     for u in ams_units:
         try:
-            is_vt_tray = u.get("ams_id") == 254
             normalized = _normalize_ams_unit(u, device_serial, printer_name_resolved, printer_model, payload)
             
-            # vt_tray ist nur AMS Lite wenn es ein A1/A1 Mini ist
-            # Bei X1C/P1P ist vt_tray ein externer Spool-Halter, KEIN AMS Lite
-            if is_vt_tray and is_ams_lite_device:
-                normalized["is_ams_lite"] = True
-            elif is_vt_tray:
-                # X1C/P1P: vt_tray als "external_spool" markieren, nicht als AMS Lite
-                normalized["is_ams_lite"] = False
-                normalized["is_external_spool"] = True  # Neues Flag für externen Spool-Halter
             
             normalized_ams.append(normalized)
         except Exception:

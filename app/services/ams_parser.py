@@ -1,5 +1,6 @@
 """Helpers to extract AMS data from Bambu report payloads."""
 from typing import Any, Dict, List, Optional, TypedDict
+from app.services.ams_identity import feeder_key, feeder_type_for_ams_unit, AMS_TYPE_EXTERNAL
 
 __all__ = ["Tray", "AMSUnit", "parse_ams", "parse_active_tray"]
 
@@ -23,6 +24,9 @@ class Tray(TypedDict, total=False):
 
 class AMSUnit(TypedDict, total=False):
     ams_id: int
+    feeder_id: int
+    feeder_type: str
+    feeder_key: str
     active_tray: Optional[int]
     trays: List[Tray]
     humidity: Optional[float]
@@ -149,9 +153,14 @@ def parse_ams(report_payload: Dict[str, Any]) -> List[AMSUnit]:
                 if isinstance(entry, dict):
                     trays.append(_parse_tray(entry))
 
+        parsed_ams_id = _first_defined(_to_int(ams.get("ams_id")), _to_int(ams.get("id")), 0)
+        parsed_feeder_type = feeder_type_for_ams_unit(parsed_ams_id, report_payload)
         result.append(
             AMSUnit(
-                ams_id=_first_defined(_to_int(ams.get("ams_id")), _to_int(ams.get("id")), 0),
+                ams_id=parsed_ams_id,
+                feeder_id=parsed_ams_id,
+                feeder_type=parsed_feeder_type,
+                feeder_key=feeder_key(parsed_feeder_type, parsed_ams_id),
                 active_tray=_first_defined(
                     _to_int(ams.get("active_tray")),
                     _to_int(ams.get("active_slot")),
@@ -186,6 +195,9 @@ def parse_vt_tray(report_payload: Dict[str, Any]) -> Optional[AMSUnit]:
     
     return AMSUnit(
         ams_id=254,  # Virtual tray uses ID 254
+        feeder_id=254,
+        feeder_type=AMS_TYPE_EXTERNAL,
+        feeder_key=feeder_key(AMS_TYPE_EXTERNAL, 254),
         active_tray=254,
         trays=[tray],
         humidity=None,

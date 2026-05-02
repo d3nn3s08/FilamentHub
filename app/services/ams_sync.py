@@ -24,6 +24,7 @@ from app.services.ams_weight_manager import (
     AMSType,
 )
 from app.services.ams_normalizer import has_ams_lite_from_payload
+from app.services.ams_identity import feeder_key, feeder_type_for_ams_unit, AMS_TYPE_LITE
 import asyncio
 
 logger = logging.getLogger("services")
@@ -442,7 +443,13 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
 
         for ams in ams_units:
             # === EXTRACT AMS ID (required for matching) ===
-            ams_id = _to_int(ams.get("id")) or 0
+            ams_id = _to_int(ams.get("feeder_id"))
+            if ams_id is None:
+                ams_id = _to_int(ams.get("ams_id"))
+            if ams_id is None:
+                ams_id = _to_int(ams.get("id")) or 0
+            feeder_type = str(ams.get("feeder_type") or feeder_type_for_ams_unit(ams_id)).upper()
+            feeder_identity = feeder_key(feeder_type, ams_id)
             
             # === NOTIFICATION: AMS Luftfeuchtigkeit prüfen ===
             humidity = ams.get("humidity")
@@ -507,7 +514,7 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
                     unload_stmt = select(Spool).where(
                         Spool.printer_id == printer_id,
                         Spool.ams_slot == ams_slot,
-                        Spool.ams_id == str(ams_id)
+                        Spool.ams_id == feeder_identity
                     )
                     unloaded_spool = session.exec(unload_stmt).first()
                     if unloaded_spool:
@@ -547,7 +554,7 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
                     stmt = stmt.where(
                         Spool.ams_slot == ams_slot,
                         Spool.printer_id == printer_id,
-                        Spool.ams_id == str(ams_id)
+                        Spool.ams_id == feeder_identity
                     )
                 else:
                     # Kein valides Matching möglich
@@ -633,7 +640,7 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
                     spool_data = {
                         "material_id": mat_id,
                         "printer_id": printer_id,
-                        "ams_id": str(ams_id),  # Store AMS unit ID for multi-AMS support
+                        "ams_id": feeder_identity,
                         "ams_slot": ams_slot,
                         "last_slot": ams_slot,
                         "tag_uid": tag_uid,
@@ -705,7 +712,8 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
                             "tray_sub_brands": tray_sub_brands,
                             "tray_color": tray_color,
                             "ams_slot": ams_slot,
-                            "ams_id": str(ams_id) if ams_id is not None else None,
+                            "ams_id": feeder_identity if ams_id is not None else None,
+                            "feeder_type": feeder_type,
                             "printer_id": printer_id,
                             "printer_name": printer_name,
                             "remain_percent": remain_percent,
@@ -764,7 +772,7 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
                     logger.info(f"[AMS SYNC] Spule {spool.id} wieder im AMS nach Offline-Release")
                     spool.ams_source = None
 
-                spool.ams_id = str(ams_id)  # Always update AMS ID
+                spool.ams_id = feeder_identity
                 spool.ams_slot = ams_slot
                 spool.last_slot = ams_slot
 
@@ -902,9 +910,7 @@ def _sync_ams_slots_locked(ams_units: List[Dict[str, Any]], printer_id: Optional
                     weight_conflict_detected = False
 
                     if weight_current is not None and spool.tray_uuid:
-                        # Determine AMS type from printer model
-                        printer = session.get(Printer, printer_id) if printer_id else None
-                        ams_type = AMSType.AMS_LITE if _is_ams_lite_printer(printer) else AMSType.AMS_FULL
+                        ams_type = AMSType.AMS_LITE if feeder_type == AMS_TYPE_LITE else AMSType.AMS_FULL
 
                         # Prepare MQTT data for weight manager
                         mqtt_data_for_manager = {

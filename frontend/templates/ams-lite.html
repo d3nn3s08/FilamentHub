@@ -153,6 +153,35 @@
         justify-content: space-between;
     }
 
+    .active-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+        flex-wrap: wrap;
+    }
+
+    .active-action-btn {
+        border: 1px solid rgba(255, 152, 0, 0.28);
+        background: rgba(255, 152, 0, 0.14);
+        color: #ffb74d;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .active-action-btn:hover:not(:disabled) {
+        background: rgba(255, 152, 0, 0.22);
+        transform: translateY(-1px);
+    }
+
+    .active-action-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+
     .active-info h3 {
         font-size: 22px;
         font-weight: 700;
@@ -442,6 +471,14 @@
                 </div>
                 <div class="active-percent" id="activeSlotPercent">61%</div>
             </div>
+            <div class="active-actions">
+                <button id="activeAssignBtn" class="active-action-btn" type="button" onclick="openAssignForActiveSlot()">
+                    Spule zuweisen
+                </button>
+                <button id="activeOpenBtn" class="active-action-btn" type="button" onclick="openSpoolForActiveSlot()">
+                    Spule öffnen
+                </button>
+            </div>
         </div>
 
         <!-- Slots Grid -->
@@ -479,6 +516,55 @@
         return Number.isFinite(numericSlotId) ? numericSlotId + 1 : fallbackIndex + 1;
     }
 
+    function isValidIdentifier(value) {
+        if (value == null) return false;
+        const normalized = String(value).trim();
+        if (!normalized) return false;
+        return !/^0+$/.test(normalized);
+    }
+
+    function shouldRenderOccupiedLiteTray(tray, matchingSpool) {
+        if (matchingSpool) return true;
+        if (!tray) return false;
+
+        if (isValidIdentifier(tray.tag_uid) || isValidIdentifier(tray.tray_uuid)) {
+            return true;
+        }
+
+        const trayType = typeof tray.tray_type === 'string' ? tray.tray_type.trim() : '';
+        const traySubBrands = typeof tray.tray_sub_brands === 'string' ? tray.tray_sub_brands.trim() : '';
+        if (trayType || traySubBrands) {
+            return true;
+        }
+
+        const trayColor = typeof tray.tray_color === 'string' ? tray.tray_color.trim().toUpperCase() : '';
+        if (trayColor && trayColor !== '00000000' && trayColor !== 'FFFFFF00') {
+            return true;
+        }
+
+        const totalLen = Number(tray.total_len);
+        if (Number.isFinite(totalLen) && totalLen > 0) {
+            return true;
+        }
+
+        const remainingGrams = Number(tray.remaining_grams);
+        if (Number.isFinite(remainingGrams) && remainingGrams > 0) {
+            return true;
+        }
+
+        const trayWeight = Number(tray.tray_weight);
+        if (Number.isFinite(trayWeight) && trayWeight > 0) {
+            return true;
+        }
+
+        const remainPercent = Number(tray.remain_percent);
+        if (Number.isFinite(remainPercent) && remainPercent > 0) {
+            return true;
+        }
+
+        return false;
+    }
+
     // Lade Spulen und Materialien (wie normales AMS)
     async function loadSpools() {
         try {
@@ -513,19 +599,32 @@
             
             // Initialisiere 4 leere Slots
             slots = [
-                { id: 1, slotId: 1, type: '', weight: 0, percent: 0, color: '#999999' },
-                { id: 2, slotId: 2, type: '', weight: 0, percent: 0, color: '#999999' },
-                { id: 3, slotId: 3, type: '', weight: 0, percent: 0, color: '#999999' },
-                { id: 4, slotId: 4, type: '', weight: 0, percent: 0, color: '#999999' }
+                { id: 1, slotId: 0, type: '', weight: 0, percent: 0, color: '#999999', occupied: false, spoolId: null },
+                { id: 2, slotId: 1, type: '', weight: 0, percent: 0, color: '#999999', occupied: false, spoolId: null },
+                { id: 3, slotId: 2, type: '', weight: 0, percent: 0, color: '#999999', occupied: false, spoolId: null },
+                { id: 4, slotId: 3, type: '', weight: 0, percent: 0, color: '#999999', occupied: false, spoolId: null }
             ];
             
             if (data.devices && data.devices.length > 0) {
                 const device = data.devices[0];
                 amsData = device;
                 
-                // Extrahiere Slots von erstem AMS Lite Unit
+                // Bevorzuge den AMS-Lite-Unit mit echten Tray-Daten.
                 if (device.ams_units && device.ams_units.length > 0) {
-                    const amsUnit = device.ams_units[0];
+                    const amsUnit = device.ams_units.find(unit =>
+                        Array.isArray(unit.trays) &&
+                        unit.trays.some(tray =>
+                            tray &&
+                            (
+                                (tray.tag_uid && tray.tag_uid !== "0000000000000000") ||
+                                (tray.tray_uuid && tray.tray_uuid !== "00000000000000000000000000000000") ||
+                                tray.tray_type ||
+                                tray.tray_sub_brands ||
+                                tray.remaining_grams != null ||
+                                tray.remain_percent != null
+                            )
+                        )
+                    ) || device.ams_units[0];
                     
                     // Get printer_id from device to filter spools by printer
                     const devicePrinterId = device.printer_id || device.device_serial;
@@ -556,7 +655,7 @@
                                     return true;
                                 }
                                 // Priority 3: Match by ams_slot (fallback, exclude vt_tray)
-                                if (s.ams_slot === slotNumber && s.ams_slot !== 254) {
+                                if (Number(s.ams_slot) === Number(slotNumber) && Number(s.ams_slot) !== 254) {
                                     console.log(`[AMS LITE] ✅ Matched spool ${s.id} by ams_slot: ${s.ams_slot}`);
                                     return true;
                                 }
@@ -567,6 +666,11 @@
                                 console.log(`[AMS LITE] Slot ${slotNumber} matched spool:`, matchingSpool);
                             } else {
                                 console.log(`[AMS LITE] Slot ${slotNumber} NO MATCH - using MQTT data`);
+                            }
+
+                            if (!shouldRenderOccupiedLiteTray(tray, matchingSpool)) {
+                                console.log(`[AMS LITE] Slot ${slotNumber} treated as empty ghost tray`);
+                                return;
                             }
                             
                             const material = matchingSpool
@@ -601,12 +705,28 @@
                                 color: tray.tray_color ? '#' + tray.tray_color.substring(0, 6) : '#999999',
                                 uuid: tray.tray_uuid,
                                 tagUid: tray.tag_uid,
-                                spoolNumber: matchingSpool ? matchingSpool.spool_number : null
+                                spoolNumber: matchingSpool ? matchingSpool.spool_number : null,
+                                spoolId: matchingSpool ? matchingSpool.id : null,
+                                occupied: true,
+                                printerId: device.printer_id || null,
+                                printerName: amsUnit.printer_name || null,
+                                amsId: amsUnit.ams_id,
+                                feederType: amsUnit.feeder_type || null,
+                                trayType: tray.tray_type || null,
+                                traySubBrands: tray.tray_sub_brands || null,
+                                trayColorRaw: tray.tray_color || null,
+                                weightCurrent: matchingSpool ? (matchingSpool.remaining_weight_g || matchingSpool.weight_current || null) : weightGrams,
+                                weightFull: matchingSpool ? (matchingSpool.weight_full || null) : totalWeight,
+                                weightEmpty: matchingSpool ? (matchingSpool.weight_empty || null) : null,
+                                remainPercentRaw: tray.remain_percent
                             };
                         }
                     });
                     
-                    activeSlot = 0;
+                    const maxActiveIndex = Math.max(0, slots.length - 1);
+                    if (activeSlot > maxActiveIndex) {
+                        activeSlot = 0;
+                    }
                 }
             }
             
@@ -652,7 +772,7 @@
             const card = document.createElement('div');
             card.className = 'slot-card';
             
-            if (slot) {
+            if (slot && slot.occupied) {
                 // Slot mit Daten
                 if (i === activeSlot) {
                     card.classList.add('active');
@@ -697,6 +817,21 @@
         const slot = slots[activeSlot];
         if (!slot) return;
 
+        const assignBtn = document.getElementById('activeAssignBtn');
+        const openBtn = document.getElementById('activeOpenBtn');
+
+        if (!slot.occupied) {
+            document.getElementById('activeSlotTitle').textContent = `Slot ${getDisplaySlotNumber(slot.slotId, activeSlot)}`;
+            document.getElementById('activeSlotDetails').textContent = 'Leer';
+            const emptyPercentEl = document.getElementById('activeSlotPercent');
+            emptyPercentEl.textContent = '0%';
+            emptyPercentEl.style.color = '#7a8199';
+            emptyPercentEl.style.textShadow = 'none';
+            assignBtn.disabled = true;
+            openBtn.disabled = true;
+            return;
+        }
+
         document.getElementById('activeSlotTitle').textContent = `Slot ${getDisplaySlotNumber(slot.slotId, activeSlot)}${slot.spoolNumber != null ? ` · Spule #${slot.spoolNumber}` : ''}`;
         document.getElementById('activeSlotDetails').textContent = `${slot.type} • ${Math.round(slot.weight)}g`;
 
@@ -704,7 +839,45 @@
         percentEl.textContent = `${Math.round(slot.percent)}%`;
         percentEl.style.color = getBarColor(slot.percent);
         percentEl.style.textShadow = `0 0 20px ${getGlowColor(slot.percent)}`;
+        assignBtn.disabled = false;
+        openBtn.disabled = !slot.spoolId;
     }
+
+    function openAssignForActiveSlot() {
+        const slot = slots[activeSlot];
+        if (!slot || !slot.occupied) return;
+        if (typeof window.SpoolAssignmentDialog === 'undefined' || typeof window.SpoolAssignmentDialog.open !== 'function') {
+            console.warn('[AMS LITE] SpoolAssignmentDialog not available');
+            return;
+        }
+
+        window.SpoolAssignmentDialog.open({
+            spool_id: null,
+            tag_uid: slot.tagUid || null,
+            tray_uuid: slot.uuid || null,
+            tray_type: slot.trayType || null,
+            tray_sub_brands: slot.traySubBrands || null,
+            tray_color: slot.trayColorRaw || null,
+            ams_slot: slot.slotId,
+            ams_id: slot.amsId != null ? String(slot.amsId) : null,
+            feeder_type: slot.feederType || null,
+            printer_id: slot.printerId || null,
+            printer_name: slot.printerName || null,
+            remain_percent: slot.remainPercentRaw != null ? slot.remainPercentRaw : slot.percent,
+            weight_current: slot.weightCurrent ?? null,
+            weight_full: slot.weightFull ?? null,
+            weight_empty: slot.weightEmpty ?? null,
+        });
+    }
+
+    function openSpoolForActiveSlot() {
+        const slot = slots[activeSlot];
+        if (!slot || !slot.spoolId) return;
+        window.location.href = `/spools?highlight=${slot.spoolId}`;
+    }
+
+    window.openAssignForActiveSlot = openAssignForActiveSlot;
+    window.openSpoolForActiveSlot = openSpoolForActiveSlot;
 
     // Auto-Refresh alle 5 Sekunden
     setInterval(loadAmsLiteData, 5000);

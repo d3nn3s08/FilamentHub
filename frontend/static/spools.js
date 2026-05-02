@@ -957,6 +957,7 @@ async function assignNewSpoolToAms(spoolId, detection) {
             tag_uid: detection.tag_uid || null,
             ams_slot: detection.ams_slot,
             ams_id: detection.ams_id || null,
+            feeder_type: detection.feeder_type || null,
             printer_id: detection.printer_id || null,
             remain_percent: detection.remain_percent,
             tray_type: detection.tray_type || null,

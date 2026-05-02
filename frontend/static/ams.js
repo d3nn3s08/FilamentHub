@@ -238,18 +238,22 @@ async function loadLiveState() {
 
 function findMatchingSpool(dev, amsUnit, tray, slotIndex, isAmsLite) {
     const printerId = dev?.printer_id || null;
-    const amsId = amsUnit?.ams_id != null ? String(amsUnit.ams_id) : null;
+    const feederKey = amsUnit?.feeder_key != null
+        ? String(amsUnit.feeder_key)
+        : (amsUnit?.ams_id != null ? String(amsUnit.ams_id) : null);
     const trayTagUid = tray?.tag_uid || null;
     const trayUuid = tray?.tray_uuid || null;
     const slotForDb = isAmsLite ? 254 : slotIndex;
+    const expectedAmsType = isAmsLite ? 'AMS_LITE' : 'AMS_FULL';
 
     return spools.find((s) => {
         if (trayTagUid && s.rfid_uid && s.rfid_uid === trayTagUid) return true;
         if (trayUuid && s.tray_uuid && s.tray_uuid === trayUuid) return true;
 
         if (s.ams_slot == null || Number(s.ams_slot) !== Number(slotForDb)) return false;
-        if (printerId && s.printer_id && String(s.printer_id) !== String(printerId)) return false;
-        if (amsId && s.ams_id != null && String(s.ams_id) !== amsId) return false;
+        if (printerId && String(s.printer_id || '') !== String(printerId)) return false;
+        if (feederKey && String(s.ams_id || '') !== feederKey) return false;
+        if (s.last_seen_in_ams_type && s.last_seen_in_ams_type !== expectedAmsType) return false;
         return true;
     });
 }
