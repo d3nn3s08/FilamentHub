@@ -19,6 +19,11 @@ services:
       APP_VERSION: "Stable v1.6.5 · FilamentHub"
       DESIGN_VERSION: "Design 1.0"
     volumes:
+      # Host-Pfade MUESSEN zu deinem NAS/Host passen.
+      # QNAP / Container Station Beispiel:
+      # - /share/CACHEDEV1_DATA/appdata/filamenthub/data:/app/data
+      # - /share/CACHEDEV1_DATA/appdata/filamenthub/logs:/app/logs
+      # Unraid / klassisches Linux Beispiel:
       - /mnt/user/appdata/filamenthub/data:/app/data
       - /mnt/user/appdata/filamenthub/logs:/app/logs
     healthcheck:

@@ -568,6 +568,18 @@ class GcodeFTPService:
         # Default erhöhen auf 120s (überschreibbar beim Instanziieren)
         self.timeout = 120 if timeout == 60 else timeout
 
+    @staticmethod
+    def _looks_like_metadata_plate_reference(value: Optional[str]) -> bool:
+        if not value:
+            return False
+        normalized = str(value).replace("\\", "/").strip().lower()
+        basename = normalized.rsplit("/", 1)[-1]
+        return (
+            normalized.startswith("/data/metadata/plate_")
+            or normalized.startswith("metadata/plate_")
+            or bool(re.fullmatch(r"plate_\d+\.(gcode|3mf)", basename))
+        )
+
     def download_gcode_weight(
         self,
         printer_ip: str,
@@ -641,6 +653,8 @@ class GcodeFTPService:
             # Haupt-Strategie: Nutze gcode_filename direkt vom MQTT
             downloaded_file = None
 
+            metadata_reference_only = self._looks_like_metadata_plate_reference(gcode_filename)
+
             if gcode_filename:
                 filename_base = gcode_filename.replace(".gcode", "").replace(".3mf", "")
                 candidates = [
@@ -682,6 +696,13 @@ class GcodeFTPService:
 
             # Letzter Fallback: Neueste Datei
             if not downloaded_file:
+                if metadata_reference_only:
+                    logger.warning(
+                        f"[GCODE FTPS] No reliable match for metadata reference {gcode_filename}. "
+                        "Skipping newest-file fallback to avoid wrong job attribution."
+                    )
+                    ftps.quit()
+                    return None
                 logger.warning(f"[GCODE FTPS] No match found. Looking for newest .gcode/.3mf file...")
                 try:
                     gcode_files = [
@@ -806,6 +827,8 @@ class GcodeFTPService:
             file_list_meta = ftps.list_dir(with_metadata=True)
 
             downloaded_file = None
+            metadata_reference_only = self._looks_like_metadata_plate_reference(gcode_filename)
+
             if gcode_filename:
                 filename_base = gcode_filename.replace(".gcode", "").replace(".3mf", "")
                 candidates = [gcode_filename, f"{filename_base}.gcode", f"{filename_base}.3mf"]
@@ -815,6 +838,12 @@ class GcodeFTPService:
                         break
 
             if not downloaded_file:
+                if metadata_reference_only:
+                    try:
+                        ftps.quit()
+                    except Exception:
+                        pass
+                    return metrics
                 gcode_files = [
                     f for f in file_list_meta
                     if f["name"].lower().endswith(".gcode") or f["name"].lower().endswith(".3mf")

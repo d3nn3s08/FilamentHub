@@ -14,7 +14,7 @@ Wird genutzt von:
 """
 
 from typing import Dict, Any, Optional, List, cast
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select, col
 import logging
 import json
@@ -22,6 +22,7 @@ from pathlib import Path
 import tempfile
 import os
 import threading
+import re
 from json import JSONDecodeError
 
 from app.models.job import Job
@@ -63,6 +64,126 @@ class JobTrackingService:
         name_str = str(name).strip()
         return name_str if name_str and name_str != "Unnamed Job" else None
 
+    def _extract_task_name(self, parsed_payload: Dict[str, Any]) -> Optional[str]:
+        task_name = (
+            parsed_payload.get("print", {}).get("subtask_name") or
+            parsed_payload.get("subtask_name")
+        )
+        if not task_name:
+            return None
+        task_name_str = str(task_name).strip()
+        return task_name_str or None
+
+    def _extract_gcode_file(self, parsed_payload: Dict[str, Any]) -> Optional[str]:
+        gcode_file = (
+            parsed_payload.get("print", {}).get("gcode_file") or
+            parsed_payload.get("gcode_file") or
+            parsed_payload.get("print", {}).get("file") or
+            parsed_payload.get("file")
+        )
+        if not gcode_file:
+            return None
+        gcode_file_str = str(gcode_file).strip()
+        return gcode_file_str or None
+
+    def _looks_like_metadata_plate_reference(self, value: Optional[str]) -> bool:
+        if not value:
+            return False
+        normalized = str(value).replace("\\", "/").strip().lower()
+        basename = normalized.rsplit("/", 1)[-1]
+        return (
+            normalized.startswith("/data/metadata/plate_")
+            or normalized.startswith("metadata/plate_")
+            or bool(re.fullmatch(r"plate_\d+\.(gcode|3mf)", basename))
+        )
+
+    def _preferred_gcode_lookup_name(
+        self,
+        parsed_payload: Dict[str, Any],
+        fallback_name: Optional[str] = None,
+    ) -> Optional[str]:
+        gcode_file = self._extract_gcode_file(parsed_payload)
+        task_name = self._extract_task_name(parsed_payload)
+
+        if gcode_file and not self._looks_like_metadata_plate_reference(gcode_file):
+            return gcode_file
+        if task_name:
+            return task_name
+        if fallback_name:
+            fallback = str(fallback_name).strip()
+            if fallback:
+                return fallback
+        return gcode_file
+
+    def _apply_gcode_slot_weights(
+        self,
+        session: Session,
+        job: Job,
+        printer_id: str,
+        slot_weight_map: Dict[Any, Any],
+    ) -> int:
+        if not slot_weight_map:
+            return 0
+
+        from app.models.job import JobSpoolUsage
+
+        existing_usages = session.exec(
+            select(JobSpoolUsage)
+            .where(JobSpoolUsage.job_id == job.id)
+            .order_by(col(JobSpoolUsage.order_index))
+        ).all()
+        usages_by_slot = {int(u.slot): u for u in existing_usages if u.slot is not None}
+        next_order_index = max(
+            (int(u.order_index) for u in existing_usages if u.order_index is not None),
+            default=-1,
+        ) + 1
+        applied = 0
+
+        sortable_items = []
+        for raw_slot, raw_weight in slot_weight_map.items():
+            try:
+                sortable_items.append((int(raw_slot), raw_weight))
+            except (TypeError, ValueError):
+                continue
+
+        for slot, raw_weight in sorted(sortable_items, key=lambda item: item[0]):
+            try:
+                weight_g = round(float(raw_weight or 0), 2)
+            except (TypeError, ValueError):
+                continue
+
+            if weight_g <= 0:
+                continue
+
+            spool = session.exec(
+                select(Spool)
+                .where(Spool.printer_id == printer_id)
+                .where(Spool.ams_slot == slot)
+            ).first()
+
+            usage = usages_by_slot.get(slot)
+            if usage:
+                usage.used_g = weight_g
+                if spool and not usage.spool_id:
+                    usage.spool_id = spool.id
+                session.add(usage)
+            else:
+                usage = JobSpoolUsage(
+                    job_id=job.id,
+                    spool_id=spool.id if spool else None,
+                    slot=slot,
+                    used_mm=0.0,
+                    used_g=weight_g,
+                    order_index=next_order_index,
+                )
+                next_order_index += 1
+                session.add(usage)
+                usages_by_slot[slot] = usage
+
+            applied += 1
+
+        return applied
+
     def _get_or_prefetch_gcode_weight(
         self,
         session: Session,
@@ -90,14 +211,7 @@ class JobTrackingService:
         if not task_id:
             return None
 
-        gcode_filename = (
-            parsed_payload.get("print", {}).get("gcode_file")
-            or parsed_payload.get("print", {}).get("subtask_name")
-            or parsed_payload.get("gcode_file")
-            or parsed_payload.get("subtask_name")
-            or job.name
-            or "unknown"
-        )
+        gcode_filename = self._preferred_gcode_lookup_name(parsed_payload, job.name) or "unknown"
 
         try:
             from app.services.gcode_ftp_service import get_gcode_ftp_service
@@ -756,6 +870,67 @@ class JobTrackingService:
 
         return is_valid, reason, confidence
 
+    def _parse_cloud_task_datetime(self, value: Any) -> Optional[datetime]:
+        if not value:
+            return None
+        if isinstance(value, datetime):
+            parsed = value
+        elif not isinstance(value, str):
+            return None
+        else:
+            normalized = value.strip()
+            if not normalized:
+                return None
+
+            try:
+                parsed = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
+            except ValueError:
+                try:
+                    parsed = datetime.fromisoformat(normalized.split("+")[0].replace("Z", ""))
+                except ValueError:
+                    self.logger.warning("[CLOUD TIMING] Failed to parse datetime value=%s", value)
+                    return None
+
+        if parsed.tzinfo is not None:
+            return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
+
+    def _apply_cloud_task_timing(self, job: Job, cloud_task: Any) -> bool:
+        cloud_start = self._parse_cloud_task_datetime(getattr(cloud_task, "start_time", None))
+        cloud_end = self._parse_cloud_task_datetime(getattr(cloud_task, "end_time", None))
+
+        cost_time = getattr(cloud_task, "cost_time", None)
+        try:
+            cost_time_seconds = int(cost_time) if cost_time is not None else 0
+        except (TypeError, ValueError):
+            cost_time_seconds = 0
+
+        if cloud_end and not cloud_start and cost_time_seconds > 0:
+            cloud_start = cloud_end - timedelta(seconds=cost_time_seconds)
+        elif cloud_start and not cloud_end and cost_time_seconds > 0:
+            cloud_end = cloud_start + timedelta(seconds=cost_time_seconds)
+
+        changed = False
+
+        if cloud_start and (job.started_at is None or abs((job.started_at - cloud_start).total_seconds()) > 60):
+            job.started_at = cloud_start
+            changed = True
+
+        if cloud_end and (job.finished_at is None or abs((job.finished_at - cloud_end).total_seconds()) > 60):
+            job.finished_at = cloud_end
+            changed = True
+
+        if changed:
+            self.logger.info(
+                "[CLOUD TIMING] Applied cloud timing for job=%s start=%s end=%s cost_time=%ss",
+                job.id,
+                job.started_at,
+                job.finished_at,
+                cost_time_seconds,
+            )
+
+        return changed
+
     async def _fetch_cloud_fallback_data_async(
         self,
         job_id: str,
@@ -884,13 +1059,18 @@ class JobTrackingService:
                     f"ams_mapping={len(matching_task.ams_mapping or [])} entries"
                 )
 
+                timing_updated = self._apply_cloud_task_timing(job, matching_task)
+                if timing_updated:
+                    session.add(job)
+
                 # 3. amsDetailMapping auswerten fÃ¼r Multi-Spool-Daten
                 result = {
                     "total_used_g": matching_task.weight or 0,
                     "usages_created": 0,
                     "spools_updated": [],
                     "match_confidence": best_confidence,
-                    "match_reason": match_reason
+                    "match_reason": match_reason,
+                    "timing_updated": timing_updated,
                 }
                 if not job:
                     self.logger.error(f"[CLOUD FALLBACK] Job {job_id} not found")
@@ -899,18 +1079,19 @@ class JobTrackingService:
                 ams_mapping = matching_task.ams_mapping or []
                 if not ams_mapping:
                     # Keine Multi-Spool-Daten, aber Gesamtgewicht vorhanden
-                    if matching_task.weight > 0:
+                    if matching_task.weight > 0 or timing_updated:
                         if is_dry_run:
                             self.logger.info(
-                                f"[CLOUD FALLBACK DRY-RUN] Would update job total: {matching_task.weight}g"
+                                f"[CLOUD FALLBACK DRY-RUN] Would update job total/timing: {matching_task.weight}g"
                             )
                         else:
-                            job.filament_used_g = matching_task.weight
-                            job.filament_used_mm = matching_task.length or 0
+                            if matching_task.weight > 0:
+                                job.filament_used_g = matching_task.weight
+                                job.filament_used_mm = matching_task.length or 0
                             session.add(job)
                             session.commit()
                             self.logger.info(
-                                f"[CLOUD FALLBACK] Updated job total: {matching_task.weight}g"
+                                f"[CLOUD FALLBACK] Updated job total/timing: {matching_task.weight}g"
                             )
                     return result
 
@@ -1316,13 +1497,12 @@ class JobTrackingService:
 
                 # Extrahiere Job-Informationen aus MQTT-Payload
                 job_name = (
-                    parsed_payload.get("print", {}).get("subtask_name") or
-                    parsed_payload.get("print", {}).get("gcode_file") or
-                    parsed_payload.get("subtask_name") or
-                    parsed_payload.get("gcode_file") or
-                    parsed_payload.get("file") or
+                    self._extract_job_name(parsed_payload) or
+                    self._extract_gcode_file(parsed_payload) or
                     "Unnamed Job"
                 )
+                task_name = self._extract_task_name(parsed_payload)
+                gcode_file = self._extract_gcode_file(parsed_payload)
 
                 # Kalibrierungsjobs ignorieren (kein echter Druckauftrag fuer Historie/Verbrauch)
                 job_name_norm = str(job_name).replace("\\", "/").split("/")[-1].strip().lower()
@@ -1609,6 +1789,8 @@ class JobTrackingService:
                     spool_id=spool.id if spool else None,
                     name=job_name,
                     task_id=task_id,  # Bambu Cloud Task ID (kann None sein)
+                    task_name=task_name,
+                    gcode_file=gcode_file,
                     started_at=datetime.utcnow(),
                     filament_used_mm=0,
                     filament_used_g=0,
@@ -2280,9 +2462,10 @@ class JobTrackingService:
                 # === RETROACTIVE PRINT_SOURCE UPDATE ===
                 # Wenn Job mit "unknown" gestartet wurde (Race Condition: Spule kam zu spÃ¤t),
                 # aber jetzt Spule gebunden ist, aktualisiere print_source nachtrÃ¤glich
-                if job.print_source == "unknown" and not job_info.get("print_source_updated") and job.spool_id:
+                if job.print_source in {"unknown", "external"} and not job_info.get("print_source_updated") and job.spool_id:
                     # Guard-Flag setzen (nur einmal versuchen)
                     job_info["print_source_updated"] = True
+                    previous_print_source = job.print_source
 
                     # PrÃ¼fe ob Spule external ist (ams_slot = 254 fÃ¼r A1 Mini, 255 fÃ¼r andere)
                     bound_spool = session.get(Spool, job.spool_id)
@@ -2295,18 +2478,18 @@ class JobTrackingService:
                             session.commit()
 
                             self.logger.info(
-                                f"[PRINT SOURCE] Retroactively updated print_source from 'unknown' to 'external' "
+                                f"[PRINT SOURCE] Retroactively updated print_source from '{previous_print_source}' to 'external' "
                                 f"for job={job.id} (spool_id={job.spool_id}, ams_slot={bound_spool.ams_slot}, "
                                 f"race condition resolved)"
                             )
-                        elif bound_spool.ams_slot is not None and 0 <= bound_spool.ams_slot <= 3:
+                        elif bound_spool.ams_slot is not None and bound_spool.ams_slot >= 0:
                             # AMS-Spule erkannt
                             job.print_source = "ams"
                             session.add(job)
                             session.commit()
 
                             self.logger.info(
-                                f"[PRINT SOURCE] Retroactively updated print_source from 'unknown' to 'ams' "
+                                f"[PRINT SOURCE] Retroactively updated print_source from '{previous_print_source}' to 'ams' "
                                 f"for job={job.id} (spool_id={job.spool_id}, ams_slot={bound_spool.ams_slot}, "
                                 f"race condition resolved)"
                             )
@@ -2372,6 +2555,10 @@ class JobTrackingService:
 
                     if spool_new and not job.spool_id:
                         job.spool_id = spool_new.id
+
+                    if job.print_source != "ams":
+                        job.print_source = "ams"
+                        session.add(job)
 
                 # Update last_remain + Spulen-Gewicht
                 # NEU: Bei externen Spulen vt_tray verwenden
@@ -2793,6 +2980,29 @@ class JobTrackingService:
                     .order_by(col(JobSpoolUsage.order_index))
                 ).all()
 
+                prefetched_slot_map = job_info.get("gcode_weight_per_slot") or {}
+                if prefetched_slot_map and (
+                    not existing_usages or all(float(u.used_g or 0) <= 0 for u in existing_usages)
+                ):
+                    applied_slots = self._apply_gcode_slot_weights(
+                        session=session,
+                        job=job,
+                        printer_id=job.printer_id,
+                        slot_weight_map=prefetched_slot_map,
+                    )
+                    if applied_slots:
+                        session.commit()
+                        existing_usages = session.exec(
+                            select(JobSpoolUsage)
+                            .where(JobSpoolUsage.job_id == job.id)
+                            .order_by(col(JobSpoolUsage.order_index))
+                        ).all()
+                        if job.print_source == "external":
+                            job.print_source = "ams"
+                        self.logger.info(
+                            f"[JOB FINISH] Applied prefetched per-slot weights for {applied_slots} slot(s) on job={job.id}"
+                        )
+
                 if existing_usages:
                     # Summiere used_g aus JobSpoolUsage (prÃ¤zise Material-Density-Berechnung)
                     total_used_g = sum(float(u.used_g) for u in existing_usages)
@@ -2915,17 +3125,7 @@ class JobTrackingService:
                             # PrÃ¼fe, ob Drucker IP und API Key vorhanden sind
                             if printer.ip_address and printer.api_key:
                                 # Dateiname vom Job oder MQTT extrahieren
-                                gcode_filename = job.name or "unknown"
-                                
-                                # Versuche auch vom payload zu nehmen (falls noch vorhanden)
-                                gcode_from_payload = (
-                                    parsed_payload.get("print", {}).get("gcode_file") or
-                                    parsed_payload.get("print", {}).get("subtask_name") or
-                                    parsed_payload.get("gcode_file") or
-                                    parsed_payload.get("subtask_name")
-                                )
-                                if gcode_from_payload:
-                                    gcode_filename = gcode_from_payload
+                                gcode_filename = self._preferred_gcode_lookup_name(parsed_payload, job.name) or "unknown"
                                 
                                 self.logger.info(
                                     f"[JOB FINISH] Attempting FTP G-Code download for task_id={job.task_id}, "
@@ -3245,9 +3445,15 @@ class JobTrackingService:
                 # Wenn MQTT-Tracking unvollstÃ¤ndig (kein Gewicht oder keine Multi-Spool-Daten),
                 # versuche Cloud-API als Fallback
                 existing_usages_count = len(existing_usages) if existing_usages else 0
+                looks_like_metadata_reference = self._looks_like_metadata_plate_reference(job.gcode_file)
                 needs_cloud_fallback = (
                     job.status in {"completed", "pending_weight"} and
-                    (total_used_g == 0 or existing_usages_count == 0) and
+                    (
+                        total_used_g == 0 or
+                        existing_usages_count == 0 or
+                        looks_like_metadata_reference or
+                        job.print_source in {"external", "unknown"}
+                    ) and
                     job.task_id  # Nur wenn Cloud task_id vorhanden
                 )
 
