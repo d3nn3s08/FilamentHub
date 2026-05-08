@@ -26,6 +26,11 @@ services:
       # Unraid / klassisches Linux Beispiel:
       - /mnt/user/appdata/filamenthub/data:/app/data
       - /mnt/user/appdata/filamenthub/logs:/app/logs
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "10"
     healthcheck:
       test: ["CMD", "sh", "-c", "curl -f http://localhost:${PORT:-8081}/health"]
       interval: 30s
