@@ -32,6 +32,7 @@ from app.models.material import Material
 from app.database import engine
 from app.routes.notification_routes import trigger_notification_sync
 from app.services.eta.bambu_a_series_eta import estimate_remaining_time_from_layers
+from app.services.job_debug_export_service import get_job_debug_export_service
 from app.services.spool_helpers import is_external_tray, get_external_tray_id
 
 
@@ -73,6 +74,36 @@ class JobTrackingService:
             return None
         task_name_str = str(task_name).strip()
         return task_name_str or None
+
+    def _extract_task_id(self, parsed_payload: Dict[str, Any]) -> Optional[str]:
+        task_id = (
+            parsed_payload.get("print", {}).get("task_id") or
+            parsed_payload.get("task_id")
+        )
+        if task_id in (None, ""):
+            return None
+        task_id_str = str(task_id).strip()
+        return task_id_str or None
+
+    def _extract_printer_job_id(self, parsed_payload: Dict[str, Any]) -> Optional[str]:
+        printer_job_id = (
+            parsed_payload.get("print", {}).get("job_id") or
+            parsed_payload.get("job_id")
+        )
+        if printer_job_id in (None, ""):
+            return None
+        printer_job_id_str = str(printer_job_id).strip()
+        return printer_job_id_str or None
+
+    def _extract_printer_subtask_id(self, parsed_payload: Dict[str, Any]) -> Optional[str]:
+        printer_subtask_id = (
+            parsed_payload.get("print", {}).get("subtask_id") or
+            parsed_payload.get("subtask_id")
+        )
+        if printer_subtask_id in (None, ""):
+            return None
+        printer_subtask_id_str = str(printer_subtask_id).strip()
+        return printer_subtask_id_str or None
 
     def _extract_gcode_file(self, parsed_payload: Dict[str, Any]) -> Optional[str]:
         gcode_file = (
@@ -1503,6 +1534,9 @@ class JobTrackingService:
                 )
                 task_name = self._extract_task_name(parsed_payload)
                 gcode_file = self._extract_gcode_file(parsed_payload)
+                task_id = self._extract_task_id(parsed_payload)
+                printer_job_id = self._extract_printer_job_id(parsed_payload)
+                printer_subtask_id = self._extract_printer_subtask_id(parsed_payload)
 
                 # Kalibrierungsjobs ignorieren (kein echter Druckauftrag fuer Historie/Verbrauch)
                 job_name_norm = str(job_name).replace("\\", "/").split("/")[-1].strip().lower()
@@ -1515,51 +1549,61 @@ class JobTrackingService:
                     self.logger.info(f"[JOB START] Ignoring calibration job '{job_name}'")
                     return None
 
-                # Extrahiere Bambu Cloud Task ID (fÃ¼r zukÃ¼nftige Cloud-Integration)
-                task_id = parsed_payload.get("print", {}).get("task_id")
                 if task_id:
                     self.logger.debug(f"[JOB START] Extracted task_id={task_id} from MQTT payload")
-                    
-                    # DEDUPLICATION: PrÃ¼fe, ob bereits ein Job mit dieser task_id existiert
-                    existing_job_with_task = session.exec(
+
+                dedup_candidates = []
+                if task_id:
+                    dedup_candidates.append(("task_id", Job.task_id, task_id))
+                if printer_job_id:
+                    dedup_candidates.append(("printer_job_id", Job.printer_job_id, printer_job_id))
+                if printer_subtask_id:
+                    dedup_candidates.append(("printer_subtask_id", Job.printer_subtask_id, printer_subtask_id))
+
+                existing_job_with_identifier = None
+                dedup_reason = None
+                for identifier_name, identifier_column, identifier_value in dedup_candidates:
+                    existing_job_with_identifier = session.exec(
                         select(Job)
                         .where(Job.printer_id == printer_id)
-                        .where(Job.task_id == str(task_id))
+                        .where(identifier_column == str(identifier_value))
                         .where(Job.status == "running")
                     ).first()
-                    
-                    if existing_job_with_task:
-                        # Job mit dieser task_id existiert bereits â†’ in RAM laden
+                    if existing_job_with_identifier:
+                        dedup_reason = f"{identifier_name}={identifier_value}"
+                        break
+
+                if existing_job_with_identifier:
+                    self.logger.info(
+                        f"[JOB START] Job with {dedup_reason} already exists "
+                        f"(job={existing_job_with_identifier.id}). Skipping duplicate creation."
+                    )
+
+                    if cloud_serial not in self.active_jobs:
+                        spool = session.get(Spool, existing_job_with_identifier.spool_id) if existing_job_with_identifier.spool_id else None
+                        self.active_jobs[cloud_serial] = {
+                            "job_id": existing_job_with_identifier.id,
+                            "printer_id": printer_id,
+                            "slot": None,  # Wird bei nÃ¤chstem Update aktualisiert
+                            "spool_id": spool.id if spool else None,
+                            "start_remain": None,
+                            "last_remain": None,
+                            "start_total_len": None,
+                            "usages": [],
+                            "filament_start_mm": None,
+                            "filament_started": False,
+                            "using_fallback": False,
+                            "fallback_warned": False,
+                            "spool_binding_attempted": False,
+                            "no_spool_warned": False,
+                            "job_name_updated": existing_job_with_identifier.name != "Unnamed Job",
+                            "no_name_warned": False,
+                        }
                         self.logger.info(
-                            f"[JOB START] Job with task_id={task_id} already exists (job={existing_job_with_task.id}). "
-                            f"Skipping duplicate creation (deduplication)."
+                            f"[JOB START] Loaded existing job into RAM: job={existing_job_with_identifier.id}"
                         )
-                        
-                        # PrÃ¼fe, ob Job bereits in active_jobs ist
-                        if cloud_serial not in self.active_jobs:
-                            # Job in RAM laden (kÃ¶nnte nach Server-Neustart fehlen)
-                            spool = session.get(Spool, existing_job_with_task.spool_id) if existing_job_with_task.spool_id else None
-                            self.active_jobs[cloud_serial] = {
-                                "job_id": existing_job_with_task.id,
-                                "printer_id": printer_id,
-                                "slot": None,  # Wird bei nÃ¤chstem Update aktualisiert
-                                "spool_id": spool.id if spool else None,
-                                "start_remain": None,
-                                "last_remain": None,
-                                "start_total_len": None,
-                                "usages": [],
-                                "filament_start_mm": None,
-                                "filament_started": False,
-                                "using_fallback": False,
-                                "fallback_warned": False,
-                                "spool_binding_attempted": False,
-                                "no_spool_warned": False,
-                                "job_name_updated": existing_job_with_task.name != "Unnamed Job",
-                                "no_name_warned": False,
-                            }
-                            self.logger.info(f"[JOB START] Loaded existing job into RAM: job={existing_job_with_task.id}")
-                        
-                        return {"job_id": existing_job_with_task.id, "status": "running"}
+
+                    return {"job_id": existing_job_with_identifier.id, "status": "running"}
 
                 # Aktuelle Layer/Fortschritt aus MQTT
                 current_layer = parsed_payload.get("print", {}).get("layer_num") or 0
@@ -1789,6 +1833,8 @@ class JobTrackingService:
                     spool_id=spool.id if spool else None,
                     name=job_name,
                     task_id=task_id,  # Bambu Cloud Task ID (kann None sein)
+                    printer_job_id=printer_job_id,
+                    printer_subtask_id=printer_subtask_id,
                     task_name=task_name,
                     gcode_file=gcode_file,
                     started_at=datetime.utcnow(),
@@ -1882,7 +1928,23 @@ class JobTrackingService:
                     f"name={new_job.name} slot={active_slot} "
                     f"print_source={new_job.print_source} "
                     f"task_id={task_id or 'None'} "
+                    f"printer_job_id={printer_job_id or 'None'} "
+                    f"printer_subtask_id={printer_subtask_id or 'None'} "
                     f"(snapshot saved: layer={current_layer}, progress={current_percent}%)"
+                )
+
+                get_job_debug_export_service().record_event(
+                    source="bambu",
+                    event_type="job_started",
+                    job=new_job,
+                    printer=printer,
+                    payload=parsed_payload,
+                    extra={
+                        "active_slot": active_slot,
+                        "is_external": is_external,
+                        "current_layer": current_layer,
+                        "current_percent": current_percent,
+                    },
                 )
 
                 result = {"job_id": new_job.id, "status": "started"}
@@ -2498,20 +2560,42 @@ class JobTrackingService:
                 # Wenn Job ohne task_id gestartet wurde (Race Condition: task_id kam zu spÃ¤t),
                 # aber jetzt task_id im MQTT-Payload verfÃ¼gbar ist, aktualisiere nachtrÃ¤glich
                 if not job.task_id and not job_info.get("task_id_updated"):
-                    # Extrahiere task_id aus aktuellem Payload
-                    task_id = parsed_payload.get("print", {}).get("task_id")
+                    task_id = self._extract_task_id(parsed_payload)
                     if task_id:
-                        # Guard-Flag setzen (nur einmal versuchen)
                         job_info["task_id_updated"] = True
-
-                        # Aktualisiere task_id in Datenbank
-                        job.task_id = str(task_id)  # Konvertiere zu String falls int
+                        job.task_id = str(task_id)
                         session.add(job)
                         session.commit()
 
                         self.logger.info(
                             f"[TASK ID] Retroactively updated task_id to '{task_id}' "
                             f"for job={job.id} (race condition resolved, enables Cloud API integration)"
+                        )
+
+                if not job.printer_job_id and not job_info.get("printer_job_id_updated"):
+                    printer_job_id = self._extract_printer_job_id(parsed_payload)
+                    if printer_job_id:
+                        job_info["printer_job_id_updated"] = True
+                        job.printer_job_id = printer_job_id
+                        session.add(job)
+                        session.commit()
+
+                        self.logger.info(
+                            f"[JOB ID] Retroactively updated printer_job_id to '{printer_job_id}' "
+                            f"for job={job.id}"
+                        )
+
+                if not job.printer_subtask_id and not job_info.get("printer_subtask_id_updated"):
+                    printer_subtask_id = self._extract_printer_subtask_id(parsed_payload)
+                    if printer_subtask_id:
+                        job_info["printer_subtask_id_updated"] = True
+                        job.printer_subtask_id = printer_subtask_id
+                        session.add(job)
+                        session.commit()
+
+                        self.logger.info(
+                            f"[SUBTASK ID] Retroactively updated printer_subtask_id to '{printer_subtask_id}' "
+                            f"for job={job.id}"
                         )
 
                 # Aktuellen Slot prÃ¼fen (externe Spulen modellabhÃ¤ngig filtern)
@@ -2779,6 +2863,20 @@ class JobTrackingService:
                         fallback_warned=job_info.get("fallback_warned", False),
                     )
                 session.commit()
+
+                get_job_debug_export_service().record_event(
+                    source="bambu",
+                    event_type="job_updated",
+                    job=job,
+                    printer=printer,
+                    payload=parsed_payload,
+                    extra={
+                        "cloud_serial": cloud_serial,
+                        "slot": job_info.get("slot"),
+                        "used_g": total_used_g,
+                        "used_mm": job.filament_used_mm,
+                    },
+                )
 
                 return {"job_id": job.id, "status": "updated", "used_g": total_used_g}
 
@@ -3550,6 +3648,20 @@ class JobTrackingService:
 
                 # === SNAPSHOT LÃ–SCHEN (Job ist fertig) ===
                 self._delete_snapshot(cloud_serial, job_info.get("printer_id"))
+
+                get_job_debug_export_service().record_event(
+                    source="bambu",
+                    event_type="job_finished",
+                    job=job,
+                    printer=printer,
+                    payload=parsed_payload,
+                    extra={
+                        "cloud_serial": cloud_serial,
+                        "used_g": total_used_g,
+                        "used_mm": total_used_mm,
+                        "gcode_state": current_gstate,
+                    },
+                )
 
                 return {"job_id": job.id, "status": job.status, "used_g": total_used_g}
 

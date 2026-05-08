@@ -26,6 +26,10 @@ DEFAULT_CONFIG = {
             "enabled": True,
             "poll_interval_ms": 2000,
         },
+        "job_export": {
+            "enabled": False,
+            "max_jobs": 2,
+        },
     },
     "logging": {
         "enabled": True,
@@ -142,6 +146,8 @@ def _ensure_settings_seed(session: Session, merged: dict) -> None:
         "debug.system_health.error_latency_ms": str(health_cfg.get("error_latency_ms", 1200)),
         "debug.runtime.enabled": "true" if runtime.get("enabled", True) else "false",
         "debug.runtime.poll_interval_ms": str(runtime.get("poll_interval_ms", 2000)),
+        "debug.job_export.enabled": "true" if merged.get("debug", {}).get("job_export", {}).get("enabled", False) else "false",
+        "debug.job_export.max_jobs": str(merged.get("debug", {}).get("job_export", {}).get("max_jobs", 2)),
         "scanner.pro.deep_probe": "true" if scanner_pro.get("deep_probe", False) else "false",
         "scanner.pro.fingerprint_enabled": "true" if scanner_pro.get("fingerprint_enabled", False) else "false",
         "fingerprint.enabled": "true" if fp.get("enabled", False) else "false",
@@ -263,6 +269,25 @@ def _validate_config(raw: dict) -> dict:
         "poll_interval_ms": poll_interval,
     }
 
+    job_export_cfg = cfg.get("debug", {}).get("job_export", {})
+    job_export_enabled = _to_bool(
+        job_export_cfg.get("enabled"),
+        DEFAULT_CONFIG["debug"]["job_export"]["enabled"],
+        "debug.job_export.enabled",
+    )
+    job_export_max_jobs = _to_int(
+        job_export_cfg.get("max_jobs"),
+        DEFAULT_CONFIG["debug"]["job_export"]["max_jobs"],
+        "debug.job_export.max_jobs",
+    )
+    if job_export_max_jobs != 2:
+        logger.warning("Config fallback applied for debug.job_export.max_jobs")
+        job_export_max_jobs = DEFAULT_CONFIG["debug"]["job_export"]["max_jobs"]
+    cfg["debug"]["job_export"] = {
+        "enabled": job_export_enabled,
+        "max_jobs": job_export_max_jobs,
+    }
+
     # Scanner Pro
     scanner_pro = cfg.get("scanner", {}).get("pro", {})
     deep_probe = _to_bool(scanner_pro.get("deep_probe"), DEFAULT_CONFIG["scanner"]["pro"]["deep_probe"], "scanner.pro.deep_probe")
@@ -366,6 +391,23 @@ def _load_config(session: Session | None = None) -> dict:
             if runtime_poll < 500:
                 runtime_poll = DEFAULT_CONFIG["debug"]["runtime"]["poll_interval_ms"]
             merged["debug"]["runtime"] = {"enabled": runtime_enabled, "poll_interval_ms": runtime_poll}
+
+            job_export_enabled = _to_bool(
+                settings.get("debug.job_export.enabled"),
+                merged["debug"]["job_export"]["enabled"],
+                "debug.job_export.enabled",
+            )
+            job_export_max_jobs = _to_int(
+                settings.get("debug.job_export.max_jobs"),
+                merged["debug"]["job_export"]["max_jobs"],
+                "debug.job_export.max_jobs",
+            )
+            if job_export_max_jobs != 2:
+                job_export_max_jobs = merged["debug"]["job_export"]["max_jobs"]
+            merged["debug"]["job_export"] = {
+                "enabled": job_export_enabled,
+                "max_jobs": job_export_max_jobs,
+            }
 
             # System health overlay
             health_enabled = _to_bool(
@@ -579,6 +621,20 @@ def _validate_payload(payload: dict) -> dict:
         if poll < 500:
             poll = 2000
         out["debug.runtime.poll_interval_ms"] = poll
+
+    if "debug.job_export.enabled" in data:
+        out["debug.job_export.enabled"] = _to_bool(
+            data.get("debug.job_export.enabled"),
+            DEFAULT_CONFIG["debug"]["job_export"]["enabled"],
+            "debug.job_export.enabled",
+        )
+    if "debug.job_export.max_jobs" in data:
+        max_jobs = _to_int(
+            data.get("debug.job_export.max_jobs"),
+            DEFAULT_CONFIG["debug"]["job_export"]["max_jobs"],
+            "debug.job_export.max_jobs",
+        )
+        out["debug.job_export.max_jobs"] = 2 if max_jobs == 2 else DEFAULT_CONFIG["debug"]["job_export"]["max_jobs"]
 
     if "scanner.pro.deep_probe" in data:
         out["scanner.pro.deep_probe"] = _to_bool(data.get("scanner.pro.deep_probe"), False, "scanner.pro.deep_probe")

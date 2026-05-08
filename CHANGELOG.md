@@ -1,5 +1,15 @@
 # Changelog - FilamentHub
 
+## [Unreleased]
+
+### Neu
+- **Job Debug Export** - Im Debug Center unter `Services` gibt es jetzt einen optionalen Voll-Export pro Druckjob fuer Bambu und Klipper. Die Funktion kann ein- und ausgeschaltet werden, speichert maximal 2 Jobs und ueberschreibt automatisch den aeltesten Export. Jeder gespeicherte Job kann als JSON heruntergeladen werden.
+
+### Fixes
+- **Job-Identifikation bei gleichen Dateinamen** - Job-Tracking speichert jetzt zusaetzlich druckerseitige `job_id` und `subtask_id`. Dadurch wird die Zuordnung robuster, wenn mehrere Drucke denselben Dateinamen haben oder ein Druck direkt am Drucker gestartet wurde.
+
+---
+
 ## [1.6 Stable] - 2026-04-18
 
 ### Neu

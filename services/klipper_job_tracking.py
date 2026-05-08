@@ -8,6 +8,7 @@ from app.database import engine
 from app.models.job import Job
 from app.models.printer import Printer
 from app.models.spool import Spool
+from app.services.job_debug_export_service import get_job_debug_export_service
 
 logger = logging.getLogger("klipper_job_tracker")
 
@@ -111,6 +112,17 @@ class KlipperJobTracker:
 
         session.add(job)
         session.commit()
+        get_job_debug_export_service().record_event(
+            source="klipper",
+            event_type="job_started",
+            job=job,
+            printer=printer,
+            payload=payload,
+            extra={
+                "spool_id": job.spool_id,
+                "print_source": job.print_source,
+            },
+        )
         logger.info(
             "[Klipper JobTracker] Job gestartet printer=%s job=%s source=%s spool=%s",
             printer.name,
@@ -151,6 +163,19 @@ class KlipperJobTracker:
             session.add(job)
             session.commit()
 
+        get_job_debug_export_service().record_event(
+            source="klipper",
+            event_type="job_updated",
+            job=job,
+            printer=printer,
+            payload=payload,
+            extra={
+                "changed": changed,
+                "spool_id": job.spool_id,
+                "print_source": job.print_source,
+            },
+        )
+
     def _finish_job(self, session: Session, job: Job, raw_state: str, payload: Dict[str, Any]) -> None:
         self._update_job(session, job, payload)
 
@@ -170,6 +195,18 @@ class KlipperJobTracker:
 
         session.add(job)
         session.commit()
+        get_job_debug_export_service().record_event(
+            source="klipper",
+            event_type="job_finished",
+            job=job,
+            printer=printer,
+            payload=payload,
+            extra={
+                "raw_state": raw_state,
+                "spool_id": job.spool_id,
+                "status": job.status,
+            },
+        )
         logger.info(
             "[Klipper JobTracker] Job beendet job=%s status=%s spool=%s",
             job.id,

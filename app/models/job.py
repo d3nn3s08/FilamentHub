@@ -26,6 +26,8 @@ class JobBase(SQLModel):
     # Wird aus MQTT-Payload extrahiert: print.task_id
     # Verwendet für: Cloud-Weight-Fetch, Admin-Backfill, Audit-Trail
     task_id: Optional[str] = None
+    printer_job_id: Optional[str] = None
+    printer_subtask_id: Optional[str] = None
 
     # Task Name & GCode File (für zukünftige Claude/AI-Integration)
     # task_name: Menschenlesbarer Name des Druckauftrags (aus MQTT: subtask_name oder gcode_file)

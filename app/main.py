@@ -106,6 +106,7 @@ from app.routes.debug_performance_routes import router as debug_performance_rout
 from app.routes.debug_network_routes import router as debug_network_router
 from app.routes.notification_routes import router as notification_router
 from app.routes.config_routes import router as config_router
+from app.routes.job_debug_export_routes import router as job_debug_export_router
 from app.routes import debug_log_routes
 from app.routes import mqtt_runtime_routes
 from app.routes.live_state_routes import router as live_state_router
@@ -676,6 +677,7 @@ app.include_router(debug_network_router)
 app.include_router(debug_printer_router)
 app.include_router(notification_router)
 app.include_router(config_router)
+app.include_router(job_debug_export_router)
 app.include_router(debug_log_routes.router, prefix="/api/debug", tags=["debug"])
 
 # Runtime MQTT control endpoints (separate from legacy mqtt_routes to avoid collisions)

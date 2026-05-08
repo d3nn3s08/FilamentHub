@@ -3181,17 +3181,21 @@ async function loadServicesData() {
             processRes,
             statsRes,
             dockerRes,
-            composeRes
+            composeRes,
+            configRes,
+            jobExportRes
         ] = await Promise.all([
             fetch('/api/debug/performance'),
             fetch('/api/debug/system_status'),
             fetch('/api/services/process/info'),
             fetch('/api/services/server/stats'),
             fetch('/api/services/docker/status'),
-            fetch('/api/services/docker/compose/ps')
+            fetch('/api/services/docker/compose/ps'),
+            fetch('/api/config/current'),
+            fetch('/api/debug/job-exports')
         ]);
 
-        if (!perfRes.ok || !sysRes.ok || !processRes.ok || !statsRes.ok || !dockerRes.ok || !composeRes.ok) {
+        if (!perfRes.ok || !sysRes.ok || !processRes.ok || !statsRes.ok || !dockerRes.ok || !composeRes.ok || !configRes.ok || !jobExportRes.ok) {
             console.warn('[services] Failed to load data');
             return;
         }
@@ -3202,17 +3206,22 @@ async function loadServicesData() {
             processData,
             statsData,
             dockerData,
-            composeData
+            composeData,
+            configData,
+            jobExportData
         ] = await Promise.all([
             perfRes.json(),
             sysRes.json(),
             processRes.json(),
             statsRes.json(),
             dockerRes.json(),
-            composeRes.json()
+            composeRes.json(),
+            configRes.json(),
+            jobExportRes.json()
         ]);
 
         updateServicesDisplay(perfData, sysData, processData, statsData, dockerData, composeData);
+        updateJobExportDisplay(configData, jobExportData);
     } catch (err) {
         console.error('[services] Error loading data', err);
     }
@@ -3555,7 +3564,127 @@ function updateServicesDisplay(perf, sys, proc, stats, docker, compose) {
     }
 }
 
+function formatJobExportTimestamp(value) {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString();
+}
+
+function updateJobExportDisplay(configData, jobExportData) {
+    const cfg = configData?.debug?.job_export || {};
+    const enabled = Boolean(cfg.enabled ?? jobExportData?.enabled);
+    const maxJobs = Number(cfg.max_jobs ?? jobExportData?.max_jobs ?? 2) || 2;
+    const exportsList = Array.isArray(jobExportData?.exports) ? jobExportData.exports : [];
+
+    const toggleEl = document.getElementById('service-job-export-toggle');
+    const statusBadgeEl = document.getElementById('service-job-export-status');
+    const enabledTextEl = document.getElementById('service-job-export-enabled-text');
+    const countEl = document.getElementById('service-job-export-count');
+    const maxEl = document.getElementById('service-job-export-max');
+    const listEl = document.getElementById('service-job-export-list');
+
+    if (toggleEl) toggleEl.checked = enabled;
+    if (maxEl) maxEl.textContent = String(maxJobs);
+    if (countEl) countEl.textContent = String(exportsList.length);
+    if (enabledTextEl) enabledTextEl.textContent = enabled ? 'Aktiviert' : 'Deaktiviert';
+    if (statusBadgeEl) {
+        setStatusBadge(
+            statusBadgeEl,
+            enabled ? 'Aktiv' : 'Deaktiviert',
+            enabled ? 'status-ok' : 'status-idle'
+        );
+    }
+
+    if (!listEl) return;
+    if (!exportsList.length) {
+        listEl.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">Keine Job-Exporte vorhanden.</div>';
+        return;
+    }
+
+    listEl.innerHTML = exportsList.map(item => {
+        const printerName = item.printer_name || '-';
+        const jobName = item.job_name || 'Unnamed Job';
+        const status = item.job_status || '-';
+        const updatedAt = formatJobExportTimestamp(item.updated_at || item.created_at);
+        const fileSizeBytes = Number(item.file_size_bytes || 0);
+        const eventCount = Number(item.event_count || 0);
+        const sizeLabel = formatServiceFileSize(fileSizeBytes);
+        const downloadUrl = `/api/debug/job-exports/${encodeURIComponent(item.log_id)}/download`;
+
+        return `
+            <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+                <div style="min-width:260px;flex:1;">
+                    <div style="font-weight:600;color:var(--text);margin-bottom:4px;">${jobName}</div>
+                    <div style="font-size:12px;color:var(--text-dim);display:flex;gap:10px;flex-wrap:wrap;">
+                        <span>Drucker: ${printerName}</span>
+                        <span>Status: ${status}</span>
+                        <span>Events: ${eventCount}</span>
+                        <span>Größe: ${sizeLabel}</span>
+                        <span>Aktualisiert: ${updatedAt}</span>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <a class="btn btn-secondary" href="${downloadUrl}">Download</a>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 function initServicesButtons() {
+    const jobExportToggle = document.getElementById('service-job-export-toggle');
+    const jobExportRefreshBtn = document.getElementById('service-job-export-refresh-btn');
+
+    if (jobExportToggle) {
+        jobExportToggle.addEventListener('change', async () => {
+            const nextValue = Boolean(jobExportToggle.checked);
+            jobExportToggle.disabled = true;
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 'debug.job_export.enabled': nextValue }),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Job-Debug-Export konnte nicht gespeichert werden');
+                }
+                await loadServicesData();
+                if (window.showToast) {
+                    window.showToast(
+                        nextValue ? 'Job-Debug-Export aktiviert.' : 'Job-Debug-Export deaktiviert.',
+                        'success'
+                    );
+                }
+            } catch (error) {
+                jobExportToggle.checked = !nextValue;
+                if (window.showToast) {
+                    window.showToast(error.message || 'Job-Debug-Export konnte nicht gespeichert werden.', 'error');
+                }
+            } finally {
+                jobExportToggle.disabled = false;
+            }
+        });
+    }
+
+    if (jobExportRefreshBtn) {
+        jobExportRefreshBtn.addEventListener('click', async () => {
+            jobExportRefreshBtn.disabled = true;
+            const originalLabel = jobExportRefreshBtn.textContent;
+            jobExportRefreshBtn.textContent = 'Lädt…';
+            try {
+                await loadServicesData();
+                if (window.showToast) window.showToast('Job-Export-Liste aktualisiert.', 'success');
+            } catch (error) {
+                if (window.showToast) window.showToast(error.message || 'Job-Export-Liste konnte nicht geladen werden.', 'error');
+            } finally {
+                jobExportRefreshBtn.disabled = false;
+                jobExportRefreshBtn.textContent = originalLabel;
+            }
+        });
+    }
+
     const ftpOpenBtn = document.getElementById('service-ftp-open-btn');
     const ftpRefreshBtn = document.getElementById('service-ftp-refresh-btn');
     const ftpSelect = document.getElementById('service-ftp-printer');
